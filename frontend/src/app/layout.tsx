@@ -3,6 +3,7 @@ import { GeistSans } from 'geist/font/sans'
 import { GeistMono } from 'geist/font/mono'
 import { Analytics } from '@vercel/analytics/next'
 import './globals.css'
+import { CartProvider } from '@/contexts/cart-context'
 
 export const metadata: Metadata = {
   title: 'AnEat',
@@ -16,9 +17,9 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en">
-      <body className={`font-sans ${GeistSans.variable} ${GeistMono.variable}`}>
-        {children}
+    <html lang="vi">
+      <body className={`font-sans bg-orange-50 ${GeistSans.variable} ${GeistMono.variable}`}>
+        <CartProvider>{children}</CartProvider>
         <Analytics />
       </body>
     </html>

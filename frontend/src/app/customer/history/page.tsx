@@ -93,7 +93,7 @@ export default function HistoryPage() {
           {mockOrders.length === 0 && (
             <div className="text-center py-12">
               <p className="text-muted-foreground text-lg mb-4">No orders yet</p>
-              <Link href="/menu">
+              <Link href="/customer/menu">
                 <Button>Start Ordering</Button>
               </Link>
             </div>
