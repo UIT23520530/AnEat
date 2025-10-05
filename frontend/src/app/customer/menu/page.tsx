@@ -141,15 +141,15 @@ export default function MenuPage() {
     <PublicLayout>
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
-        <div className="mb-8 text-center">
+        {/* <div className="mb-8 text-center">
           <h1 className="text-4xl font-bold mb-2">Thực đơn của chúng tôi</h1>
           <p className="text-muted-foreground text-lg">
             Khám phá các món ăn nhanh yêu thích của chúng tôi
           </p>
-        </div>
+        </div> */}
         {/* Search */}
-        <div className="mb-6 flex justify-center">
-          <div className="relative w-full max-w-md">
+        <div className="flex justify-center">
+          {/* <div className="relative w-full max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
             <Input
               placeholder="Tìm kiếm món ăn..."
@@ -157,7 +157,7 @@ export default function MenuPage() {
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-10"
             />
-          </div>
+          </div> */}
         </div>
 
         {/* Categories */}

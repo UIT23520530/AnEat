@@ -100,7 +100,7 @@ export function PublicLayout({ children }: PublicLayoutProps) {
       </header>
 
       {/* Main Content */}
-      <main className="flex-1">{children}</main>
+      <main className="bg-orange-50 flex-1">{children}</main>
       <CartSidebar />
 
       {/* Footer */}
