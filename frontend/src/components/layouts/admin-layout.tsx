@@ -15,6 +15,10 @@ import {
   Shield,
   Package,
   UserCircle,
+  FileText,
+  Ticket,
+  Clipboard,
+  History,
 } from "lucide-react"
 import { logout } from "@/lib/auth"
 import { cn } from "@/lib/utils"
@@ -24,11 +28,15 @@ export function AdminLayout({ children }: { children: ReactNode }) {
 
   const navItems = [
     { href: "/admin/dashboard", icon: LayoutDashboard, label: "Dashboard" },
-    { href: "/admin/stores", icon: Store, label: "Stores" },
-    { href: "/admin/products", icon: Package, label: "Products" },
-    { href: "/admin/users", icon: Users, label: "Users" },
-    { href: "/admin/analytics", icon: BarChart3, label: "Analytics" },
-    { href: "/admin/settings", icon: Settings, label: "Settings" },
+    { href: "/admin/stores", icon: Store, label: "Cửa hàng" },
+    { href: "/admin/products", icon: Package, label: "Sản phẩm" },
+    { href: "/admin/users", icon: Users, label: "Người dùng" },
+    { href: "/admin/invoices", icon: FileText, label: "Hóa đơn" },
+    { href: "/admin/promotions", icon: Ticket, label: "Khuyến mãi" },
+    { href: "/admin/templates", icon: Clipboard, label: "Mẫu" },
+    { href: "/admin/logs", icon: History, label: "Bản ghi" },
+    { href: "/admin/analytics", icon: BarChart3, label: "Phân tích" },
+    { href: "/admin/settings", icon: Settings, label: "Cài đặt" },
   ]
 
   return (
@@ -42,15 +50,18 @@ export function AdminLayout({ children }: { children: ReactNode }) {
           </Link>
         </div>
 
-        <nav className="flex-1 space-y-1 px-3">
+        <nav className="flex-1 space-y-1 px-3 overflow-y-auto">
           {navItems.map((item) => {
             const Icon = item.icon
-            const isActive = pathname === item.href
+            const isActive = pathname.startsWith(item.href)
             return (
               <Link key={item.href} href={item.href}>
                 <Button
                   variant={isActive ? "secondary" : "ghost"}
-                  className={cn("w-full justify-start", isActive && "bg-primary/10")}
+                  className={cn(
+                    "w-full justify-start",
+                    isActive && "bg-primary/10 text-primary"
+                  )}
                 >
                   <Icon className="h-4 w-4 mr-3" />
                   {item.label}
@@ -64,7 +75,7 @@ export function AdminLayout({ children }: { children: ReactNode }) {
           <Link href="/profile">
             <Button variant="ghost" className="w-full justify-start">
               <UserCircle className="h-4 w-4 mr-3" />
-              Profile
+              Hồ sơ
             </Button>
           </Link>
           <Button
@@ -73,7 +84,7 @@ export function AdminLayout({ children }: { children: ReactNode }) {
             onClick={logout}
           >
             <LogOut className="h-4 w-4 mr-3" />
-            Logout
+            Đăng xuất
           </Button>
         </div>
       </aside>
@@ -83,20 +94,20 @@ export function AdminLayout({ children }: { children: ReactNode }) {
         {/* Top Bar */}
         <header className="border-b bg-card h-16 flex items-center justify-between px-6">
           <div className="flex items-center gap-4">
-            <h2 className="font-semibold">System Administration</h2>
+            <h2 className="font-semibold">Quản trị hệ thống</h2>
           </div>
           <div className="flex items-center gap-2">
             <Link href="/">
               <Button variant="ghost" size="sm">
                 <Home className="h-4 w-4 mr-2" />
-                Home
+                Trang chủ
               </Button>
             </Link>
           </div>
         </header>
 
         {/* Page Content */}
-        <main className="flex-1 overflow-auto">{children}</main>
+        <main className="flex-1 overflow-auto p-6">{children}</main>
       </div>
     </div>
   )
