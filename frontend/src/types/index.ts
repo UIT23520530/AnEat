@@ -105,3 +105,16 @@ export interface Promotion {
   endDate: string
   isActive: boolean
 }
+
+// Store interface
+export interface Store {
+  id: string
+  name: string
+  address: string
+  phone: string
+  email: string
+  manager: string
+  status: "active" | "inactive" | "maintenance"
+  revenue: number
+  orders: number
+}

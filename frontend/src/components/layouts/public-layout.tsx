@@ -85,12 +85,13 @@ export function PublicLayout({ children }: PublicLayoutProps) {
               </Button>
             </Link>
             <Link href="/auth/register">
-              <Button
+                <Button
+                variant="outline"
                 size="lg"
-                className="hidden sm:flex w-full sm:w-auto bg-orange-500 text-white rounded-full hover:bg-orange-600"
-              >
+                className="hidden sm:flex w-full sm:w-auto border-orange-500 text-orange-500 rounded-full hover:bg-orange-100 hover:text-orange-600"
+                >
                 Đăng ký
-              </Button>
+                </Button>
             </Link>
             <Button variant="ghost" size="icon" className="md:hidden">
               <MenuIcon className="h-6 w-6" />
