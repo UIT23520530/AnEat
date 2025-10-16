@@ -29,7 +29,7 @@ import { Edit, Plus, Trash, Search } from "lucide-react";
 
 import { StoresForm } from "@/components/forms/StoresForm";
 import { Store } from "@/types";
-import { deleteStore } from "@/lib/action/store.action";
+import { deleteStore } from "@/lib/actions/store.action";
 
 
 interface StoresViewProps {

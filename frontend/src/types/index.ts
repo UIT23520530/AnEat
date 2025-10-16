@@ -118,3 +118,4 @@ export interface Store {
   revenue: number
   orders: number
 }
+

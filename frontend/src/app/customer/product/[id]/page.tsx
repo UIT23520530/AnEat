@@ -122,7 +122,7 @@ export default function ProductDetailPage({ params }: { params: { id: string } }
                   <ShoppingCart className="mr-2 h-5 w-5" />
                   Add to Cart
                 </Button>
-                <Link href="/checkout" className="flex-1">
+                <Link href="/customer/checkout" className="flex-1">
                   <Button variant="outline" size="lg" className="w-full bg-transparent">
                     Buy Now
                   </Button>

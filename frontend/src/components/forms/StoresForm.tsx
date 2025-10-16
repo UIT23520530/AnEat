@@ -7,7 +7,7 @@ import { useFormStatus } from "react-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { createStore, updateStore } from "@/lib/action/store.action";
+import { createStore, updateStore } from "@/lib/actions/store.action";
 import { Store } from "@/types";
 
 // Component con để hiển thị trạng thái loading của form

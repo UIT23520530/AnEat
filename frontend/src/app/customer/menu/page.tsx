@@ -8,14 +8,49 @@ import { Search } from "lucide-react";
 import { AddToCartDialog } from "@/components/cart/add-to-cart-dialog";
 import { ProductCard } from "@/components/cart/product-card";
 import { Product } from "@/types";
+import Image from "next/image";
 
 const categories = [
-  "Tất cả",
-  "Gà rán",
-  "Burger",
-  "Mỳ Ý",
-  "Món phụ",
-  "Đồ uống",
+  {
+    id: "all",
+    name: "Tất cả",
+    image: "🍽️",
+  },
+  {
+    id: "combo",
+    name: "Combo",
+    image: "🍱",
+  },
+  {
+    id: "ga-chien",
+    name: "Gà chiên",
+    image: "🍗",
+  },
+  {
+    id: "my-y",
+    name: "Mỳ ý",
+    image: "🍝",
+  },
+  {
+    id: "burger",
+    name: "Burger",
+    image: "🍔",
+  },
+  {
+    id: "khoai-tay",
+    name: "Khoai tây",
+    image: "🍟",
+  },
+  {
+    id: "kem",
+    name: "Kem",
+    image: "🍦",
+  },
+  {
+    id: "thuc-uong",
+    name: "Thức uống",
+    image: "🥤",
+  },
 ];
 
 const mockProducts: Product[] = [
@@ -26,7 +61,7 @@ const mockProducts: Product[] = [
     basePrice: 89000,
     priceAfterTax: 97900,
     taxPercentage: 10,
-    category: "Gà rán",
+    category: "combo",
     image: "/fried-chicken-combo.jpg",
     isAvailable: true,
     isPromotion: true,
@@ -38,7 +73,7 @@ const mockProducts: Product[] = [
     basePrice: 79000,
     priceAfterTax: 86900,
     taxPercentage: 10,
-    category: "Gà rán",
+    category: "ga-chien",
     image: "/spicy-chicken-wings.png",
     isAvailable: true,
     isPromotion: false,
@@ -50,7 +85,7 @@ const mockProducts: Product[] = [
     basePrice: 59000,
     priceAfterTax: 64900,
     taxPercentage: 10,
-    category: "Burger",
+    category: "burger",
     image: "/classic-burger.png",
     isAvailable: true,
     isPromotion: false,
@@ -62,7 +97,7 @@ const mockProducts: Product[] = [
     basePrice: 69000,
     priceAfterTax: 75900,
     taxPercentage: 10,
-    category: "Burger",
+    category: "burger",
     image: "/cheese-burger.png",
     isAvailable: true,
     isPromotion: true,
@@ -74,7 +109,7 @@ const mockProducts: Product[] = [
     basePrice: 85000,
     priceAfterTax: 93500,
     taxPercentage: 10,
-    category: "Mỳ Ý",
+    category: "my-y",
     image: "/classic-carbonara.png",
     isAvailable: true,
     isPromotion: false,
@@ -86,7 +121,7 @@ const mockProducts: Product[] = [
     basePrice: 85000,
     priceAfterTax: 93500,
     taxPercentage: 10,
-    category: "Mỳ Ý",
+    category: "my-y",
     image: "/bolognese-pasta.png",
     isAvailable: true,
     isPromotion: false,
@@ -98,7 +133,7 @@ const mockProducts: Product[] = [
     basePrice: 35000,
     priceAfterTax: 38500,
     taxPercentage: 10,
-    category: "Món phụ",
+    category: "khoai-tay",
     image: "/crispy-french-fries.png",
     isAvailable: true,
     isPromotion: false,
@@ -110,15 +145,27 @@ const mockProducts: Product[] = [
     basePrice: 20000,
     priceAfterTax: 22000,
     taxPercentage: 10,
-    category: "Đồ uống",
+    category: "thuc-uong",
     image: "/refreshing-soft-drink.png",
+    isAvailable: true,
+    isPromotion: false,
+  },
+  {
+    id: "9",
+    name: "Kem Vani",
+    description: "Kem vani mát lạnh.",
+    basePrice: 25000,
+    priceAfterTax: 27500,
+    taxPercentage: 10,
+    category: "kem",
+    image: "/vanilla-ice-cream.png",
     isAvailable: true,
     isPromotion: false,
   },
 ];
 
 export default function MenuPage() {
-  const [selectedCategory, setSelectedCategory] = useState("Tất cả");
+  const [selectedCategory, setSelectedCategory] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -130,7 +177,7 @@ export default function MenuPage() {
 
   const filteredProducts = mockProducts.filter((product) => {
     const matchesCategory =
-      selectedCategory === "Tất cả" || product.category === selectedCategory;
+      selectedCategory === "all" || product.category === selectedCategory;
     const matchesSearch = product.name
       .toLowerCase()
       .includes(searchQuery.toLowerCase());
@@ -161,17 +208,33 @@ export default function MenuPage() {
         </div>
 
         {/* Categories */}
-        <div className="flex justify-center gap-2 mb-8 overflow-x-auto pb-2">
-          {categories.map((category) => (
-            <Button
-              key={category}
-              variant={selectedCategory === category ? "default" : "outline"}
-              onClick={() => setSelectedCategory(category)}
-              className="whitespace-nowrap"
-            >
-              {category}
-            </Button>
-          ))}
+        <div className="flex justify-center mb-8">
+          <div className="bg-[rgb(251,234,133)] rounded-full px-6 py-3 shadow-lg">
+            <div className="flex gap-3 items-center overflow-x-auto">
+              {categories.map((category) => (
+                <button
+                  key={category.id}
+                  onClick={() => setSelectedCategory(category.id)}
+                  className={`flex flex-col items-center justify-center min-w-[90px] px-4 py-2 rounded-2xl transition-all ${
+                    selectedCategory === category.id
+                      ? "bg-white shadow-md"
+                      : "bg-transparent hover:bg-white/20"
+                  }`}
+                >
+                  <span className="text-3xl mb-1">{category.image}</span>
+                  <span
+                    className={`text-sm font-bold whitespace-nowrap ${
+                      selectedCategory === category.id
+                        ? "text-gray-800"
+                        : "text-gray-800"
+                    }`}
+                  >
+                    {category.name}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
 
         {/* Products Grid */}

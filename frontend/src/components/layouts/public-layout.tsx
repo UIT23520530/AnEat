@@ -19,6 +19,8 @@ export function PublicLayout({ children }: PublicLayoutProps) {
   const navItems = [
     { href: "/", label: "Trang chủ" },
     { href: "/customer/menu", label: "Thực đơn" },
+    { href: "/customer/promotions", label: "Khuyến mãi" },
+    { href: "/customer/orders", label: "Đơn hàng" },
     { href: "/customer/about-us", label: "Về chúng tôi" },
     { href: "/customer/contact-us", label: "Liên hệ" },
   ];

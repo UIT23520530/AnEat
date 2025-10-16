@@ -2,7 +2,7 @@
 import { AdminLayout } from "@/components/layouts/admin-layout"
 import { StoresView } from "@/components/features/stores/StoresView"
 import { Store } from "@/types"
-import { getStores } from "@/lib/action/store.action";
+import { getStores } from "@/lib/actions/store.action";
 
 
 export default async function AdminStoresPage() {
