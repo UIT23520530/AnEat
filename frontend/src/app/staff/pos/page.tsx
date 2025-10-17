@@ -94,7 +94,8 @@ export default function POSPage() {
   return (
     <StaffLayout>
       <div className="flex h-screen overflow-hidden bg-gradient-to-br from-orange-50 via-white to-orange-50">
-        <div className="flex-1 flex flex-col p-6 overflow-y-auto">
+        {/* Main Content Area - with right margin to avoid sidebar overlap */}
+        <div className="flex-1 flex flex-col p-6 overflow-y-auto mr-[420px]">
           <div className="mb-3">
             <h1 className="text-3xl font-bold text-gray-800">POS Dashboard</h1>
           </div>
@@ -131,8 +132,8 @@ export default function POSPage() {
             </div>
           </div>
 
-          <ScrollArea className="flex-1">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 p-4">
+          <div className="flex-1 overflow-y-5xl">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 pb-6">
               {filteredProducts.map((product) => (
                 <Card
                   key={product.id}
@@ -158,7 +159,7 @@ export default function POSPage() {
                 </Card>
               ))}
             </div>
-          </ScrollArea>
+          </div>
         </div>
 
         {/* Fixed Right Sidebar - Order Summary */}
