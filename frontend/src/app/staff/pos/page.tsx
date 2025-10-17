@@ -93,13 +93,13 @@ export default function POSPage() {
 
   return (
     <StaffLayout>
-      <div className="flex h-screen bg-gradient-to-br from-orange-50 via-white to-orange-50">
-        <div className="flex-1 flex flex-col p-6">
-          <div className="mb-6">
-            <h1 className="text-3xl font-bold text-gray-800 mb-2">POS Dashboard</h1>
+      <div className="flex h-screen overflow-hidden bg-gradient-to-br from-orange-50 via-white to-orange-50">
+        <div className="flex-1 flex flex-col p-6 overflow-y-auto">
+          <div className="mb-3">
+            <h1 className="text-3xl font-bold text-gray-800">POS Dashboard</h1>
           </div>
 
-          <div className="mb-6">
+          <div className="mb-5">
             <div className="relative">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
               <Input
@@ -132,7 +132,7 @@ export default function POSPage() {
           </div>
 
           <ScrollArea className="flex-1">
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 pb-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 p-4">
               {filteredProducts.map((product) => (
                 <Card
                   key={product.id}
@@ -147,8 +147,8 @@ export default function POSPage() {
                       className="object-cover group-hover:scale-110 transition-transform duration-300"
                     />
                   </div>
-                  <CardContent className="p-4">
-                    <h3 className="font-semibold text-sm mb-2 line-clamp-2 text-gray-800 group-hover:text-orange-600 transition-colors">
+                  <CardContent className="p-3">
+                    <h3 className="font-semibold text-sm line-clamp-2 text-gray-800 group-hover:text-orange-600 transition-colors">
                       {product.name}
                     </h3>
                     <p className="text-orange-600 font-bold text-lg">
@@ -161,61 +161,62 @@ export default function POSPage() {
           </ScrollArea>
         </div>
 
-        <div className="w-[420px] bg-white border-l border-gray-200 flex flex-col shadow-xl">
-          <div className="p-2 border-b border-gray-200 bg-gradient-to-r from-orange-500 to-red-500">
-            <h2 className="text-xl font-bold text-white mb-1">Đơn hàng hiện tại</h2>
+        {/* Fixed Right Sidebar - Order Summary */}
+        <div className="w-[420px] min-w-[420px] bg-white border-l border-gray-200 flex flex-col h-screen shadow-xl fixed right-0 top-0">
+          <div className="p-3 border-b border-gray-200 bg-gradient-to-r from-orange-500 to-red-500 flex-shrink-0">
+            <h2 className="text-2xl font-bold text-white mb-1">Đơn hàng hiện tại</h2>
             <p className="text-orange-100 text-sm">
               {cart.length} món - {cart.reduce((sum, item) => sum + item.quantity, 0)} sản phẩm
             </p>
           </div>
 
-          <div className="p-6 border-b border-gray-100">
-            <h3 className="text-sm font-semibold text-gray-700 mb-3 uppercase tracking-wide">Loại đơn hàng</h3>
-            <div className="grid grid-cols-3 gap-2">
+          <div className="p-4 border-b border-gray-100">
+            <h3 className="text-xs font-semibold text-gray-700 mb-2 uppercase tracking-wide">Loại đơn hàng</h3>
+            <div className="grid grid-cols-3 gap-1.5">
               <button
                 onClick={() => setOrderType("dine-in")}
                 className={cn(
-                  "flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all",
+                  "flex flex-col items-center gap-1 p-2 rounded-lg border transition-all",
                   orderType === "dine-in"
                     ? "border-orange-500 bg-orange-50 text-orange-700"
                     : "border-gray-200 hover:border-orange-300 text-gray-600"
                 )}
               >
-                <Utensils className="h-5 w-5" />
+                <Utensils className="h-4 w-4" />
                 <span className="text-xs font-medium">Tại bàn</span>
               </button>
               <button
                 onClick={() => setOrderType("take-away")}
                 className={cn(
-                  "flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all",
+                  "flex flex-col items-center gap-1 p-2 rounded-lg border transition-all",
                   orderType === "take-away"
                     ? "border-orange-500 bg-orange-50 text-orange-700"
                     : "border-gray-200 hover:border-orange-300 text-gray-600"
                 )}
               >
-                <Package className="h-5 w-5" />
+                <Package className="h-4 w-4" />
                 <span className="text-xs font-medium">Mang đi</span>
               </button>
               <button
                 onClick={() => setOrderType("delivery")}
                 className={cn(
-                  "flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all",
+                  "flex flex-col items-center gap-1 p-2 rounded-lg border transition-all",
                   orderType === "delivery"
                     ? "border-orange-500 bg-orange-50 text-orange-700"
                     : "border-gray-200 hover:border-orange-300 text-gray-600"
                 )}
               >
-                <Bike className="h-5 w-5" />
+                <Bike className="h-4 w-4" />
                 <span className="text-xs font-medium">Giao hàng</span>
               </button>
             </div>
 
-            <div className="mt-4 space-y-3">
+            <div className="mt-3 space-y-2">
               <Input
                 placeholder="Tên khách hàng"
                 value={customerName}
                 onChange={(e) => setCustomerName(e.target.value)}
-                className="border-gray-200 focus:border-orange-400 focus:ring-orange-400"
+                className="h-9 text-sm border-gray-200 focus:border-orange-400 focus:ring-orange-400"
               />
 
               {orderType ==="delivery" && (
@@ -223,7 +224,7 @@ export default function POSPage() {
                 placeholder="Địa chỉ giao hàng"
                 value={customerName}
                 onChange={(e) => setCustomerName(e.target.value)}
-                className="border-gray-200 focus:border-orange-400 focus:ring-orange-400"
+                className="h-9 text-sm border-gray-200 focus:border-orange-400 focus:ring-orange-400"
               />
               )}
 
@@ -232,13 +233,14 @@ export default function POSPage() {
                   placeholder="Số bàn"
                   value={tableNumber}
                   onChange={(e) => setTableNumber(e.target.value)}
-                  className="border-gray-200 focus:border-orange-400 focus:ring-orange-400"
+                  className="h-9 text-sm border-gray-200 focus:border-orange-400 focus:ring-orange-400"
                 />
               )}
             </div>
           </div>
 
-          <ScrollArea className="flex-1 p-6">
+          {/* Cart Items - Scrollable Area */}
+          <div className="flex-1 overflow-y-auto p-6">
             {cart.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full text-gray-400">
                 <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-4">
@@ -310,57 +312,60 @@ export default function POSPage() {
                 ))}
               </div>
             )}
-          </ScrollArea>
+          </div>
 
+          {/* Summary & Checkout - Fixed Bottom */}
           {cart.length > 0 && (
-            <div className="border-t border-gray-200 p-6 bg-gray-50">
-              <div className="mb-4">
-                <h3 className="text-sm font-semibold text-gray-700 mb-3 uppercase tracking-wide">
-                  Phương thức thanh toán
+            <div className="border-t border-gray-200 p-4 bg-gray-50 flex-shrink-0">
+              {/* Payment Method - Compact */}
+              <div className="mb-3">
+                <h3 className="text-xs font-semibold text-gray-700 mb-2 uppercase tracking-wide">
+                  Thanh toán
                 </h3>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-3 gap-1.5">
                   <button
                     onClick={() => setPaymentMethod("cash")}
                     className={cn(
-                      "flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all",
+                      "flex flex-col items-center gap-1 p-2 rounded-lg border transition-all",
                       paymentMethod === "cash"
                         ? "border-orange-500 bg-orange-50 text-orange-700"
                         : "border-gray-200 hover:border-orange-300 text-gray-600"
                     )}
                   >
-                    <Banknote className="h-5 w-5" />
+                    <Banknote className="h-4 w-4" />
                     <span className="text-xs font-medium">Tiền mặt</span>
                   </button>
                   <button
                     onClick={() => setPaymentMethod("card")}
                     className={cn(
-                      "flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all",
+                      "flex flex-col items-center gap-1 p-2 rounded-lg border transition-all",
                       paymentMethod === "card"
                         ? "border-orange-500 bg-orange-50 text-orange-700"
                         : "border-gray-200 hover:border-orange-300 text-gray-600"
                     )}
                   >
-                    <CreditCard className="h-5 w-5" />
+                    <CreditCard className="h-4 w-4" />
                     <span className="text-xs font-medium">Thẻ</span>
                   </button>
                   <button
                     onClick={() => setPaymentMethod("e-wallet")}
                     className={cn(
-                      "flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all",
+                      "flex flex-col items-center gap-1 p-2 rounded-lg border transition-all",
                       paymentMethod === "e-wallet"
                         ? "border-orange-500 bg-orange-50 text-orange-700"
                         : "border-gray-200 hover:border-orange-300 text-gray-600"
                     )}
                   >
-                    <Smartphone className="h-5 w-5" />
+                    <Smartphone className="h-4 w-4" />
                     <span className="text-xs font-medium">Ví điện tử</span>
                   </button>
                 </div>
               </div>
 
-              <Separator className="my-4" />
+              <Separator className="my-3" />
 
-              <div className="space-y-2 mb-4">
+              {/* Price Summary - Compact */}
+              <div className="space-y-1.5 mb-3">
                 <div className="flex justify-between text-sm text-gray-600">
                   <span>Tạm tính</span>
                   <span className="font-medium">{subtotal.toLocaleString()}đ</span>
@@ -375,26 +380,27 @@ export default function POSPage() {
                     <span className="font-medium">-{discount.toLocaleString()}đ</span>
                   </div>
                 )}
-                <Separator />
-                <div className="flex justify-between text-lg font-bold text-gray-800">
+                <Separator className="my-2" />
+                <div className="flex justify-between text-base font-bold text-gray-800">
                   <span>Tổng cộng</span>
                   <span className="text-orange-600">{total.toLocaleString()}đ</span>
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Button
-                  onClick={handleCheckout}
-                  className="w-full h-12 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white font-semibold text-base shadow-lg shadow-orange-200"
-                >
-                  Thanh toán
-                </Button>
+              {/* Action Buttons - Same Row */}
+              <div className="flex gap-2">
                 <Button
                   onClick={clearCart}
                   variant="outline"
-                  className="w-full h-12 border-gray-300 text-gray-700 hover:bg-gray-100"
+                  className="flex-1 h-11 border-gray-300 text-gray-700 hover:bg-gray-100"
                 >
                   Hủy đơn
+                </Button>
+                <Button
+                  onClick={handleCheckout}
+                  className="flex-1 h-11 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white font-semibold shadow-lg shadow-orange-200"
+                >
+                  Thanh toán
                 </Button>
               </div>
             </div>

@@ -187,29 +187,10 @@ export default function MenuPage() {
   return (
     <PublicLayout>
       <div className="container mx-auto px-4 py-8">
-        {/* Header */}
-        {/* <div className="mb-8 text-center">
-          <h1 className="text-4xl font-bold mb-2">Thực đơn của chúng tôi</h1>
-          <p className="text-muted-foreground text-lg">
-            Khám phá các món ăn nhanh yêu thích của chúng tôi
-          </p>
-        </div> */}
-        {/* Search */}
-        <div className="flex justify-center">
-          {/* <div className="relative w-full max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-            <Input
-              placeholder="Tìm kiếm món ăn..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
-            />
-          </div> */}
-        </div>
-
+        
         {/* Categories */}
         <div className="flex justify-center mb-8">
-          <div className="bg-[rgb(251,234,133)] rounded-full px-6 py-3 shadow-lg">
+          <div className="bg-[rgb(251,234,133)] rounded-2xl px-2 py-2 shadow-lg">
             <div className="flex gap-3 items-center overflow-x-auto">
               {categories.map((category) => (
                 <button
@@ -217,8 +198,8 @@ export default function MenuPage() {
                   onClick={() => setSelectedCategory(category.id)}
                   className={`flex flex-col items-center justify-center min-w-[90px] px-4 py-2 rounded-2xl transition-all ${
                     selectedCategory === category.id
-                      ? "bg-white shadow-md"
-                      : "bg-transparent hover:bg-white/20"
+                      ? "bg-white"
+                      : "bg-transparent hover:bg-white/40"
                   }`}
                 >
                   <span className="text-3xl mb-1">{category.image}</span>

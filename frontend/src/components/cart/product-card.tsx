@@ -37,7 +37,7 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
           />
         </div>
       </Link>
-      <CardContent className="p-4 flex flex-col flex-1">
+      <CardContent className="p-2 flex flex-col flex-1">
         <Link href={`/customer/product/${product.id}`} className="block">
           <h3 className="font-semibold mb-2 line-clamp-1">{product.name}</h3>
         </Link>

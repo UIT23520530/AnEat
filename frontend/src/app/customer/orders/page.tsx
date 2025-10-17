@@ -101,17 +101,14 @@ export default function OrdersPage() {
         <div className="container mx-auto px-4 py-8">
           {/* Header */}
           <div className="mb-8">
-            <h1 className="text-4xl font-bold mb-2">Đơn Hàng Của Tôi</h1>
-            <p className="text-muted-foreground text-lg">
-              Theo dõi trạng thái và lịch sử đơn hàng của bạn
-            </p>
+            <h1 className="text-4xl font-bold mb-2">ĐƠN HÀNG CỦA TÔI</h1>
           </div>
 
           {/* Orders List */}
           <div className="space-y-6">
             {orders.map((order) => (
               <Card key={order.id} className="overflow-hidden shadow-lg">
-                <CardHeader className="bg-gradient-to-r from-orange-50 to-white">
+                <CardHeader>
                   <div className="flex justify-between items-start">
                     <div>
                       <CardTitle className="text-2xl mb-2">
