@@ -57,11 +57,6 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
           <div className="flex items-center justify-between h-full px-8">
             <div className="flex items-center flex-1 max-w-xl">
               <div className="relative w-full">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <Input
-                  placeholder="Search here"
-                  className="pl-10 bg-gray-50 border-0 focus-visible:ring-1 focus-visible:ring-gray-200"
-                />
               </div>
             </div>
             
