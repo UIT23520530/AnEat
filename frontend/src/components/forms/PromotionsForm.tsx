@@ -2,7 +2,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { Form, Input, Button, Row, Col, Select, DatePicker, InputNumber, message } from "antd";
+import { Form, Input, Button, Row, Col, Select, DatePicker, InputNumber, App } from "antd";
 import dayjs from "dayjs";
 
 const { RangePicker } = DatePicker;
@@ -30,6 +30,7 @@ interface PromotionsFormProps {
 }
 
 export function PromotionsForm({ promotion, onSuccess }: PromotionsFormProps) {
+  const { message } = App.useApp();
   const [form] = Form.useForm();
   const isEditing = !!promotion;
 

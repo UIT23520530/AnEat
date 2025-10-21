@@ -2,7 +2,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { Form, Input, Button, Row, Col, Select, message } from "antd";
+import { Form, Input, Button, Row, Col, Select, App } from "antd";
 import { Store } from "@/types";
 import { createStore, updateStore } from "@/lib/actions/store.action";
 
@@ -14,6 +14,7 @@ interface StoresFormProps {
 }
 
 export function StoresForm({ store, onSuccess }: StoresFormProps) {
+  const { message } = App.useApp();
   const [form] = Form.useForm();
   const isEditing = !!store;
 

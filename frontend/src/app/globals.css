@@ -117,8 +117,9 @@
 
 @layer base {
   * {
-    @apply border-border outline-ring/50;
+    border-color: rgb(226 232 240 / 1);
   }
+  
   body {
     @apply bg-background text-foreground;
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
@@ -127,69 +128,37 @@
   h1, h2, h3, h4, h5, h6 {
     @apply font-semibold;
   }
+  
+  /* Prevent Ant Design from overriding link colors */
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+  
+  a:hover {
+    color: inherit;
+  }
 }
 
-/* Ant Design Table Custom Styles */
-.ant-table-custom .ant-table {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+/* Custom Card and Shadow Styles */
+.card-shadow {
+  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  border: 1px solid rgb(226 232 240 / 1);
 }
 
-.ant-table-custom .ant-table-thead > tr > th {
-  background-color: #c2d7f3;
-  color: #475569;
-  font-weight: 600;
-  font-size: 13px;
-  border-bottom: 1px solid #E2E8F0;
+.card-shadow-hover {
+  transition: all 0.2s ease-in-out;
 }
 
-.ant-table-custom .ant-table-tbody > tr > td {
-  border-bottom: 1px solid #F1F5F9;
-  padding: 16px;
+.card-shadow-hover:hover {
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  transform: translateY(-2px);
 }
 
-.ant-table-custom .ant-table-tbody > tr:hover > td {
-  background-color: #F8FAFC;
+.shadow-light {
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
 }
 
-.ant-table-custom .ant-pagination {
-  margin-top: 24px;
-}
-
-.ant-btn-primary {
-  background-color: #3B82F6;
-  border-color: #3B82F6;
-}
-
-.ant-btn-primary:hover {
-  background-color: #2563EB;
-  border-color: #2563EB;
-}
-
-.ant-input-affix-wrapper {
-  border-radius: 8px;
-  border-color: #E2E8F0;
-}
-
-.ant-input-affix-wrapper:hover,
-.ant-input-affix-wrapper:focus,
-.ant-input-affix-wrapper-focused {
-  border-color: #3B82F6;
-}
-
-.ant-input {
-  border-radius: 8px;
-}
-
-.ant-select-selector {
-  border-radius: 8px !important;
-}
-
-.ant-tag {
-  border-radius: 6px;
-  padding: 2px 8px;
-  font-size: 12px;
-  font-weight: 500;
-}
 
 /* Ant Design Modal Styles */
 .ant-modal-mask {
