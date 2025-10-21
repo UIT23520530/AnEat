@@ -17,8 +17,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Form } from "@/components/ui/form";
 import { useToast } from "@/components/ui/use-toast";
 import { placeOrder } from "@/lib/actions/order.actions";
-import { CustomerInfoStep } from "./checkout/CustomerInfoStep";
-import { PaymentStep } from "./checkout/PaymentStep";
+import { CustomerInfoStep } from "../checkout/CustomerInfoStep";
+import { PaymentStep } from "../checkout/PaymentStep";
 
 const checkoutSchema = z.object({
   name: z.string().min(2, "Họ tên phải có ít nhất 2 ký tự."),

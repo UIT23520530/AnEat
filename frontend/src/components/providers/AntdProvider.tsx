@@ -7,19 +7,35 @@ export function AntdProvider({ children }: { children: React.ReactNode }) {
   // Suppress React 19 warning from Ant Design
   useEffect(() => {
     const originalWarn = console.warn;
+    const originalError = console.error;
+    
     console.warn = (...args) => {
+      const message = args[0]?.toString() || '';
       if (
-        typeof args[0] === 'string' && 
-        (args[0].includes('antd v5 support React is 16 ~ 18') || 
-         args[0].includes('[antd: compatible]'))
+        message.includes('antd v5 support React is 16 ~ 18') || 
+        message.includes('[antd: compatible]') ||
+        message.includes('u.ant.design/v5-for-19')
       ) {
         return;
       }
       originalWarn(...args);
     };
+
+    console.error = (...args) => {
+      const message = args[0]?.toString() || '';
+      if (
+        message.includes('antd v5 support React is 16 ~ 18') || 
+        message.includes('[antd: compatible]') ||
+        message.includes('u.ant.design/v5-for-19')
+      ) {
+        return;
+      }
+      originalError(...args);
+    };
     
     return () => {
       console.warn = originalWarn;
+      console.error = originalError;
     };
   }, []);
 

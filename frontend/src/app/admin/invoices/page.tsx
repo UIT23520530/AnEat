@@ -23,7 +23,7 @@ import {
   DownloadOutlined,
 } from "@ant-design/icons";
 import type { TableColumnsType } from "antd";
-import InvoicesForm from "@/components/forms/InvoicesForm";
+import InvoicesForm from "@/components/forms/Admin/InvoicesForm";
 
 interface InvoiceData {
   key: string;

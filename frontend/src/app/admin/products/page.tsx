@@ -23,7 +23,7 @@ import {
   StarFilled,
 } from "@ant-design/icons";
 import type { TableColumnsType } from "antd";
-import ProductsForm from "@/components/forms/ProductsForm";
+import ProductsForm from "@/components/forms/Admin/ProductsForm";
 
 interface ProductData {
   key: string;

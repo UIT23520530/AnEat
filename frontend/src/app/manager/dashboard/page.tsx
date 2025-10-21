@@ -2,8 +2,9 @@
 
 import { ManagerLayout } from "@/components/layouts/manager-layout"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { DollarSign, ShoppingBag, Users, TrendingUp, TrendingDown } from "lucide-react"
-import { Bar, BarChart, Line, LineChart, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts"
+import { Button } from "@/components/ui/button"
+import { DollarSign, ShoppingBag, TrendingUp, UserCheck, Package, Ticket, FileText, Download } from "lucide-react"
+import { Bar, BarChart, Line, LineChart, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid, Area, AreaChart } from "recharts"
 
 const revenueData = [
   { day: "Mon", revenue: 2400000 },
@@ -25,6 +26,16 @@ const orderData = [
   { day: "Sun", orders: 85 },
 ]
 
+const chartOrderData = [
+  { day: "Mon", value: 45 },
+  { day: "Tue", value: 52 },
+  { day: "Wed", value: 38 },
+  { day: "Thu", value: 65 },
+  { day: "Fri", value: 78 },
+  { day: "Sat", value: 92 },
+  { day: "Sun", value: 85 },
+]
+
 const topProducts = [
   { name: "Fried Chicken Combo", sales: 156, revenue: 7800000 },
   { name: "Cheese Burger", sales: 134, revenue: 5360000 },
@@ -36,102 +47,200 @@ const topProducts = [
 export default function ManagerDashboardPage() {
   return (
     <ManagerLayout>
-      <div className="p-6 space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold">Dashboard</h1>
-          <p className="text-muted-foreground">Store #1 - Overview</p>
+      <div className="p-8">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-slate-900">Dashboard</h1>
+          <p className="text-slate-500 mt-1">Downtown Store - Branch Overview & Management</p>
         </div>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card>
+        {/* Quick Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <Card className="border-0 shadow-sm">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
-              <DollarSign className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium text-slate-600">Branch Revenue</CardTitle>
+              <DollarSign className="h-5 w-5 text-green-600" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">22,800,000 VND</div>
-              <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
+              <div className="text-2xl font-bold text-slate-900">22,800,000 VND</div>
+              <p className="text-xs text-muted-foreground flex items-center gap-1 mt-2">
                 <TrendingUp className="h-3 w-3 text-green-500" />
-                <span className="text-green-500">+12.5%</span> from last week
+                <span className="text-green-600 font-medium">+12.5%</span> from last week
               </p>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="border-0 shadow-sm">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Total Orders</CardTitle>
-              <ShoppingBag className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium text-slate-600">Total Orders</CardTitle>
+              <ShoppingBag className="h-5 w-5 text-blue-600" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">454</div>
-              <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
+              <div className="text-2xl font-bold text-slate-900">454</div>
+              <p className="text-xs text-muted-foreground flex items-center gap-1 mt-2">
                 <TrendingUp className="h-3 w-3 text-green-500" />
-                <span className="text-green-500">+8.2%</span> from last week
+                <span className="text-green-600 font-medium">+8.2%</span> from last week
               </p>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="border-0 shadow-sm">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Avg Order Value</CardTitle>
-              <DollarSign className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium text-slate-600">Active Staff</CardTitle>
+              <UserCheck className="h-5 w-5 text-purple-600" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">50,220 VND</div>
-              <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
-                <TrendingUp className="h-3 w-3 text-green-500" />
-                <span className="text-green-500">+3.8%</span> from last week
+              <div className="text-2xl font-bold text-slate-900">12</div>
+              <p className="text-xs text-slate-500 mt-2">
+                8 working today
               </p>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="border-0 shadow-sm">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Active Customers</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium text-slate-600">Avg Order Value</CardTitle>
+              <DollarSign className="h-5 w-5 text-orange-600" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">1,234</div>
-              <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
-                <TrendingDown className="h-3 w-3 text-red-500" />
-                <span className="text-red-500">-2.1%</span> from last week
+              <div className="text-2xl font-bold text-slate-900">50,220 VND</div>
+              <p className="text-xs text-muted-foreground flex items-center gap-1 mt-2">
+                <TrendingUp className="h-3 w-3 text-green-500" />
+                <span className="text-green-600 font-medium">+3.8%</span> from last week
               </p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Management Quick Access */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          <Card className="border-0 shadow-sm hover:shadow-md transition-shadow cursor-pointer">
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-4">
+                <div className="h-12 w-12 rounded-lg bg-blue-100 flex items-center justify-center">
+                  <UserCheck className="h-6 w-6 text-blue-600" />
+                </div>
+                <div>
+                  <p className="text-sm text-slate-500">Staff Management</p>
+                  <p className="text-2xl font-bold text-slate-900">12</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-0 shadow-sm hover:shadow-md transition-shadow cursor-pointer">
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-4">
+                <div className="h-12 w-12 rounded-lg bg-green-100 flex items-center justify-center">
+                  <Package className="h-6 w-6 text-green-600" />
+                </div>
+                <div>
+                  <p className="text-sm text-slate-500">Products</p>
+                  <p className="text-2xl font-bold text-slate-900">48</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-0 shadow-sm hover:shadow-md transition-shadow cursor-pointer">
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-4">
+                <div className="h-12 w-12 rounded-lg bg-purple-100 flex items-center justify-center">
+                  <Ticket className="h-6 w-6 text-purple-600" />
+                </div>
+                <div>
+                  <p className="text-sm text-slate-500">Active Promos</p>
+                  <p className="text-2xl font-bold text-slate-900">5</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-0 shadow-sm hover:shadow-md transition-shadow cursor-pointer">
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-4">
+                <div className="h-12 w-12 rounded-lg bg-orange-100 flex items-center justify-center">
+                  <FileText className="h-6 w-6 text-orange-600" />
+                </div>
+                <div>
+                  <p className="text-sm text-slate-500">Invoices</p>
+                  <p className="text-2xl font-bold text-slate-900">158</p>
+                </div>
+              </div>
             </CardContent>
           </Card>
         </div>
 
         {/* Charts */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Weekly Revenue</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={300}>
-                <LineChart data={revenueData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="day" />
-                  <YAxis />
-                  <Tooltip formatter={(value) => `${Number(value).toLocaleString()} VND`} />
-                  <Line type="monotone" dataKey="revenue" stroke="hsl(var(--primary))" strokeWidth={2} />
-                </LineChart>
+        <div className="grid grid-cols-1 lg:grid-cols-1 gap-6 mb-8">
+          <Card className="p-6 bg-white border-0 shadow-sm lg:col-span-2">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h3 className="font-semibold text-slate-900">Chart Order</h3>
+                <p className="text-sm text-slate-500 mt-1">Lorem ipsum dolor sit amet, consectetur</p>
+              </div>
+              <Button variant="outline" className="gap-2 text-blue-600 border-blue-200 hover:bg-blue-50">
+                <Download className="h-4 w-4" />
+                Save Report
+              </Button>
+            </div>
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={chartOrderData}>
+                  <defs>
+                    <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.3}/>
+                      <stop offset="95%" stopColor="#3B82F6" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" />
+                  <XAxis 
+                    dataKey="day" 
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fill: '#94A3B8', fontSize: 12 }}
+                  />
+                  <YAxis 
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fill: '#94A3B8', fontSize: 12 }}
+                  />
+                  <Tooltip />
+                  <Area 
+                    type="monotone" 
+                    dataKey="value" 
+                    stroke="#3B82F6" 
+                    strokeWidth={2}
+                    fillOpacity={1} 
+                    fill="url(#colorValue)" 
+                  />
+                </AreaChart>
               </ResponsiveContainer>
-            </CardContent>
+            </div>
+            <div className="flex items-center justify-center gap-2 mt-4">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-blue-500"></div>
+                <span className="text-xs text-slate-600">456 Order</span>
+              </div>
+              <span className="text-slate-300">•</span>
+              <span className="text-xs text-slate-500">Oct 18th, 2022</span>
+            </div>
           </Card>
 
-          <Card>
+          <Card className="border-0 shadow-sm">
             <CardHeader>
-              <CardTitle>Weekly Orders</CardTitle>
+              <CardTitle className="text-slate-900">Weekly Orders</CardTitle>
+              <p className="text-sm text-slate-500">Last 7 days order count</p>
             </CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={300}>
                 <BarChart data={orderData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="day" />
-                  <YAxis />
-                  <Tooltip />
-                  <Bar dataKey="orders" fill="hsl(var(--primary))" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                  <XAxis dataKey="day" stroke="#94a3b8" />
+                  <YAxis stroke="#94a3b8" />
+                  <Tooltip 
+                    contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px' }}
+                  />
+                  <Bar dataKey="orders" fill="#10b981" radius={[8, 8, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </CardContent>
@@ -139,25 +248,32 @@ export default function ManagerDashboardPage() {
         </div>
 
         {/* Top Products */}
-        <Card>
+        <Card className="border-0 shadow-sm">
           <CardHeader>
-            <CardTitle>Top Selling Products</CardTitle>
+            <CardTitle className="text-slate-900">Top Selling Products</CardTitle>
+            <p className="text-sm text-slate-500">Best performers this week</p>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
               {topProducts.map((product, index) => (
-                <div key={index} className="flex items-center justify-between">
+                <div key={index} className="flex items-center justify-between p-4 rounded-lg hover:bg-slate-50 transition-colors">
                   <div className="flex items-center gap-4">
-                    <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center font-bold text-primary">
+                    <div className={`h-12 w-12 rounded-full flex items-center justify-center font-bold text-white ${
+                      index === 0 ? 'bg-yellow-500' :
+                      index === 1 ? 'bg-slate-400' :
+                      index === 2 ? 'bg-orange-600' :
+                      'bg-slate-300'
+                    }`}>
                       {index + 1}
                     </div>
                     <div>
-                      <p className="font-medium">{product.name}</p>
-                      <p className="text-sm text-muted-foreground">{product.sales} sold</p>
+                      <p className="font-semibold text-slate-900">{product.name}</p>
+                      <p className="text-sm text-slate-500">{product.sales} units sold</p>
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="font-bold">{product.revenue.toLocaleString()} VND</p>
+                    <p className="font-bold text-slate-900">{product.revenue.toLocaleString()} VND</p>
+                    <p className="text-xs text-slate-500">Revenue</p>
                   </div>
                 </div>
               ))}

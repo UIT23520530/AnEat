@@ -6,7 +6,7 @@ import type { ColumnsType, TablePaginationConfig } from "antd/es/table";
 import { EditOutlined, DeleteOutlined, PlusOutlined, SearchOutlined } from "@ant-design/icons";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AdminLayout } from "@/components/layouts/admin-layout";
-import { PromotionsForm } from "@/components/forms/PromotionsForm";
+import { PromotionsForm } from "@/components/forms/Admin/PromotionsForm";
 
 interface Promotion {
   id: string;
