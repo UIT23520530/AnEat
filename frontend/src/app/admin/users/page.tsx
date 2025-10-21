@@ -1,51 +1,92 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { AdminLayout } from "@/components/layouts/admin-layout"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Badge } from "@/components/ui/badge"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Search, Shield, User, Briefcase } from "lucide-react"
+import { useState } from "react";
+import { AdminLayout } from "@/components/layouts/admin-layout";
+import {
+  Table,
+  Button,
+  Input,
+  Tag,
+  Space,
+  Avatar,
+  Tabs,
+  Modal,
+  Popconfirm,
+  message,
+} from "antd";
+import {
+  SearchOutlined,
+  PlusOutlined,
+  EditOutlined,
+  DeleteOutlined,
+  UserOutlined,
+  CrownOutlined,
+  TeamOutlined,
+} from "@ant-design/icons";
+import type { TabsProps, TableColumnsType } from "antd";
+import UsersForm from "@/components/forms/UsersForm";
 
-const mockUsers = [
+interface UserData {
+  key: string;
+  id: string;
+  name: string;
+  email: string;
+  phone?: string;
+  role: "admin" | "manager" | "staff" | "customer";
+  store?: string;
+  status: "active" | "inactive" | "suspended";
+  lastLogin: string;
+  address?: string;
+  notes?: string;
+}
+
+const mockUsers: UserData[] = [
   {
+    key: "1",
     id: "1",
     name: "Admin User",
     email: "admin@fastfood.com",
+    phone: "0901234567",
     role: "admin",
     status: "active",
     lastLogin: "2025-10-04",
+    address: "123 Admin Street",
   },
   {
+    key: "2",
     id: "2",
     name: "Nguyễn Văn A",
     email: "manager1@fastfood.com",
+    phone: "0902345678",
     role: "manager",
     store: "Store #1",
     status: "active",
     lastLogin: "2025-10-04",
+    address: "456 Manager Ave",
   },
   {
+    key: "3",
     id: "3",
     name: "Trần Thị B",
     email: "staff1@fastfood.com",
+    phone: "0903456789",
     role: "staff",
     store: "Store #1",
     status: "active",
     lastLogin: "2025-10-03",
   },
   {
+    key: "4",
     id: "4",
     name: "Lê Văn C",
     email: "customer1@example.com",
+    phone: "0904567890",
     role: "customer",
     status: "active",
     lastLogin: "2025-10-04",
   },
   {
+    key: "5",
     id: "5",
     name: "Phạm Thị D",
     email: "customer2@example.com",
@@ -53,18 +94,67 @@ const mockUsers = [
     status: "inactive",
     lastLogin: "2025-09-15",
   },
-]
+  {
+    key: "6",
+    id: "6",
+    name: "Hoàng Văn E",
+    email: "staff2@fastfood.com",
+    phone: "0905678901",
+    role: "staff",
+    store: "Store #2",
+    status: "active",
+    lastLogin: "2025-10-04",
+  },
+  {
+    key: "7",
+    id: "7",
+    name: "Nguyễn Thị F",
+    email: "manager2@fastfood.com",
+    phone: "0906789012",
+    role: "manager",
+    store: "Store #2",
+    status: "active",
+    lastLogin: "2025-10-03",
+  },
+  {
+    key: "8",
+    id: "8",
+    name: "Trần Văn G",
+    email: "customer3@example.com",
+    phone: "0907890123",
+    role: "customer",
+    status: "active",
+    lastLogin: "2025-10-02",
+  },
+  {
+    key: "9",
+    id: "9",
+    name: "Lê Thị H",
+    email: "customer4@example.com",
+    role: "customer",
+    status: "suspended",
+    lastLogin: "2025-08-20",
+  },
+  {
+    key: "10",
+    id: "10",
+    name: "Phạm Văn I",
+    email: "staff3@fastfood.com",
+    phone: "0908901234",
+    role: "staff",
+    store: "Store #3",
+    status: "active",
+    lastLogin: "2025-10-04",
+  },
+];
 
 export default function AdminUsersPage() {
-  const [users, setUsers] = useState(mockUsers)
-  const [searchQuery, setSearchQuery] = useState("")
-  const [activeTab, setActiveTab] = useState("all")
-
-  const filteredUsers = users.filter((user) => {
-    const matchesSearch = user.name.toLowerCase().includes(searchQuery.toLowerCase())
-    const matchesTab = activeTab === "all" || user.role === activeTab
-    return matchesSearch && matchesTab
-  })
+  const [users, setUsers] = useState<UserData[]>(mockUsers);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [activeTab, setActiveTab] = useState("all");
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<UserData | null>(null);
 
   const getInitials = (name: string) => {
     return name
@@ -72,122 +162,394 @@ export default function AdminUsersPage() {
       .map((n) => n[0])
       .join("")
       .toUpperCase()
-      .slice(0, 2)
-  }
+      .slice(0, 2);
+  };
+
+  const getRoleColor = (role: string) => {
+    switch (role) {
+      case "admin":
+        return "red";
+      case "manager":
+        return "blue";
+      case "staff":
+        return "green";
+      case "customer":
+        return "default";
+      default:
+        return "default";
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "active":
+        return "success";
+      case "inactive":
+        return "default";
+      case "suspended":
+        return "error";
+      default:
+        return "default";
+    }
+  };
 
   const getRoleIcon = (role: string) => {
     switch (role) {
       case "admin":
-        return <Shield className="h-4 w-4" />
+        return <CrownOutlined />;
       case "manager":
-        return <Briefcase className="h-4 w-4" />
-      default:
-        return <User className="h-4 w-4" />
-    }
-  }
-
-  const getRoleBadgeColor = (role: string) => {
-    switch (role) {
-      case "admin":
-        return "bg-red-500"
-      case "manager":
-        return "bg-blue-500"
+        return <TeamOutlined />;
       case "staff":
-        return "bg-green-500"
+        return <UserOutlined />;
+      case "customer":
+        return <UserOutlined />;
       default:
-        return "bg-gray-500"
+        return <UserOutlined />;
     }
-  }
+  };
+
+  const filteredUsers = users.filter((user) => {
+    const matchesSearch =
+      user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      user.email.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesTab = activeTab === "all" || user.role === activeTab;
+    return matchesSearch && matchesTab;
+  });
+
+  const handleAddUser = (values: any) => {
+    const newUser: UserData = {
+      key: String(users.length + 1),
+      id: String(users.length + 1),
+      ...values,
+      lastLogin: new Date().toISOString().split("T")[0],
+    };
+    setUsers([...users, newUser]);
+    setIsAddModalOpen(false);
+    message.success("User added successfully!");
+  };
+
+  const handleEditUser = (values: any) => {
+    const updatedUsers = users.map((user) =>
+      user.id === selectedUser?.id ? { ...user, ...values } : user
+    );
+    setUsers(updatedUsers);
+    setIsEditModalOpen(false);
+    setSelectedUser(null);
+    message.success("User updated successfully!");
+  };
+
+  const handleEdit = (record: UserData) => {
+    setSelectedUser(record);
+    setIsEditModalOpen(true);
+  };
+
+  const handleDelete = (id: string) => {
+    setUsers(users.filter((user) => user.id !== id));
+    message.success("User deleted successfully!");
+  };
+
+  const columns: TableColumnsType<UserData> = [
+    {
+      title: "User",
+      dataIndex: "name",
+      key: "name",
+      fixed: "left",
+      width: 250,
+      sorter: (a, b) => a.name.localeCompare(b.name),
+      render: (name: string, record) => (
+        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+          <Avatar style={{ backgroundColor: "#3B82F6" }}>
+            {getInitials(name)}
+          </Avatar>
+          <div>
+            <div style={{ fontWeight: 600 }}>{name}</div>
+            <div style={{ fontSize: "12px", color: "#6B7280" }}>
+              {record.email}
+            </div>
+          </div>
+        </div>
+      ),
+    },
+    {
+      title: "Phone",
+      dataIndex: "phone",
+      key: "phone",
+      width: 140,
+      render: (phone) => phone || "-",
+    },
+    {
+      title: "Role",
+      dataIndex: "role",
+      key: "role",
+      width: 130,
+      filters: [
+        { text: "Admin", value: "admin" },
+        { text: "Manager", value: "manager" },
+        { text: "Staff", value: "staff" },
+        { text: "Customer", value: "customer" },
+      ],
+      onFilter: (value, record) => record.role === value,
+      render: (role: string) => (
+        <Tag icon={getRoleIcon(role)} color={getRoleColor(role)}>
+          {role.toUpperCase()}
+        </Tag>
+      ),
+    },
+    {
+      title: "Store",
+      dataIndex: "store",
+      key: "store",
+      width: 150,
+      render: (store) => store || "-",
+    },
+    {
+      title: "Status",
+      dataIndex: "status",
+      key: "status",
+      width: 120,
+      filters: [
+        { text: "Active", value: "active" },
+        { text: "Inactive", value: "inactive" },
+        { text: "Suspended", value: "suspended" },
+      ],
+      onFilter: (value, record) => record.status === value,
+      render: (status: string) => (
+        <Tag color={getStatusColor(status)}>{status.toUpperCase()}</Tag>
+      ),
+    },
+    {
+      title: "Last Login",
+      dataIndex: "lastLogin",
+      key: "lastLogin",
+      width: 130,
+      sorter: (a, b) => a.lastLogin.localeCompare(b.lastLogin),
+    },
+    {
+      title: "Actions",
+      key: "actions",
+      fixed: "right",
+      width: 180,
+      render: (_, record) => (
+        <Space>
+          <Button
+            type="link"
+            icon={<EditOutlined />}
+            onClick={() => handleEdit(record)}
+          >
+            Edit
+          </Button>
+          <Popconfirm
+            title="Delete user"
+            description="Are you sure you want to delete this user?"
+            onConfirm={() => handleDelete(record.id)}
+            okText="Yes"
+            cancelText="No"
+          >
+            <Button type="link" danger icon={<DeleteOutlined />}>
+              Delete
+            </Button>
+          </Popconfirm>
+        </Space>
+      ),
+    },
+  ];
+
+  const tabItems: TabsProps["items"] = [
+    {
+      key: "all",
+      label: (
+        <span>
+          <TeamOutlined /> All Users ({users.length})
+        </span>
+      ),
+    },
+    {
+      key: "admin",
+      label: (
+        <span>
+          <CrownOutlined /> Admins ({users.filter((u) => u.role === "admin").length})
+        </span>
+      ),
+    },
+    {
+      key: "manager",
+      label: (
+        <span>
+          <TeamOutlined /> Managers ({users.filter((u) => u.role === "manager").length})
+        </span>
+      ),
+    },
+    {
+      key: "staff",
+      label: (
+        <span>
+          <UserOutlined /> Staff ({users.filter((u) => u.role === "staff").length})
+        </span>
+      ),
+    },
+    {
+      key: "customer",
+      label: (
+        <span>
+          <UserOutlined /> Customers ({users.filter((u) => u.role === "customer").length})
+        </span>
+      ),
+    },
+  ];
 
   return (
     <AdminLayout>
-      <div className="p-6 space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold">User Management</h1>
-          <p className="text-muted-foreground">Manage all system users</p>
+      <div style={{ padding: "24px" }}>
+        {/* Header */}
+        <div style={{ marginBottom: "24px" }}>
+          <h1 style={{ fontSize: "28px", fontWeight: "bold", margin: 0 }}>
+            User Management
+          </h1>
+          <p style={{ color: "#6B7280", marginTop: "8px" }}>
+            Manage all system users
+          </p>
         </div>
 
-        {/* Search */}
-        <div className="relative max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+        {/* Search and Add Button */}
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: "24px",
+          }}
+        >
           <Input
-            placeholder="Search users..."
+            placeholder="Search users by name or email..."
+            prefix={<SearchOutlined />}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
+            style={{ maxWidth: "400px" }}
+            size="large"
           />
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
+            size="large"
+            onClick={() => setIsAddModalOpen(true)}
+          >
+            Add User
+          </Button>
         </div>
 
         {/* Tabs */}
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList>
-            <TabsTrigger value="all">All Users</TabsTrigger>
-            <TabsTrigger value="admin">Admins</TabsTrigger>
-            <TabsTrigger value="manager">Managers</TabsTrigger>
-            <TabsTrigger value="staff">Staff</TabsTrigger>
-            <TabsTrigger value="customer">Customers</TabsTrigger>
-          </TabsList>
+        <Tabs
+          activeKey={activeTab}
+          onChange={setActiveTab}
+          items={tabItems}
+          size="large"
+        />
 
-          <TabsContent value={activeTab} className="mt-6">
-            <Card>
-              <CardContent className="p-0">
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead className="border-b">
-                      <tr className="text-left">
-                        <th className="p-4 font-semibold">User</th>
-                        <th className="p-4 font-semibold">Email</th>
-                        <th className="p-4 font-semibold">Role</th>
-                        <th className="p-4 font-semibold">Store</th>
-                        <th className="p-4 font-semibold">Status</th>
-                        <th className="p-4 font-semibold">Last Login</th>
-                        <th className="p-4 font-semibold">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredUsers.map((user) => (
-                        <tr key={user.id} className="border-b hover:bg-muted/50">
-                          <td className="p-4">
-                            <div className="flex items-center gap-3">
-                              <Avatar className="h-10 w-10">
-                                <AvatarFallback>{getInitials(user.name)}</AvatarFallback>
-                              </Avatar>
-                              <span className="font-medium">{user.name}</span>
-                            </div>
-                          </td>
-                          <td className="p-4">{user.email}</td>
-                          <td className="p-4">
-                            <Badge className={getRoleBadgeColor(user.role)}>
-                              <span className="mr-1">{getRoleIcon(user.role)}</span>
-                              {user.role}
-                            </Badge>
-                          </td>
-                          <td className="p-4">{user.store || "-"}</td>
-                          <td className="p-4">
-                            <Badge variant={user.status === "active" ? "default" : "outline"}>{user.status}</Badge>
-                          </td>
-                          <td className="p-4">{user.lastLogin}</td>
-                          <td className="p-4">
-                            <Button variant="outline" size="sm">
-                              View
-                            </Button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+        {/* Table */}
+        <Table
+          columns={columns}
+          dataSource={filteredUsers}
+          pagination={{
+            pageSize: 10,
+            showSizeChanger: true,
+            showTotal: (total) => `Total ${total} users`,
+            pageSizeOptions: ["5", "10", "20", "50"],
+          }}
+          scroll={{ x: 1200 }}
+          style={{ marginTop: "16px" }}
+        />
 
-        {filteredUsers.length === 0 && (
-          <div className="text-center py-12">
-            <p className="text-muted-foreground text-lg">No users found</p>
+        {/* Add User Modal */}
+        <Modal
+          title="Add New User"
+          open={isAddModalOpen}
+          onCancel={() => setIsAddModalOpen(false)}
+          footer={null}
+          width={900}
+          destroyOnHidden
+        >
+          <UsersForm onSubmit={handleAddUser} isEdit={false} />
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "flex-end",
+              gap: "12px",
+              marginTop: "24px",
+            }}
+          >
+            <Button onClick={() => setIsAddModalOpen(false)} size="large">
+              Cancel
+            </Button>
+            <Button
+              type="primary"
+              size="large"
+              onClick={() => {
+                const form = document.querySelector("form");
+                if (form) {
+                  const submitButton = form.querySelector(
+                    'button[type="submit"]'
+                  ) as HTMLButtonElement;
+                  if (submitButton) submitButton.click();
+                }
+              }}
+            >
+              Add User
+            </Button>
           </div>
-        )}
+        </Modal>
+
+        {/* Edit User Modal */}
+        <Modal
+          title="Edit User"
+          open={isEditModalOpen}
+          onCancel={() => {
+            setIsEditModalOpen(false);
+            setSelectedUser(null);
+          }}
+          footer={null}
+          width={900}
+          destroyOnHidden
+        >
+          <UsersForm
+            onSubmit={handleEditUser}
+            initialValues={selectedUser}
+            isEdit={true}
+          />
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "flex-end",
+              gap: "12px",
+              marginTop: "24px",
+            }}
+          >
+            <Button
+              onClick={() => {
+                setIsEditModalOpen(false);
+                setSelectedUser(null);
+              }}
+              size="large"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="primary"
+              size="large"
+              onClick={() => {
+                const form = document.querySelector("form");
+                if (form) {
+                  const submitButton = form.querySelector(
+                    'button[type="submit"]'
+                  ) as HTMLButtonElement;
+                  if (submitButton) submitButton.click();
+                }
+              }}
+            >
+              Save Changes
+            </Button>
+          </div>
+        </Modal>
       </div>
     </AdminLayout>
-  )
+  );
 }
