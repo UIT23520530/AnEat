@@ -210,7 +210,7 @@ export function StoresView({ initialStores }: StoresViewProps) {
         footer={null}
         width={800}
         centered
-        destroyOnClose
+        destroyOnHidden
         maskClosable={false}
         transitionName="ant-fade"
         maskTransitionName="ant-fade"
@@ -227,7 +227,7 @@ export function StoresView({ initialStores }: StoresViewProps) {
         footer={null}
         width={800}
         centered
-        destroyOnClose
+        destroyOnHidden
         maskClosable={false}
         transitionName="ant-fade"
         maskTransitionName="ant-fade"

@@ -215,26 +215,6 @@
 
 .ant-modal-body {
   padding: 24px;
-  max-height: 70vh;
-  overflow-y: auto;
-}
-
-/* Custom scrollbar for modal body - Smaller and more subtle */
-.ant-modal-body::-webkit-scrollbar {
-  width: 6px;
-}
-
-.ant-modal-body::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.ant-modal-body::-webkit-scrollbar-thumb {
-  background: #CBD5E1;
-  border-radius: 3px;
-}
-
-.ant-modal-body::-webkit-scrollbar-thumb:hover {
-  background: #94A3B8;
 }
 
 .ant-modal-close {
