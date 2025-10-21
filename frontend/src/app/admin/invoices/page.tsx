@@ -10,7 +10,7 @@ import {
   Space,
   Modal,
   Popconfirm,
-  message,
+  App,
   Tooltip,
 } from "antd";
 import {
@@ -174,6 +174,7 @@ const mockInvoices: InvoiceData[] = [
 ];
 
 export default function InvoicesPage() {
+  const { message } = App.useApp();
   const [invoices, setInvoices] = useState<InvoiceData[]>(mockInvoices);
   const [searchQuery, setSearchQuery] = useState("");
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);

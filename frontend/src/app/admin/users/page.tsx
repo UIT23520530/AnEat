@@ -12,7 +12,7 @@ import {
   Tabs,
   Modal,
   Popconfirm,
-  message,
+  App,
 } from "antd";
 import {
   SearchOutlined,
@@ -149,6 +149,7 @@ const mockUsers: UserData[] = [
 ];
 
 export default function AdminUsersPage() {
+  const { message } = App.useApp();
   const [users, setUsers] = useState<UserData[]>(mockUsers);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("all");

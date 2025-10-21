@@ -82,8 +82,8 @@ export function Sidebar({
                   key={item.href}
                   href={item.href}
                   className={cn(
-                    "flex items-center gap-3 rounded-lg px-3 py-3 text-slate-600 transition-all hover:bg-green-50 hover:text-green-600",
-                    isActive && "bg-green-50 text-green-600 font-medium",
+                    "flex items-center gap-3 rounded-lg px-3 py-3 text-gray-600 transition-all hover:bg-green-50 hover:text-green-600",
+                    isActive && "bg-green-100/60 text-green-700 font-medium",
                     isCollapsed && "justify-center px-2"
                   )}
                   title={isCollapsed ? item.label : undefined}
@@ -101,7 +101,7 @@ export function Sidebar({
               <Button
                 variant="ghost"
                 className={cn(
-                  "w-full justify-start text-slate-600 hover:bg-gray-50 hover:text-slate-900",
+                  "w-full justify-start text-gray-600 hover:bg-green-50 hover:text-green-600",
                   isCollapsed && "w-auto justify-center p-2"
                 )}
                 title={isCollapsed ? "Profile" : undefined}
@@ -113,7 +113,7 @@ export function Sidebar({
             <Button
               variant="ghost"
               className={cn(
-                "w-full justify-start text-slate-600 hover:bg-red-50 hover:text-red-600",
+                "w-full justify-start text-gray-600 hover:bg-red-50 hover:text-red-600",
                 isCollapsed && "w-auto justify-center p-2"
               )}
               onClick={logout}

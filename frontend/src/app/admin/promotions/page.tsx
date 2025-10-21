@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Table, Button, Input, Space, Tag, Modal, message } from "antd";
+import { Table, Button, Input, Space, Tag, Modal, App } from "antd";
 import type { ColumnsType, TablePaginationConfig } from "antd/es/table";
 import { EditOutlined, DeleteOutlined, PlusOutlined, SearchOutlined } from "@ant-design/icons";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -129,6 +129,7 @@ const mockPromotions: Promotion[] = [
 ];
 
 export default function PromotionsPage() {
+  const { message } = App.useApp();
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);

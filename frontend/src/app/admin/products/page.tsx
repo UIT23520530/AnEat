@@ -10,7 +10,7 @@ import {
   Space,
   Modal,
   Popconfirm,
-  message,
+  App,
   Image,
   Badge,
 } from "antd";
@@ -180,6 +180,7 @@ const mockProducts: ProductData[] = [
     prepTime: 12,
   },
 ];export default function AdminProductsPage() {
+  const { message } = App.useApp();
   const [products, setProducts] = useState<ProductData[]>(mockProducts);
   const [searchQuery, setSearchQuery] = useState("");
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
