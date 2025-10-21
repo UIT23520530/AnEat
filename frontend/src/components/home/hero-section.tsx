@@ -118,7 +118,7 @@ export function HeroSection() {
             size="lg"
             className="w-full sm:w-auto bg-orange-500 text-white rounded-full hover:bg-orange-600 px-12 py-6 text-lg font-bold shadow-lg hover:shadow-xl transition-all"
           >
-            Giao đến lấy
+            Đặt đến lấy
           </Button>
           <Button
             size="lg"
