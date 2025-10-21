@@ -22,18 +22,21 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
+import { AntdProvider } from "@/components/providers/AntdProvider"
+import 'antd/dist/reset.css'
+import '@/styles/antd-custom.css'
 
 const adminNavItems: NavItem[] = [
-  { href: "/admin/dashboard", icon: LayoutDashboard, label: "Dashboard" },
-  { href: "/admin/stores", icon: Store, label: "Stores" },
-  { href: "/admin/promotions", icon: Ticket, label: "Promotions" },
-  { href: "/admin/users", icon: Users, label: "User" },
-  { href: "/admin/products", icon: ShoppingBag, label: "Products" },
-  { href: "/admin/analytics", icon: BarChart, label: "Analytics" },
-  { href: "/admin/invoices", icon: FileText, label: "Invoices" },
-  { href: "/admin/templates", icon: FileCode, label: "Template" },
+  { href: "/admin/dashboard", icon: LayoutDashboard, label: "Tổng quan" },
+  { href: "/admin/stores", icon: Store, label: "Cửa hàng" },
+  { href: "/admin/promotions", icon: Ticket, label: "Khuyến mãi" },
+  { href: "/admin/users", icon: Users, label: "Người dùng" },
+  { href: "/admin/products", icon: ShoppingBag, label: "Sản phẩm" },
+  { href: "/admin/analytics", icon: BarChart, label: "Phân tích" },
+  { href: "/admin/invoices", icon: FileText, label: "Hoá đơn" },
+  { href: "/admin/templates", icon: FileCode, label: "Mẫu" },
   { href: "/admin/logs", icon: FileClock, label: "Log" },
-  { href: "/admin/settings", icon: Settings, label: "Setting" },
+  { href: "/admin/settings", icon: Settings, label: "Cài đặt" },
 ]
 
 export function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -61,6 +64,7 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
             </div>
             
             <div className="flex items-center gap-2">
+            {/*
               <Button variant="ghost" size="icon" className="relative hover:bg-gray-100">
                 <Bell className="h-5 w-5 text-gray-600" />
                 <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 bg-cyan-500 border-2 border-white text-[10px]">
@@ -85,6 +89,7 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
                   12
                 </Badge>
               </Button>
+              {/**/}
               
               <div className="flex items-center gap-3 ml-4 pl-4 border-l border-gray-200">
                 <div className="text-right">
@@ -100,7 +105,9 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
         </header>
 
         <main className="min-h-[calc(100vh-5rem)]">
-          {children}
+          <AntdProvider>
+            {children}
+          </AntdProvider>
         </main>
       </div>
     </div>

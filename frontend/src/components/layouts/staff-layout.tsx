@@ -20,6 +20,9 @@ import {
 import { logout } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { AntdProvider } from "@/components/providers/AntdProvider"
+import 'antd/dist/reset.css'
+import '@/styles/antd-custom.css'
 
 export function StaffLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
@@ -113,7 +116,9 @@ export function StaffLayout({ children }: { children: ReactNode }) {
 
         {/* Main Content */}
         <main className="flex-1 overflow-auto">
-          <div className="h-full">{children}</div>
+          <AntdProvider>
+            <div className="h-full">{children}</div>
+          </AntdProvider>
         </main>
       </div>
     </div>

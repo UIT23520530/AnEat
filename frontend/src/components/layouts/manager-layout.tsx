@@ -13,6 +13,9 @@ import {
 } from "lucide-react"
 import { Sidebar, NavItem } from "./sidebar"
 import { useState } from "react"
+import { AntdProvider } from "@/components/providers/AntdProvider"
+import 'antd/dist/reset.css'
+import '@/styles/antd-custom.css'
 
 const managerNavItems: NavItem[] = [
   { href: "/manager/dashboard", icon: LayoutDashboard, label: "Dashboard" },
@@ -42,7 +45,9 @@ export function ManagerLayout({ children }: { children: React.ReactNode }) {
           isSidebarCollapsed ? "ml-20" : "ml-64"
         }`}
       >
-        {children}
+        <AntdProvider>
+          {children}
+        </AntdProvider>
       </main>
     </div>
   )
