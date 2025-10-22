@@ -19,12 +19,12 @@ import '@/styles/antd-custom.css'
 
 const managerNavItems: NavItem[] = [
   { href: "/manager/dashboard", icon: LayoutDashboard, label: "Tổng quan" },
+  { href: "/manager/analytics", icon: BarChart, label: "Phân tích" },
   { href: "/manager/staff", icon: Users, label: "Nhân viên" },
   { href: "/manager/products", icon: ShoppingBag, label: "Sản phẩm" },
   { href: "/manager/promotions", icon: Ticket, label: "Khuyến mãi" },
   { href: "/manager/invoices", icon: FileText, label: "Hóa đơn" },
   { href: "/manager/templates", icon: FileCode, label: "Mẫu" },
-  { href: "/manager/analytics", icon: BarChart, label: "Phân tích" },
   { href: "/manager/settings", icon: Settings, label: "Cài đặt" },
 ]
 

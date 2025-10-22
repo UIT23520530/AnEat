@@ -5,802 +5,755 @@ import { AdminLayout } from "@/components/layouts/admin-layout";
 import {
   Table,
   Button,
-  Input,
   Tag,
   Space,
   Modal,
-  Popconfirm,
   App,
-  Tooltip,
+  Statistic,
+  Row,
+  Col,
+  DatePicker,
+  Select,
+  Tabs,
+  Descriptions,
 } from "antd";
 import {
-  SearchOutlined,
-  PlusOutlined,
-  EditOutlined,
-  DeleteOutlined,
   EyeOutlined,
+  PrinterOutlined,
+  DollarOutlined,
   FileTextOutlined,
-  DownloadOutlined,
+  CheckCircleOutlined,
+  ClockCircleOutlined,
 } from "@ant-design/icons";
 import type { TableColumnsType } from "antd";
-import InvoicesForm from "@/components/forms/Admin/InvoicesForm";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import dayjs from "dayjs";
 
-interface InvoiceData {
+const { RangePicker } = DatePicker;
+
+interface InvoiceItem {
+  name: string;
+  quantity: number;
+  price: number;
+  total: number;
+}
+
+interface Invoice {
   key: string;
   id: string;
   invoiceNumber: string;
+  orderNumber: string;
   store: string;
   customerName: string;
+  customerPhone: string;
   customerEmail?: string;
-  customerPhone?: string;
-  invoiceDate: string;
-  dueDate: string;
-  paymentMethod: string;
-  status: "pending" | "paid" | "overdue" | "cancelled";
+  date: string;
+  time: string;
+  items: InvoiceItem[];
   subtotal: number;
   tax: number;
-  taxRate: number;
+  discount: number;
   total: number;
+  paymentMethod: "cash" | "card" | "transfer" | "momo";
+  status: "paid" | "pending" | "cancelled" | "refunded";
+  staffName: string;
   notes?: string;
-  items: any[];
 }
 
-const mockInvoices: InvoiceData[] = [
+// Mock data for all stores (Admin manages all)
+const initialInvoices: Invoice[] = [
   {
     key: "1",
-    id: "1",
-    invoiceNumber: "INV-0001",
-    store: "Store #1",
+    id: "INV-2024-001",
+    invoiceNumber: "INV-2024-001",
+    orderNumber: "ORD-001",
+    store: "Downtown Store",
     customerName: "Nguyễn Văn A",
-    customerEmail: "nguyenvana@example.com",
     customerPhone: "0901234567",
-    invoiceDate: "2025-10-05",
-    dueDate: "2025-10-12",
+    customerEmail: "nguyenvana@email.com",
+    date: "2024-10-15",
+    time: "10:30",
+    items: [
+      { name: "Phở Bò Tái", quantity: 2, price: 65000, total: 130000 },
+      { name: "Cà phê sữa đá", quantity: 2, price: 25000, total: 50000 },
+    ],
+    subtotal: 180000,
+    tax: 18000,
+    discount: 0,
+    total: 198000,
     paymentMethod: "cash",
     status: "paid",
-    subtotal: 227273,
-    tax: 22727,
-    taxRate: 10,
-    total: 250000,
-    items: [
-      { key: "1", product: "Gà Rán Giòn", quantity: 2, price: 50000, total: 100000 },
-      { key: "2", product: "Burger Bò", quantity: 1, price: 45000, total: 45000 },
-      { key: "3", product: "Coca Cola", quantity: 2, price: 15000, total: 30000 },
-      { key: "4", product: "Khoai Tây Chiên", quantity: 2, price: 25000, total: 50000 },
-    ],
+    staffName: "Trần Thị B",
+    notes: "Khách yêu cầu không hành",
   },
   {
     key: "2",
-    id: "2",
-    invoiceNumber: "INV-0002",
-    store: "Store #2",
-    customerName: "Trần Thị B",
-    customerEmail: "tranthib@example.com",
-    customerPhone: "0902345678",
-    invoiceDate: "2025-10-05",
-    dueDate: "2025-10-12",
-    paymentMethod: "card",
-    status: "pending",
-    subtotal: 136364,
-    tax: 13636,
-    taxRate: 10,
-    total: 150000,
+    id: "INV-2024-002",
+    invoiceNumber: "INV-2024-002",
+    orderNumber: "ORD-002",
+    store: "Uptown Store",
+    customerName: "Lê Thị C",
+    customerPhone: "0912345678",
+    date: "2024-10-15",
+    time: "11:45",
     items: [
-      { key: "1", product: "Pizza Hải Sản", quantity: 1, price: 120000, total: 120000 },
-      { key: "2", product: "Coca Cola", quantity: 1, price: 15000, total: 15000 },
+      { name: "Bún chả Hà Nội", quantity: 1, price: 55000, total: 55000 },
+      { name: "Trà đào cam sả", quantity: 1, price: 30000, total: 30000 },
     ],
+    subtotal: 85000,
+    tax: 8500,
+    discount: 17000,
+    total: 76500,
+    paymentMethod: "card",
+    status: "paid",
+    staffName: "Phạm Văn D",
+    notes: "Áp dụng mã SALE20",
   },
   {
     key: "3",
-    id: "3",
-    invoiceNumber: "INV-0003",
-    store: "Store #1",
-    customerName: "Lê Văn C",
-    customerEmail: "levanc@example.com",
-    invoiceDate: "2025-10-04",
-    dueDate: "2025-10-11",
+    id: "INV-2024-003",
+    invoiceNumber: "INV-2024-003",
+    orderNumber: "ORD-003",
+    store: "Downtown Store",
+    customerName: "Hoàng Văn E",
+    customerPhone: "0923456789",
+    customerEmail: "hoangvane@email.com",
+    date: "2024-10-15",
+    time: "12:20",
+    items: [
+      { name: "Cơm tấm sườn bì chả", quantity: 3, price: 50000, total: 150000 },
+      { name: "Nước chanh dây", quantity: 3, price: 20000, total: 60000 },
+    ],
+    subtotal: 210000,
+    tax: 21000,
+    discount: 0,
+    total: 231000,
     paymentMethod: "momo",
     status: "paid",
-    subtotal: 290909,
-    tax: 29091,
-    taxRate: 10,
-    total: 320000,
-    items: [
-      { key: "1", product: "Combo Gia Đình", quantity: 1, price: 250000, total: 250000 },
-      { key: "2", product: "Kem Sundae", quantity: 2, price: 20000, total: 40000 },
-    ],
+    staffName: "Võ Thị F",
   },
   {
     key: "4",
-    id: "4",
-    invoiceNumber: "INV-0004",
-    store: "Store #3",
-    customerName: "Phạm Thị D",
-    customerPhone: "0904567890",
-    invoiceDate: "2025-10-03",
-    dueDate: "2025-10-10",
-    paymentMethod: "cash",
-    status: "cancelled",
-    subtotal: 72727,
-    tax: 7273,
-    taxRate: 10,
-    total: 80000,
+    id: "INV-2024-004",
+    invoiceNumber: "INV-2024-004",
+    orderNumber: "ORD-004",
+    store: "Central Store",
+    customerName: "Đặng Thị G",
+    customerPhone: "0934567890",
+    date: "2024-10-15",
+    time: "13:15",
     items: [
-      { key: "1", product: "Gà Rán Giòn", quantity: 1, price: 50000, total: 50000 },
-      { key: "2", product: "Khoai Tây Chiên", quantity: 1, price: 25000, total: 25000 },
+      { name: "Bánh mì thịt nướng", quantity: 2, price: 30000, total: 60000 },
     ],
+    subtotal: 60000,
+    tax: 6000,
+    discount: 0,
+    total: 66000,
+    paymentMethod: "transfer",
+    status: "pending",
+    staffName: "Trần Văn H",
   },
   {
     key: "5",
-    id: "5",
-    invoiceNumber: "INV-0005",
-    store: "Store #2",
-    customerName: "Hoàng Văn E",
-    customerEmail: "hoangvane@example.com",
-    customerPhone: "0905678901",
-    invoiceDate: "2025-10-02",
-    dueDate: "2025-09-28",
-    paymentMethod: "zalopay",
-    status: "overdue",
-    subtotal: 181818,
-    tax: 18182,
-    taxRate: 10,
-    total: 200000,
+    id: "INV-2024-005",
+    invoiceNumber: "INV-2024-005",
+    orderNumber: "ORD-005",
+    store: "Uptown Store",
+    customerName: "Bùi Văn I",
+    customerPhone: "0945678901",
+    date: "2024-10-14",
+    time: "14:30",
     items: [
-      { key: "1", product: "Burger Bò", quantity: 2, price: 45000, total: 90000 },
-      { key: "2", product: "Gà Cay Hàn Quốc", quantity: 1, price: 65000, total: 65000 },
-      { key: "3", product: "Coca Cola", quantity: 2, price: 15000, total: 30000 },
+      { name: "Gỏi cuốn tôm thịt", quantity: 2, price: 35000, total: 70000 },
+      { name: "Nem rán", quantity: 1, price: 40000, total: 40000 },
     ],
+    subtotal: 110000,
+    tax: 11000,
+    discount: 0,
+    total: 121000,
+    paymentMethod: "cash",
+    status: "cancelled",
+    staffName: "Nguyễn Thị J",
+    notes: "Khách hủy do thay đổi kế hoạch",
   },
   {
     key: "6",
-    id: "6",
-    invoiceNumber: "INV-0006",
-    store: "Store #1",
-    customerName: "Nguyễn Thị F",
-    customerEmail: "nguyenthif@example.com",
-    invoiceDate: "2025-10-01",
-    dueDate: "2025-10-08",
-    paymentMethod: "bank-transfer",
-    status: "paid",
-    subtotal: 454545,
-    tax: 45455,
-    taxRate: 10,
-    total: 500000,
+    id: "INV-2024-006",
+    invoiceNumber: "INV-2024-006",
+    orderNumber: "ORD-006",
+    store: "Downtown Store",
+    customerName: "Mai Văn K",
+    customerPhone: "0956789012",
+    customerEmail: "maivank@email.com",
+    date: "2024-10-14",
+    time: "15:45",
     items: [
-      { key: "1", product: "Combo Gia Đình", quantity: 2, price: 250000, total: 500000 },
+      { name: "Hủ tiếu Nam Vang", quantity: 2, price: 60000, total: 120000 },
+      { name: "Chả giò", quantity: 1, price: 45000, total: 45000 },
     ],
+    subtotal: 165000,
+    tax: 16500,
+    discount: 0,
+    total: 181500,
+    paymentMethod: "card",
+    status: "refunded",
+    staffName: "Lê Thị L",
+    notes: "Hoàn tiền theo yêu cầu khách hàng",
+  },
+  {
+    key: "7",
+    id: "INV-2024-007",
+    invoiceNumber: "INV-2024-007",
+    orderNumber: "ORD-007",
+    store: "Central Store",
+    customerName: "Phan Thị M",
+    customerPhone: "0967890123",
+    date: "2024-10-14",
+    time: "16:20",
+    items: [
+      { name: "Mì Quảng", quantity: 1, price: 55000, total: 55000 },
+      { name: "Cà phê đen đá", quantity: 1, price: 20000, total: 20000 },
+    ],
+    subtotal: 75000,
+    tax: 7500,
+    discount: 15000,
+    total: 67500,
+    paymentMethod: "momo",
+    status: "paid",
+    staffName: "Trần Văn N",
+    notes: "Áp dụng freeship",
+  },
+  {
+    key: "8",
+    id: "INV-2024-008",
+    invoiceNumber: "INV-2024-008",
+    orderNumber: "ORD-008",
+    store: "Uptown Store",
+    customerName: "Vũ Văn O",
+    customerPhone: "0978901234",
+    date: "2024-10-13",
+    time: "17:30",
+    items: [
+      { name: "Bò kho bánh mì", quantity: 2, price: 55000, total: 110000 },
+      { name: "Sữa chua", quantity: 2, price: 15000, total: 30000 },
+    ],
+    subtotal: 140000,
+    tax: 14000,
+    discount: 0,
+    total: 154000,
+    paymentMethod: "cash",
+    status: "paid",
+    staffName: "Hoàng Thị P",
   },
 ];
 
-export default function InvoicesPage() {
+function InvoicesContent() {
   const { message } = App.useApp();
-  const [invoices, setInvoices] = useState<InvoiceData[]>(mockInvoices);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
-  const [selectedInvoice, setSelectedInvoice] = useState<InvoiceData | null>(null);
+  const [invoices] = useState<Invoice[]>(initialInvoices);
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
+  const [activeTab, setActiveTab] = useState("all");
+  const [dateRange, setDateRange] = useState<any>(null);
+  const [paymentFilter, setPaymentFilter] = useState<string | undefined>(undefined);
 
-  const filteredInvoices = invoices.filter(
-    (invoice) =>
-      invoice.invoiceNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      invoice.customerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      invoice.store.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "paid":
-        return "success";
-      case "pending":
-        return "warning";
-      case "overdue":
-        return "error";
-      case "cancelled":
-        return "default";
-      default:
-        return "default";
-    }
+  const handleViewDetails = (record: Invoice) => {
+    setSelectedInvoice(record);
+    setIsDetailModalOpen(true);
   };
 
-  const getPaymentMethodLabel = (method: string) => {
-    const labels: Record<string, string> = {
-      cash: "Cash",
-      card: "Card",
+  const handlePrint = (invoice: Invoice) => {
+    message.info(`In hóa đơn ${invoice.id}`);
+    // Implement print functionality
+  };
+
+  const getPaymentMethodText = (method: string) => {
+    const methods: Record<string, string> = {
+      cash: "Tiền mặt",
+      card: "Thẻ",
+      transfer: "Chuyển khoản",
       momo: "MoMo",
-      zalopay: "ZaloPay",
-      "bank-transfer": "Bank Transfer",
     };
-    return labels[method] || method;
+    return methods[method] || method;
   };
 
-  const handleAddInvoice = (values: any) => {
-    const newInvoice: InvoiceData = {
-      key: String(invoices.length + 1),
-      id: String(invoices.length + 1),
-      ...values,
+  const getPaymentMethodColor = (method: string) => {
+    const colors: Record<string, string> = {
+      cash: "green",
+      card: "blue",
+      transfer: "purple",
+      momo: "magenta",
     };
-    setInvoices([...invoices, newInvoice]);
-    setIsAddModalOpen(false);
-    message.success("Invoice created successfully!");
+    return colors[method] || "default";
   };
-
-  const handleEditInvoice = (values: any) => {
-    const updatedInvoices = invoices.map((invoice) =>
-      invoice.id === selectedInvoice?.id ? { ...invoice, ...values } : invoice
-    );
-    setInvoices(updatedInvoices);
-    setIsEditModalOpen(false);
-    setSelectedInvoice(null);
-    message.success("Invoice updated successfully!");
-  };
-
-  const handleEdit = (record: InvoiceData) => {
-    setSelectedInvoice(record);
-    setIsEditModalOpen(true);
-  };
-
-  const handleView = (record: InvoiceData) => {
-    setSelectedInvoice(record);
-    setIsViewModalOpen(true);
-  };
-
-  const handleDelete = (id: string) => {
-    setInvoices(invoices.filter((invoice) => invoice.id !== id));
-    message.success("Invoice deleted successfully!");
-  };
-
-  const handleExport = () => {
-    message.success("Exporting invoices report...");
-  };
-
-  const columns: TableColumnsType<InvoiceData> = [
+    const columns: TableColumnsType<Invoice> = [
     {
-      title: "Invoice Number",
-      dataIndex: "invoiceNumber",
-      key: "invoiceNumber",
+      title: "Mã HĐ",
+      dataIndex: "id",
+      key: "id",
+      width: 140,
       fixed: "left",
-      width: 150,
-      sorter: (a, b) => a.invoiceNumber.localeCompare(b.invoiceNumber),
-      render: (invoiceNumber: string) => (
-        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-          <FileTextOutlined style={{ color: "#3B82F6" }} />
-          <span style={{ fontWeight: 600 }}>{invoiceNumber}</span>
-        </div>
-      ),
+      render: (id) => <strong style={{ color: "#1890ff" }}>{id}</strong>,
     },
     {
-      title: "Customer",
-      dataIndex: "customerName",
-      key: "customerName",
-      width: 180,
-      sorter: (a, b) => a.customerName.localeCompare(b.customerName),
-      render: (name: string, record) => (
-        <div>
-          <div style={{ fontWeight: 600 }}>{name}</div>
-          {record.customerEmail && (
-            <div style={{ fontSize: "12px", color: "#6B7280" }}>
-              {record.customerEmail}
-            </div>
-          )}
-        </div>
-      ),
+      title: "Mã đơn hàng",
+      dataIndex: "orderNumber",
+      key: "orderNumber",
+      width: 120,
     },
     {
-      title: "Store",
+      title: "Cửa hàng",
       dataIndex: "store",
       key: "store",
       width: 140,
+      render: (store) => <Tag color="blue">{store}</Tag>,
       filters: [
-        { text: "Store #1", value: "Store #1" },
-        { text: "Store #2", value: "Store #2" },
-        { text: "Store #3", value: "Store #3" },
-        { text: "Store #4", value: "Store #4" },
-        { text: "Store #5", value: "Store #5" },
+        { text: "Downtown Store", value: "Downtown Store" },
+        { text: "Uptown Store", value: "Uptown Store" },
+        { text: "Central Store", value: "Central Store" },
       ],
       onFilter: (value, record) => record.store === value,
-      render: (store: string) => <Tag color="blue">{store}</Tag>,
     },
     {
-      title: "Invoice Date",
-      dataIndex: "invoiceDate",
-      key: "invoiceDate",
-      width: 130,
-      sorter: (a, b) => a.invoiceDate.localeCompare(b.invoiceDate),
-      render: (date: string) => new Date(date).toLocaleDateString("vi-VN"),
-    },
-    {
-      title: "Due Date",
-      dataIndex: "dueDate",
-      key: "dueDate",
-      width: 130,
-      sorter: (a, b) => a.dueDate.localeCompare(b.dueDate),
-      render: (date: string) => new Date(date).toLocaleDateString("vi-VN"),
-    },
-    {
-      title: "Payment",
-      dataIndex: "paymentMethod",
-      key: "paymentMethod",
-      width: 120,
-      filters: [
-        { text: "Cash", value: "cash" },
-        { text: "Card", value: "card" },
-        { text: "MoMo", value: "momo" },
-        { text: "ZaloPay", value: "zalopay" },
-        { text: "Bank Transfer", value: "bank-transfer" },
-      ],
-      onFilter: (value, record) => record.paymentMethod === value,
-      render: (method: string) => (
-        <Tag>{getPaymentMethodLabel(method)}</Tag>
-      ),
-    },
-    {
-      title: "Total Amount",
-      dataIndex: "total",
-      key: "total",
-      width: 150,
-      sorter: (a, b) => a.total - b.total,
-      render: (total: number) => (
-        <span style={{ fontWeight: 600, fontSize: "15px", color: "#3B82F6" }}>
-          {total.toLocaleString()} ₫
-        </span>
-      ),
-    },
-    {
-      title: "Status",
-      dataIndex: "status",
-      key: "status",
-      width: 120,
-      filters: [
-        { text: "Paid", value: "paid" },
-        { text: "Pending", value: "pending" },
-        { text: "Overdue", value: "overdue" },
-        { text: "Cancelled", value: "cancelled" },
-      ],
-      onFilter: (value, record) => record.status === value,
-      render: (status: string) => (
-        <Tag color={getStatusColor(status)}>{status.toUpperCase()}</Tag>
-      ),
-    },
-    {
-      title: "Actions",
-      key: "actions",
-      fixed: "right",
+      title: "Khách hàng",
+      key: "customer",
       width: 200,
       render: (_, record) => (
-        <Space>
-          <Tooltip title="View Details">
-            <Button
-              type="link"
-              icon={<EyeOutlined />}
-              onClick={() => handleView(record)}
-            >
-              View
-            </Button>
-          </Tooltip>
+        <div>
+          <div style={{ fontWeight: 500 }}>{record.customerName}</div>
+          <div style={{ fontSize: "12px", color: "#666" }}>
+            {record.customerPhone}
+          </div>
+        </div>
+      ),
+    },
+    {
+      title: "Ngày giờ",
+      key: "datetime",
+      width: 150,
+      render: (_, record) => (
+        <div>
+          <div>{record.date}</div>
+          <div style={{ fontSize: "12px", color: "#666" }}>{record.time}</div>
+        </div>
+      ),
+      sorter: (a, b) => dayjs(a.date + " " + a.time).unix() - dayjs(b.date + " " + b.time).unix(),
+    },
+    {
+      title: "Tổng tiền",
+      dataIndex: "total",
+      key: "total",
+      width: 130,
+      render: (total) => (
+        <strong style={{ color: "#52c41a" }}>
+          {total.toLocaleString()}đ
+        </strong>
+      ),
+      sorter: (a, b) => a.total - b.total,
+    },
+    {
+      title: "Thanh toán",
+      dataIndex: "paymentMethod",
+      key: "paymentMethod",
+      width: 130,
+      render: (method) => (
+        <Tag color={getPaymentMethodColor(method)}>
+          {getPaymentMethodText(method)}
+        </Tag>
+      ),
+      filters: [
+        { text: "Tiền mặt", value: "cash" },
+        { text: "Thẻ", value: "card" },
+        { text: "Chuyển khoản", value: "transfer" },
+        { text: "MoMo", value: "momo" },
+      ],
+      onFilter: (value, record) => record.paymentMethod === value,
+    },
+    {
+      title: "Trạng thái",
+      dataIndex: "status",
+      key: "status",
+      width: 130,
+      render: (status) => {
+        let color = "default";
+        let text = status;
+        let icon = null;
+        if (status === "paid") {
+          color = "green";
+          text = "Đã thanh toán";
+          icon = <CheckCircleOutlined />;
+        } else if (status === "pending") {
+          color = "orange";
+          text = "Chờ thanh toán";
+          icon = <ClockCircleOutlined />;
+        } else if (status === "cancelled") {
+          color = "red";
+          text = "Đã hủy";
+        } else if (status === "refunded") {
+          color = "purple";
+          text = "Đã hoàn tiền";
+        }
+        return (
+          <Tag icon={icon} color={color}>
+            {text}
+          </Tag>
+        );
+      },
+      filters: [
+        { text: "Đã thanh toán", value: "paid" },
+        { text: "Chờ thanh toán", value: "pending" },
+        { text: "Đã hủy", value: "cancelled" },
+        { text: "Đã hoàn tiền", value: "refunded" },
+      ],
+      onFilter: (value, record) => record.status === value,
+    },
+    {
+      title: "Nhân viên",
+      dataIndex: "staffName",
+      key: "staffName",
+      width: 130,
+    },
+    {
+      title: "Hành động",
+      key: "action",
+      width: 150,
+      fixed: "right",
+      render: (_, record) => (
+        <Space size="small">
           <Button
             type="link"
-            icon={<EditOutlined />}
-            onClick={() => handleEdit(record)}
+            icon={<EyeOutlined />}
+            onClick={() => handleViewDetails(record)}
           >
-            Edit
+            Xem
           </Button>
-          <Popconfirm
-            title="Delete invoice"
-            description="Are you sure you want to delete this invoice?"
-            onConfirm={() => handleDelete(record.id)}
-            okText="Yes"
-            cancelText="No"
+          <Button
+            type="link"
+            icon={<PrinterOutlined />}
+            onClick={() => handlePrint(record)}
           >
-            <Button type="link" danger icon={<DeleteOutlined />}>
-              Delete
-            </Button>
-          </Popconfirm>
+            In
+          </Button>
         </Space>
       ),
     },
   ];
+
+  // Filter invoices based on active tab and filters
+  const filteredInvoices = invoices.filter((invoice) => {
+    // Tab filter
+    if (activeTab !== "all" && invoice.status !== activeTab) {
+      return false;
+    }
+
+    // Date range filter
+    if (dateRange && dateRange.length === 2) {
+      const invoiceDate = dayjs(invoice.date);
+      if (
+        invoiceDate.isBefore(dateRange[0], "day") ||
+        invoiceDate.isAfter(dateRange[1], "day")
+      ) {
+        return false;
+      }
+    }
+
+    // Payment method filter
+    if (paymentFilter && invoice.paymentMethod !== paymentFilter) {
+      return false;
+    }
+
+    return true;
+  });
+
+  // Calculate stats
+  const paidInvoices = invoices.filter((inv) => inv.status === "paid");
+  const totalRevenue = paidInvoices.reduce((sum, inv) => sum + inv.total, 0);
+  const pendingCount = invoices.filter((inv) => inv.status === "pending").length;
+  const todayRevenue = paidInvoices
+    .filter((inv) => dayjs(inv.date).isSame(dayjs(), "day"))
+    .reduce((sum, inv) => sum + inv.total, 0);
   return (
-    <AdminLayout>
-      <div style={{ padding: "24px" }}>
-        {/* Header */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            marginBottom: "24px",
-          }}
-        >
-          <div>
-            <h1 style={{ fontSize: "28px", fontWeight: "bold", margin: 0 }}>
-              Invoice Management
-            </h1>
-            <p style={{ color: "#6B7280", marginTop: "8px" }}>
-              Manage all invoices and billing
-            </p>
-          </div>
-          <Space>
-            <Button
-              icon={<DownloadOutlined />}
-              size="large"
-              onClick={handleExport}
-            >
-              Export Report
-            </Button>
-            <Button
-              type="primary"
-              icon={<PlusOutlined />}
-              size="large"
-              onClick={() => setIsAddModalOpen(true)}
-            >
-              Create Invoice
-            </Button>
-          </Space>
-        </div>
-
-        {/* Search */}
-        <div style={{ marginBottom: "24px" }}>
-          <Input
-            placeholder="Search invoices by number, customer, or store..."
-            prefix={<SearchOutlined />}
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            style={{ maxWidth: "500px" }}
-            size="large"
-          />
-        </div>
-
-        {/* Statistics Cards */}
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(4, 1fr)",
-            gap: "16px",
-            marginBottom: "24px",
-          }}
-        >
-          <div
-            style={{
-              padding: "20px",
-              backgroundColor: "#FFF",
-              borderRadius: "8px",
-              border: "1px solid #E5E7EB",
-            }}
-          >
-            <div style={{ color: "#6B7280", fontSize: "14px" }}>Total Invoices</div>
-            <div style={{ fontSize: "28px", fontWeight: "bold", marginTop: "8px" }}>
-              {invoices.length}
+    <div className="p-8">
+      <Card className="border-0 shadow-sm">
+        <CardHeader>
+          <div className="flex flex-col gap-4">
+            <div>
+              <CardTitle className="text-2xl font-bold text-slate-900">
+                Quản lý Hóa đơn
+              </CardTitle>
+              <p className="text-sm text-slate-500 mt-1">
+                Xem và quản lý lịch sử hóa đơn của tất cả cửa hàng
+              </p>
             </div>
-          </div>
-          <div
-            style={{
-              padding: "20px",
-              backgroundColor: "#FFF",
-              borderRadius: "8px",
-              border: "1px solid #E5E7EB",
-            }}
-          >
-            <div style={{ color: "#6B7280", fontSize: "14px" }}>Paid</div>
-            <div
-              style={{
-                fontSize: "28px",
-                fontWeight: "bold",
-                marginTop: "8px",
-                color: "#10B981",
-              }}
-            >
-              {invoices.filter((i) => i.status === "paid").length}
-            </div>
-          </div>
-          <div
-            style={{
-              padding: "20px",
-              backgroundColor: "#FFF",
-              borderRadius: "8px",
-              border: "1px solid #E5E7EB",
-            }}
-          >
-            <div style={{ color: "#6B7280", fontSize: "14px" }}>Pending</div>
-            <div
-              style={{
-                fontSize: "28px",
-                fontWeight: "bold",
-                marginTop: "8px",
-                color: "#F59E0B",
-              }}
-            >
-              {invoices.filter((i) => i.status === "pending").length}
-            </div>
-          </div>
-          <div
-            style={{
-              padding: "20px",
-              backgroundColor: "#FFF",
-              borderRadius: "8px",
-              border: "1px solid #E5E7EB",
-            }}
-          >
-            <div style={{ color: "#6B7280", fontSize: "14px" }}>Total Revenue</div>
-            <div
-              style={{
-                fontSize: "24px",
-                fontWeight: "bold",
-                marginTop: "8px",
-                color: "#3B82F6",
-              }}
-            >
-              {invoices
-                .filter((i) => i.status === "paid")
-                .reduce((sum, i) => sum + i.total, 0)
-                .toLocaleString()}{" "}
-              ₫
-            </div>
-          </div>
-        </div>
 
-        {/* Table */}
-        <Table
-          columns={columns}
-          dataSource={filteredInvoices}
-          pagination={{
-            pageSize: 10,
-            showSizeChanger: true,
-            showTotal: (total) => `Total ${total} invoices`,
-            pageSizeOptions: ["5", "10", "20", "50"],
-          }}
-          scroll={{ x: 1500 }}
-        />
-
-        {/* Add Invoice Modal */}
-        <Modal
-          title="Create New Invoice"
-          open={isAddModalOpen}
-          onCancel={() => setIsAddModalOpen(false)}
-          footer={null}
-          width={900}
-          destroyOnHidden
-        >
-          <InvoicesForm onSubmit={handleAddInvoice} isEdit={false} />
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "flex-end",
-              gap: "12px",
-              marginTop: "24px",
-            }}
-          >
-            <Button onClick={() => setIsAddModalOpen(false)} size="large">
-              Cancel
-            </Button>
-            <Button
-              type="primary"
-              size="large"
-              onClick={() => {
-                const form = document.querySelector("form");
-                if (form) {
-                  const submitButton = form.querySelector(
-                    'button[type="submit"]'
-                  ) as HTMLButtonElement;
-                  if (submitButton) submitButton.click();
-                }
-              }}
-            >
-              Create Invoice
-            </Button>
-          </div>
-        </Modal>
-
-        {/* Edit Invoice Modal */}
-        <Modal
-          title="Edit Invoice"
-          open={isEditModalOpen}
-          onCancel={() => {
-            setIsEditModalOpen(false);
-            setSelectedInvoice(null);
-          }}
-          footer={null}
-          width={900}
-          destroyOnHidden
-        >
-          <InvoicesForm
-            onSubmit={handleEditInvoice}
-            initialValues={selectedInvoice}
-            isEdit={true}
-          />
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "flex-end",
-              gap: "12px",
-              marginTop: "24px",
-            }}
-          >
-            <Button
-              onClick={() => {
-                setIsEditModalOpen(false);
-                setSelectedInvoice(null);
-              }}
-              size="large"
-            >
-              Cancel
-            </Button>
-            <Button
-              type="primary"
-              size="large"
-              onClick={() => {
-                const form = document.querySelector("form");
-                if (form) {
-                  const submitButton = form.querySelector(
-                    'button[type="submit"]'
-                  ) as HTMLButtonElement;
-                  if (submitButton) submitButton.click();
-                }
-              }}
-            >
-              Save Changes
-            </Button>
-          </div>
-        </Modal>
-
-        {/* View Invoice Modal */}
-        <Modal
-          title={`Invoice Details - ${selectedInvoice?.invoiceNumber}`}
-          open={isViewModalOpen}
-          onCancel={() => {
-            setIsViewModalOpen(false);
-            setSelectedInvoice(null);
-          }}
-          footer={[
-            <Button
-              key="close"
-              onClick={() => {
-                setIsViewModalOpen(false);
-                setSelectedInvoice(null);
-              }}
-            >
-              Close
-            </Button>,
-            <Button key="download" type="primary" icon={<DownloadOutlined />}>
-              Download PDF
-            </Button>,
-          ]}
-          width={800}
-        >
-          {selectedInvoice && (
-            <div style={{ padding: "20px 0" }}>
-              {/* Customer Info */}
-              <div style={{ marginBottom: "24px" }}>
-                <h3 style={{ fontSize: "16px", fontWeight: 600, marginBottom: "12px" }}>
-                  Customer Information
-                </h3>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "12px" }}>
-                  <div>
-                    <span style={{ color: "#6B7280" }}>Name: </span>
-                    <strong>{selectedInvoice.customerName}</strong>
-                  </div>
-                  {selectedInvoice.customerEmail && (
-                    <div>
-                      <span style={{ color: "#6B7280" }}>Email: </span>
-                      <strong>{selectedInvoice.customerEmail}</strong>
-                    </div>
-                  )}
-                  {selectedInvoice.customerPhone && (
-                    <div>
-                      <span style={{ color: "#6B7280" }}>Phone: </span>
-                      <strong>{selectedInvoice.customerPhone}</strong>
-                    </div>
-                  )}
-                  <div>
-                    <span style={{ color: "#6B7280" }}>Store: </span>
-                    <Tag color="blue">{selectedInvoice.store}</Tag>
-                  </div>
+            {/* Stats Cards */}
+            <Row gutter={16}>
+              <Col span={6}>
+                <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
+                  <Statistic
+                    title="Tổng hóa đơn"
+                    value={invoices.length}
+                    prefix={<FileTextOutlined />}
+                    valueStyle={{ color: "#1890ff" }}
+                  />
                 </div>
-              </div>
-
-              {/* Invoice Info */}
-              <div style={{ marginBottom: "24px" }}>
-                <h3 style={{ fontSize: "16px", fontWeight: 600, marginBottom: "12px" }}>
-                  Invoice Information
-                </h3>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "12px" }}>
-                  <div>
-                    <span style={{ color: "#6B7280" }}>Invoice Date: </span>
-                    <strong>{new Date(selectedInvoice.invoiceDate).toLocaleDateString("vi-VN")}</strong>
-                  </div>
-                  <div>
-                    <span style={{ color: "#6B7280" }}>Due Date: </span>
-                    <strong>{new Date(selectedInvoice.dueDate).toLocaleDateString("vi-VN")}</strong>
-                  </div>
-                  <div>
-                    <span style={{ color: "#6B7280" }}>Payment Method: </span>
-                    <Tag>{getPaymentMethodLabel(selectedInvoice.paymentMethod)}</Tag>
-                  </div>
-                  <div>
-                    <span style={{ color: "#6B7280" }}>Status: </span>
-                    <Tag color={getStatusColor(selectedInvoice.status)}>
-                      {selectedInvoice.status.toUpperCase()}
-                    </Tag>
-                  </div>
+              </Col>
+              <Col span={6}>
+                <div className="bg-green-50 p-4 rounded-lg border border-green-100">
+                  <Statistic
+                    title="Tổng doanh thu"
+                    value={totalRevenue}
+                    prefix={<DollarOutlined />}
+                    suffix="đ"
+                    valueStyle={{ color: "#52c41a" }}
+                  />
                 </div>
-              </div>
+              </Col>
+              <Col span={6}>
+                <div className="bg-orange-50 p-4 rounded-lg border border-orange-100">
+                  <Statistic
+                    title="Doanh thu hôm nay"
+                    value={todayRevenue}
+                    prefix={<DollarOutlined />}
+                    suffix="đ"
+                    valueStyle={{ color: "#faad14" }}
+                  />
+                </div>
+              </Col>
+              <Col span={6}>
+                <div className="bg-red-50 p-4 rounded-lg border border-red-100">
+                  <Statistic
+                    title="Chờ thanh toán"
+                    value={pendingCount}
+                    prefix={<ClockCircleOutlined />}
+                    valueStyle={{ color: "#ff4d4f" }}
+                  />
+                </div>
+              </Col>
+            </Row>
 
-              {/* Items Table */}
-              <div style={{ marginBottom: "24px" }}>
-                <h3 style={{ fontSize: "16px", fontWeight: 600, marginBottom: "12px" }}>
-                  Items
-                </h3>
-                <Table
-                  columns={[
-                    { title: "Product", dataIndex: "product", key: "product" },
-                    { title: "Quantity", dataIndex: "quantity", key: "quantity", width: 100 },
-                    {
-                      title: "Price",
-                      dataIndex: "price",
-                      key: "price",
-                      width: 120,
-                      render: (price: number) => `${price.toLocaleString()} ₫`,
-                    },
-                    {
-                      title: "Total",
-                      dataIndex: "total",
-                      key: "total",
-                      width: 120,
-                      render: (total: number) => `${total.toLocaleString()} ₫`,
-                    },
-                  ]}
-                  dataSource={selectedInvoice.items}
-                  pagination={false}
-                  size="small"
+            {/* Filters */}
+            <div>
+              <Space>
+                <RangePicker
+                  placeholder={["Từ ngày", "Đến ngày"]}
+                  format="YYYY-MM-DD"
+                  onChange={setDateRange}
+                  style={{ width: 240 }}
                 />
-              </div>
+                <Select
+                  placeholder="Phương thức thanh toán"
+                  allowClear
+                  style={{ width: 200 }}
+                  onChange={setPaymentFilter}
+                  options={[
+                    { label: "Tiền mặt", value: "cash" },
+                    { label: "Thẻ", value: "card" },
+                    { label: "Chuyển khoản", value: "transfer" },
+                    { label: "MoMo", value: "momo" },
+                  ]}
+                />
+              </Space>
+            </div>
 
-              {/* Summary */}
-              <div
-                style={{
-                  backgroundColor: "#F9FAFB",
-                  padding: "16px",
-                  borderRadius: "8px",
-                }}
-              >
-                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px" }}>
-                  <span>Subtotal:</span>
-                  <strong>{selectedInvoice.subtotal.toLocaleString()} ₫</strong>
-                </div>
-                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px" }}>
-                  <span>Tax ({selectedInvoice.taxRate}%):</span>
-                  <strong>{selectedInvoice.tax.toLocaleString()} ₫</strong>
-                </div>
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    fontSize: "18px",
-                    paddingTop: "8px",
-                    borderTop: "2px solid #E5E7EB",
-                  }}
+            {/* Tabs */}
+            <Tabs
+              activeKey={activeTab}
+              onChange={setActiveTab}
+              items={[
+                {
+                  key: "all",
+                  label: `Tất cả (${invoices.length})`,
+                },
+                {
+                  key: "paid",
+                  label: `Đã thanh toán (${paidInvoices.length})`,
+                },
+                {
+                  key: "pending",
+                  label: `Chờ thanh toán (${pendingCount})`,
+                },
+                {
+                  key: "cancelled",
+                  label: `Đã hủy (${invoices.filter((i) => i.status === "cancelled").length})`,
+                },
+                {
+                  key: "refunded",
+                  label: `Đã hoàn tiền (${invoices.filter((i) => i.status === "refunded").length})`,
+                },
+              ]}
+            />
+          </div>
+        </CardHeader>
+
+        <CardContent>
+          {/* Table */}
+          <Table
+            columns={columns}
+            dataSource={filteredInvoices}
+            pagination={{
+              pageSize: 10,
+              showSizeChanger: true,
+              showTotal: (total) => `Tổng ${total} hóa đơn`,
+            }}
+            scroll={{ x: 1400 }}
+            bordered={false}
+            className="ant-table-custom"
+          />
+        </CardContent>
+      </Card>
+
+      {/* Detail Modal */}
+      <Modal
+        title={<span className="text-lg font-semibold">Chi tiết hóa đơn {selectedInvoice?.id}</span>}
+        open={isDetailModalOpen}
+        onCancel={() => setIsDetailModalOpen(false)}
+        width={800}
+        centered
+        maskClosable={false}
+        transitionName="ant-fade"
+        maskTransitionName="ant-fade"
+        footer={[
+          <Button key="print" type="primary" icon={<PrinterOutlined />} onClick={() => selectedInvoice && handlePrint(selectedInvoice)} className="bg-blue-500 hover:bg-blue-600">
+            In hóa đơn
+          </Button>,
+          <Button key="close" onClick={() => setIsDetailModalOpen(false)}>
+            Đóng
+          </Button>,
+        ]}
+      >
+        {selectedInvoice && (
+          <div>
+            <Descriptions bordered column={2} size="small">
+              <Descriptions.Item label="Mã hóa đơn" span={1}>
+                {selectedInvoice.id}
+              </Descriptions.Item>
+              <Descriptions.Item label="Mã đơn hàng" span={1}>
+                {selectedInvoice.orderNumber}
+              </Descriptions.Item>
+              <Descriptions.Item label="Cửa hàng" span={2}>
+                <Tag color="blue">{selectedInvoice.store}</Tag>
+              </Descriptions.Item>
+              <Descriptions.Item label="Khách hàng" span={1}>
+                {selectedInvoice.customerName}
+              </Descriptions.Item>
+              <Descriptions.Item label="Số điện thoại" span={1}>
+                {selectedInvoice.customerPhone}
+              </Descriptions.Item>
+              {selectedInvoice.customerEmail && (
+                <Descriptions.Item label="Email" span={2}>
+                  {selectedInvoice.customerEmail}
+                </Descriptions.Item>
+              )}
+              <Descriptions.Item label="Ngày giờ" span={1}>
+                {selectedInvoice.date} {selectedInvoice.time}
+              </Descriptions.Item>
+              <Descriptions.Item label="Nhân viên" span={1}>
+                {selectedInvoice.staffName}
+              </Descriptions.Item>
+              <Descriptions.Item label="Thanh toán" span={1}>
+                <Tag color={getPaymentMethodColor(selectedInvoice.paymentMethod)}>
+                  {getPaymentMethodText(selectedInvoice.paymentMethod)}
+                </Tag>
+              </Descriptions.Item>
+              <Descriptions.Item label="Trạng thái" span={1}>
+                <Tag
+                  color={
+                    selectedInvoice.status === "paid"
+                      ? "green"
+                      : selectedInvoice.status === "pending"
+                        ? "orange"
+                        : selectedInvoice.status === "cancelled"
+                          ? "red"
+                          : "purple"
+                  }
                 >
-                  <strong>Total:</strong>
-                  <strong style={{ color: "#3B82F6" }}>
-                    {selectedInvoice.total.toLocaleString()} ₫
+                  {selectedInvoice.status === "paid"
+                    ? "Đã thanh toán"
+                    : selectedInvoice.status === "pending"
+                      ? "Chờ thanh toán"
+                      : selectedInvoice.status === "cancelled"
+                        ? "Đã hủy"
+                        : "Đã hoàn tiền"}
+                </Tag>
+              </Descriptions.Item>
+            </Descriptions>
+
+            <div style={{ marginTop: 24 }}>
+              <h4 style={{ marginBottom: 12, fontWeight: "bold" }}>Chi tiết món ăn</h4>
+              <Table
+                dataSource={selectedInvoice.items.map((item, index) => ({
+                  ...item,
+                  key: index,
+                }))}
+                columns={[
+                  { title: "Tên món", dataIndex: "name", key: "name" },
+                  { title: "SL", dataIndex: "quantity", key: "quantity", width: 80, align: "center" },
+                  {
+                    title: "Đơn giá",
+                    dataIndex: "price",
+                    key: "price",
+                    width: 120,
+                    align: "right",
+                    render: (price) => `${price.toLocaleString()}đ`,
+                  },
+                  {
+                    title: "Thành tiền",
+                    dataIndex: "total",
+                    key: "total",
+                    width: 120,
+                    align: "right",
+                    render: (total) => `${total.toLocaleString()}đ`,
+                  },
+                ]}
+                pagination={false}
+                size="small"
+              />
+            </div>
+
+            <div style={{ marginTop: 16, textAlign: "right" }}>
+              <Space direction="vertical" style={{ width: "100%", alignItems: "flex-end" }}>
+                <div>
+                  <span style={{ marginRight: 16 }}>Tạm tính:</span>
+                  <strong>{selectedInvoice.subtotal.toLocaleString()}đ</strong>
+                </div>
+                <div>
+                  <span style={{ marginRight: 16 }}>VAT (10%):</span>
+                  <strong>{selectedInvoice.tax.toLocaleString()}đ</strong>
+                </div>
+                {selectedInvoice.discount > 0 && (
+                  <div>
+                    <span style={{ marginRight: 16 }}>Giảm giá:</span>
+                    <strong style={{ color: "#ff4d4f" }}>
+                      -{selectedInvoice.discount.toLocaleString()}đ
+                    </strong>
+                  </div>
+                )}
+                <div style={{ fontSize: 16, paddingTop: 8, borderTop: "1px solid #d9d9d9" }}>
+                  <span style={{ marginRight: 16 }}>Tổng cộng:</span>
+                  <strong style={{ color: "#52c41a", fontSize: 18 }}>
+                    {selectedInvoice.total.toLocaleString()}đ
                   </strong>
                 </div>
-              </div>
-
-              {/* Notes */}
-              {selectedInvoice.notes && (
-                <div style={{ marginTop: "24px" }}>
-                  <h3 style={{ fontSize: "16px", fontWeight: 600, marginBottom: "8px" }}>
-                    Notes
-                  </h3>
-                  <p style={{ color: "#6B7280" }}>{selectedInvoice.notes}</p>
-                </div>
-              )}
+              </Space>
             </div>
-          )}
-        </Modal>
-      </div>
+
+            {selectedInvoice.notes && (
+              <div style={{ marginTop: 16, padding: 12, background: "#f5f5f5", borderRadius: 4 }}>
+                <strong>Ghi chú:</strong>
+                <p style={{ margin: "8px 0 0 0" }}>{selectedInvoice.notes}</p>
+              </div>
+            )}
+          </div>
+        )}
+      </Modal>
+    </div>
+  );
+}
+
+export default function AdminInvoicesPage() {
+  return (
+    <AdminLayout>
+      <InvoicesContent />
     </AdminLayout>
   );
 }

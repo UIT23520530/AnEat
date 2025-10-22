@@ -27,6 +27,7 @@ import {
   MailOutlined,
 } from "@ant-design/icons";
 import type { TabsProps, TableColumnsType } from "antd";
+import { StaffForm } from "@/components/forms/Manager/StaffForm";
 
 interface StaffData {
   key: string;
@@ -516,39 +517,43 @@ function StaffContent() {
         style={{ marginTop: "16px" }}
       />
 
-      {/* Add Staff Modal - Placeholder */}
+      {/* Add Staff Modal */}
       <Modal
-        title="Add New Staff Member"
+        title={<span className="text-lg font-semibold">Thêm nhân viên mới</span>}
         open={isAddModalOpen}
         onCancel={() => setIsAddModalOpen(false)}
         footer={null}
-        width={800}
+        width={900}
         destroyOnHidden
+        centered
+        maskClosable={false}
       >
-        <div style={{ padding: "24px 0" }}>
-          <p style={{ textAlign: "center", color: "#6B7280" }}>
-            Staff form will be implemented here
-          </p>
-        </div>
+        <p className="text-slate-500 mb-6">Thêm nhân viên mới cho cửa hàng Downtown Store</p>
+        <StaffForm onSuccess={() => setIsAddModalOpen(false)} />
       </Modal>
 
-      {/* Edit Staff Modal - Placeholder */}
+      {/* Edit Staff Modal */}
       <Modal
-        title="Edit Staff Member"
+        title={<span className="text-lg font-semibold">Chỉnh sửa thông tin: {selectedStaff?.name}</span>}
         open={isEditModalOpen}
         onCancel={() => {
           setIsEditModalOpen(false);
           setSelectedStaff(null);
         }}
         footer={null}
-        width={800}
-        destroyOnHidden
+        width={900}
+        destroyOnClose
+        centered
+        maskClosable={false}
       >
-        <div style={{ padding: "24px 0" }}>
-          <p style={{ textAlign: "center", color: "#6B7280" }}>
-            Staff edit form will be implemented here
-          </p>
-        </div>
+        <p className="text-slate-500 mb-6">Cập nhật thông tin nhân viên</p>
+        <StaffForm 
+          staff={selectedStaff!} 
+          onSuccess={() => {
+            setIsEditModalOpen(false);
+            setSelectedStaff(null);
+          }} 
+        />
       </Modal>
     </div>
   );
