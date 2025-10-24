@@ -82,11 +82,13 @@ export default function AdminDashboardPage() {
             <h1 className="text-2xl font-bold text-slate-900">Dashboard</h1>
             <p className="text-sm text-slate-500 mt-1">Hi, Haa Ju. Welcome back to AnEat Admin!</p>
           </div>
-          <Button className="bg-blue-500 hover:bg-blue-600 text-white gap-2">
-            <Calendar className="h-4 w-4" />
-            Filter Periode
-            <ChevronDown className="h-4 w-4" />
-          </Button>
+          {/* <Button className="bg-blue-500 hover:bg-blue-600 text-white gap-2">
+            <Calendar className="h-4 w-4 text-white" />
+            <span className="text-white">Thời gian</span>
+            <ChevronDown className="h-4 w-4 text-white" />
+          </Button> */}
+          {/* Calendar button */}
+          
         </div>
 
         {/* Stats Cards */}
@@ -191,14 +193,14 @@ export default function AdminDashboardPage() {
             <div className="flex items-center justify-between mb-6">
               <h3 className="font-semibold text-slate-900">Pie Chart</h3>
               <div className="flex items-center gap-4 text-sm">
-                <label className="flex items-center gap-2 cursor-pointer">
+                {/* <label className="flex items-center gap-2 cursor-pointer">
                   <input type="checkbox" className="rounded" checked readOnly />
                   <span className="text-slate-600">Chart</span>
                 </label>
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input type="checkbox" className="rounded" checked readOnly />
                   <span className="text-slate-600">Show Value</span>
-                </label>
+                </label> */}
                 <Button variant="ghost" size="icon" className="h-8 w-8">
                   <MoreVertical className="h-4 w-4" />
                 </Button>
@@ -245,12 +247,11 @@ export default function AdminDashboardPage() {
             <div className="flex items-center justify-between mb-6">
               <div>
                 <h3 className="font-semibold text-slate-900">Chart Order</h3>
-                <p className="text-sm text-slate-500 mt-1">Lorem ipsum dolor sit amet, consectetur</p>
               </div>
-              <Button variant="outline" className="gap-2 text-blue-600 border-blue-200 hover:bg-blue-50">
+              {/* <Button variant="outline" className="gap-2 text-blue-600 border-blue-200 hover:bg-blue-50">
                 <Download className="h-4 w-4" />
                 Save Report
-              </Button>
+              </Button> */}
             </div>
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
