@@ -1,0 +1,318 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ==================== ENUMS ====================
+
+enum UserRole {
+  ADMIN_SYSTEM
+  ADMIN_BRAND
+  STAFF
+  CUSTOMER
+}
+
+enum OrderStatus {
+  PENDING
+  PREPARING
+  READY
+  COMPLETED
+  CANCELLED
+}
+
+enum TableStatus {
+  EMPTY
+  OCCUPIED
+  RESERVED
+}
+
+enum PromotionType {
+  PERCENTAGE
+  FIXED
+}
+
+enum PaymentMethod {
+  CASH
+  CARD
+  BANK_TRANSFER
+  E_WALLET
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+enum CustomerTier {
+  BRONZE
+  SILVER
+  GOLD
+  VIP
+}
+
+// ==================== MODELS ====================
+
+model User {
+  id       String   @id @default(cuid())
+  email    String   @unique
+  password String
+  name     String
+  phone    String
+  role     UserRole @default(CUSTOMER)
+  avatar   String?
+  branchId String?
+  branch   Branch?  @relation("staff", fields: [branchId], references: [id], onDelete: SetNull)
+
+  // ✨ Cải thiện: Thêm trạng thái và tracking login
+  isActive  Boolean   @default(true)
+  lastLogin DateTime?
+
+  managedBranches Branch?  @relation("manager")
+  ordersAssigned  Order[]
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("User")
+}
+
+model Branch {
+  id        String  @id @default(cuid())
+  code      String  @unique
+  name      String
+  address   String
+  phone     String
+  email     String?
+  managerId String? @unique
+  manager   User?   @relation("manager", fields: [managerId], references: [id], onDelete: SetNull)
+
+  staff     User[]    @relation("staff")
+  products  Product[]
+  tables    Table[]
+  orders    Order[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@map("Branch")
+}
+
+// ✨ NEW: Danh mục sản phẩm
+model ProductCategory {
+  id          String    @id @default(cuid())
+  code        String    @unique
+  name        String
+  description String?
+  image       String?
+  isActive    Boolean   @default(true)
+
+  products  Product[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@map("ProductCategory")
+}
+
+model Product {
+  id          String   @id @default(cuid())
+  code        String   @unique
+  name        String
+  description String?
+  price       Int // Lưu theo cent (1000 = 10k)
+  image       String?
+  branchId    String
+  branch      Branch   @relation(fields: [branchId], references: [id], onDelete: Cascade)
+
+  // ✨ Cải thiện: Thêm hàng tồn kho, thời gian chuẩn bị, giá vốn
+  quantity     Int     @default(0) // Số lượng tồn kho
+  costPrice    Int     @default(0) // Giá vốn (tính theo cent)
+  prepTime     Int     @default(15) // Thời gian chuẩn bị (phút)
+  isAvailable  Boolean @default(true)
+
+  // ✨ Cải thiện: Thêm danh mục sản phẩm
+  categoryId String?
+  category   ProductCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  orderItems OrderItem[]
+  inventory  Inventory?
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+
+  @@map("Product")
+}
+
+// ✨ NEW: Theo dõi hàng tồn kho (Inventory)
+model Inventory {
+  id        String   @id @default(cuid())
+  productId String   @unique
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  quantity      Int
+  lastRestocked DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@map("Inventory")
+}
+
+model Order {
+  id          String      @id @default(cuid())
+  orderNumber String      @unique
+  total       Int // Tổng tiền (tính theo cent)
+  status      OrderStatus @default(PENDING)
+  notes       String?
+
+  customerId String?
+  customer   Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+
+  staffId String?
+  staff   User?   @relation(fields: [staffId], references: [id], onDelete: SetNull)
+
+  branchId String
+  branch   Branch @relation(fields: [branchId], references: [id], onDelete: Cascade)
+
+  items       OrderItem[]
+  promotion   Promotion?  @relation(fields: [promotionId], references: [id], onDelete: SetNull)
+  promotionId String?
+
+  // ✨ Cải thiện: Thêm thông tin thanh toán
+  paymentMethod PaymentMethod?
+  paymentStatus PaymentStatus @default(PENDING)
+
+  // ✨ Cải thiện: Thêm thông tin giao hàng
+  deliveryAddress String?
+  deliveryDate    DateTime?
+
+  // ✨ Cải thiện: Thêm trường discount để báo cáo
+  discountAmount Int @default(0)
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  completedAt DateTime?
+
+  @@map("Order")
+}
+
+model OrderItem {
+  id       String @id @default(cuid())
+  quantity Int
+  price    Int // Giá tại thời điểm đặt hàng
+
+  orderId String
+  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  createdAt DateTime @default(now())
+
+  @@map("OrderItem")
+}
+
+model Customer {
+  id     String  @id @default(cuid())
+  phone  String  @unique
+  name   String
+  email  String? @unique
+  avatar String?
+
+  // ✨ Cải thiện: Thêm chương trình loyalty
+  tier       CustomerTier @default(BRONZE)
+  totalSpent Int          @default(0) // Tổng chi tiêu (tính theo cent)
+  points     Int          @default(0) // Điểm thưởng
+
+  orders        Order[]
+  lastOrderDate DateTime?
+
+  reviews   Review[] @relation("customerReviews")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("Customer")
+}
+
+model Table {
+  id     String      @id @default(cuid())
+  code   String
+  status TableStatus @default(EMPTY)
+  seats  Int
+
+  // ✨ Cải thiện: Thêm khu vực bàn
+  section String? // e.g., "PATIO", "INDOOR", "VIP"
+
+  branchId String
+  branch   Branch @relation(fields: [branchId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([branchId, code])
+  @@map("Table")
+}
+
+model Promotion {
+  id        String        @id @default(cuid())
+  code      String        @unique
+  type      PromotionType
+  value     Int // Giá trị giảm giá hoặc phần trăm
+  maxUses   Int?
+  usedCount Int           @default(0)
+  isActive  Boolean       @default(true)
+
+  // ✨ Cải thiện: Thêm ngày hết hạn và điều kiện tối thiểu
+  expiryDate       DateTime?
+  minOrderAmount   Int?
+  applicableProducts String? // JSON array của product IDs hoặc null nếu áp dụng cho tất cả
+
+  orders    Order[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("Promotion")
+}
+
+// ✨ NEW: Bảng Review/Rating cho sản phẩm
+model Review {
+  id        String   @id @default(cuid())
+  productId String
+
+  customerId String
+  customer   Customer @relation("customerReviews", fields: [customerId], references: [id], onDelete: Cascade)
+
+  rating  Int // 1-5
+  comment String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("Review")
+}
+
+// ✨ NEW: Bảng lịch sử thanh toán chi tiết
+model PaymentTransaction {
+  id        String   @id @default(cuid())
+  orderId   String
+  // order     Order?   @relation(fields: [orderId], references: [id], onDelete: SetNull)
+
+  amount        Int
+  method        PaymentMethod
+  status        PaymentStatus @default(PENDING)
+  transactionId String? // ID từ payment gateway
+  errorMessage  String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("PaymentTransaction")
+}
