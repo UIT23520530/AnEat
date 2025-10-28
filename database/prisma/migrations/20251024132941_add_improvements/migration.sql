@@ -1,3 +1,4 @@
+-- Active: 1761666058595@@127.0.0.1@5432@aneat_dev
 -- CreateEnum
 CREATE TYPE "UserRole" AS ENUM ('ADMIN_SYSTEM', 'ADMIN_BRAND', 'STAFF', 'CUSTOMER');
 
