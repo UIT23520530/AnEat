@@ -1,6 +1,19 @@
-/** @type {import('next').NextConfig} */
-import path from 'path'
+import withPWAInit from "@ducanh2912/next-pwa";
+import path from 'path';
 
+const withPWA = withPWAInit({
+  dest: "public",
+  cacheOnFrontEndNav: true,
+  aggressiveFrontEndNavCaching: true,
+  reloadOnOnline: true,
+  swcMinify: true,
+  disable: process.env.NODE_ENV === "development",
+  workboxOptions: {
+    disableDevLogs: true,
+  },
+});
+
+/** @type {import('next').NextConfig} */
 const nextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
@@ -24,4 +37,4 @@ const nextConfig = {
   }
 }
 
-export default nextConfig
+export default withPWA(nextConfig);

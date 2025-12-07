@@ -2,13 +2,10 @@
 
 import { useState } from "react";
 import { PublicLayout } from "@/components/layouts/public-layout";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Search } from "lucide-react";
 import { AddToCartDialog } from "@/components/cart/add-to-cart-dialog";
 import { ProductCard } from "@/components/cart/product-card";
+import { CategoriesFilter } from "@/components/product/categories-filter";
 import { Product } from "@/types";
-import Image from "next/image";
 
 const categories = [
   {
@@ -189,34 +186,11 @@ export default function MenuPage() {
       <div className="container mx-auto px-4 py-8">
         
         {/* Categories */}
-        <div className="flex justify-center mb-8">
-          <div className="bg-[rgb(251,234,133)] rounded-2xl px-2 py-2 shadow-lg">
-            <div className="flex gap-3 items-center overflow-x-auto">
-              {categories.map((category) => (
-                <button
-                  key={category.id}
-                  onClick={() => setSelectedCategory(category.id)}
-                  className={`flex flex-col items-center justify-center min-w-[90px] px-4 py-2 rounded-2xl transition-all ${
-                    selectedCategory === category.id
-                      ? "bg-white"
-                      : "bg-transparent hover:bg-white/40"
-                  }`}
-                >
-                  <span className="text-3xl mb-1">{category.image}</span>
-                  <span
-                    className={`text-sm font-bold whitespace-nowrap ${
-                      selectedCategory === category.id
-                        ? "text-gray-800"
-                        : "text-gray-800"
-                    }`}
-                  >
-                    {category.name}
-                  </span>
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
+        <CategoriesFilter
+          categories={categories}
+          selectedCategory={selectedCategory}
+          onSelectCategory={setSelectedCategory}
+        />
 
         {/* Products Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">

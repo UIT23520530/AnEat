@@ -38,15 +38,15 @@ export function PublicLayout({ children }: PublicLayoutProps) {
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
           <div className="flex items-center gap-6">
-            <Link href="/" className="flex items-center gap-2">
-              {/* <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
-                <span className="text-primary-foreground font-bold text-lg">
-                  AE
-                </span>
-              </div> */}
-                  <span className="font-bold text-4xl font-sigmar text-orange-500">
-                  AnEat
-                  </span>
+            <Link href="/" className="flex flex-col items-center gap-1">
+              <img
+                src="/icons/AnEat.svg"
+                alt="AnEat"
+                className="h-8 w-8"
+              />
+              <span className="font-bold text-2xl font-sigmar text-orange-500">
+                AnEat
+              </span>
             </Link>
 
             <nav className="hidden md:flex items-center gap-6">
@@ -54,10 +54,10 @@ export function PublicLayout({ children }: PublicLayoutProps) {
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`text-base font-medium uppercase hover:text-primary transition-colors ${
+                  className={`text-base font-medium uppercase transition-colors ${
                   isActive(item.href)
-                    ? "text-primary font-bold"
-                    : "text-muted-foreground"
+                    ? "text-orange-500 font-bold border-b-2 border-orange-500 pb-1"
+                    : "text-muted-foreground hover:text-orange-500"
                   }`}
                 >
                   {item.label}

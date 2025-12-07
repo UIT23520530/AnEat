@@ -1,15 +1,20 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import { GeistSans } from 'geist/font/sans'
 import { GeistMono } from 'geist/font/mono'
 import { Analytics } from '@vercel/analytics/next'
 import './globals.css'
 import { CartProvider } from '@/contexts/cart-context'
+import './fonts.css'
 
 export const metadata: Metadata = {
   title: 'AnEat',
-  description: 'Created with v0',
-  generator: 'v0.app',
+  description: 'FastFood Delivery Website',
+  manifest: "/manifest.json",
 }
+
+export const viewport: Viewport = {
+  themeColor: "#FFFFFF",
+};
 
 export default function RootLayout({
   children,
@@ -19,6 +24,7 @@ export default function RootLayout({
   return (
     <html lang="vi">
       <head>
+        <link rel="icon" href="/icons/AnEat.svg" type="image/svg+xml" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
