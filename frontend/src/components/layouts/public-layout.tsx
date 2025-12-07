@@ -3,7 +3,7 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ShoppingCart, User, MenuIcon, MapPin } from "lucide-react";
+import { ShoppingCart, User, MenuIcon, MapPin, ShoppingBag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/contexts/cart-context";
 import { CartSidebar } from "../cart/cart-sidebar";
@@ -67,17 +67,21 @@ export function PublicLayout({ children }: PublicLayoutProps) {
           </div>
 
           <div className="flex items-center gap-2">
+            {/* Button map */}
             <Button variant="ghost" size="icon">
               <MapPin className="h-6 w-6" />
             </Button>
+            {/* Button cart */}
             <Button variant="ghost" size="icon" onClick={openCart} className="relative">
               {cartItemCount > 0 && (
-              <Badge className="absolute -top-2 -right-2 h-5 w-5 justify-center p-0">
+              <Badge className="absolute -top-2 -right-2 h-5 w-5 justify-center p-0 text-xs rounded-full bg-red-500 text-white">
                 {cartItemCount}
               </Badge>
               )}
-              <ShoppingCart className="h-6 w-6" />
+              <ShoppingBag className="h-6 w-6" />
             </Button>
+
+            {/* Button user */}
             <Link href="/auth/login">
               <Button
                 size="lg"

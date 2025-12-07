@@ -6,6 +6,7 @@ import { AddToCartDialog } from "@/components/cart/add-to-cart-dialog";
 import { ProductCard } from "@/components/cart/product-card";
 import { CategoriesFilter } from "@/components/product/categories-filter";
 import { Product } from "@/types";
+import { useCart } from "@/contexts/cart-context";
 
 const categories = [
   {
@@ -164,12 +165,16 @@ const mockProducts: Product[] = [
 export default function MenuPage() {
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const { addToCart } = useCart();
 
   const handleAddToCart = (product: Product) => {
-    setSelectedProduct(product);
-    setIsDialogOpen(true);
+    addToCart({
+      id: product.id,
+      name: product.name,
+      price: product.basePrice,
+      quantity: 1,
+      image: product.image || "/placeholder.svg",
+    });
   };
 
   const filteredProducts = mockProducts.filter((product) => {
@@ -211,11 +216,6 @@ export default function MenuPage() {
           </div>
         )}
       </div>
-      <AddToCartDialog
-        product={selectedProduct}
-        isOpen={isDialogOpen}
-        onClose={() => setIsDialogOpen(false)}
-      />
     </PublicLayout>
   );
 }
