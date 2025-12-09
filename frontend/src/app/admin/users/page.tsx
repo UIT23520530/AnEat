@@ -401,41 +401,49 @@ export default function AdminUsersPage() {
   return (
     <AdminLayout>
       <div style={{ padding: "24px" }}>
-        {/* Header */}
-        <div style={{ marginBottom: "24px" }}>
-          <h1 style={{ fontSize: "28px", fontWeight: "bold", margin: 0 }}>
-            User Management
-          </h1>
-          <p style={{ color: "#6B7280", marginTop: "8px" }}>
-            Manage all system users
-          </p>
-        </div>
-
-        {/* Search and Add Button */}
+        {/* Header with Search and Add Button */}
         <div
           style={{
             display: "flex",
-            justifyContent: "space-between",
             alignItems: "center",
+            justifyContent: "space-between",
             marginBottom: "24px",
+            gap: "16px",
           }}
         >
-          <Input
-            placeholder="Search users by name or email..."
-            prefix={<SearchOutlined />}
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            style={{ maxWidth: "400px" }}
-            size="large"
-          />
-          <Button
-            type="primary"
-            icon={<PlusOutlined />}
-            size="large"
-            onClick={() => setIsAddModalOpen(true)}
+          <div>
+            <h1 style={{ fontSize: "28px", fontWeight: "bold", margin: 0 }}>
+              Quản lý người dùng
+            </h1>
+            {/* <p style={{ color: "#6B7280", marginTop: "8px" }}>
+              Manage all system users
+            </p> */}
+          </div>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "12px",
+            }}
           >
-            Add User
-          </Button>
+            <Input
+              placeholder="Search users by name or email..."
+              prefix={<SearchOutlined />}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              style={{ width: "300px" }}
+              size="large"
+              allowClear
+            />
+            <Button
+              type="primary"
+              icon={<PlusOutlined />}
+              size="large"
+              onClick={() => setIsAddModalOpen(true)}
+            >
+              Add User
+            </Button>
+          </div>
         </div>
 
         {/* Tabs */}
@@ -444,6 +452,7 @@ export default function AdminUsersPage() {
           onChange={setActiveTab}
           items={tabItems}
           size="large"
+          style={{ marginBottom: "16px" }}
         />
 
         {/* Table */}
@@ -457,7 +466,6 @@ export default function AdminUsersPage() {
             pageSizeOptions: ["5", "10", "20", "50"],
           }}
           scroll={{ x: 1200 }}
-          style={{ marginTop: "16px" }}
         />
 
         {/* Add User Modal */}

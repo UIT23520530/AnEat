@@ -25,12 +25,14 @@ import { Badge } from "@/components/ui/badge"
 import { AntdProvider } from "@/components/providers/AntdProvider"
 import 'antd/dist/reset.css'
 import '@/styles/antd-custom.css'
+import { categories } from "@/lib/menu-data"
 
 const adminNavItems: NavItem[] = [
   { href: "/admin/dashboard", icon: LayoutDashboard, label: "Tổng quan" },
   { href: "/admin/analytics", icon: BarChart, label: "Phân tích" },
   { href: "/admin/stores", icon: Store, label: "Cửa hàng" },
   { href: "/admin/users", icon: Users, label: "Người dùng" },
+  { href: "/admin/categories", icon: Users, label: "Danh mục" },
   { href: "/admin/products", icon: ShoppingBag, label: "Sản phẩm" },
   { href: "/admin/promotions", icon: Ticket, label: "Khuyến mãi" },
   { href: "/admin/invoices", icon: FileText, label: "Hoá đơn" },

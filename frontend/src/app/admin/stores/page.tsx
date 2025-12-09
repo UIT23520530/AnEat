@@ -158,10 +158,10 @@ export function StoresView({ initialStores }: StoresViewProps) {
         <CardHeader>
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
-              <CardTitle className="text-2xl font-bold text-slate-900">All Stores</CardTitle>
-              <p className="text-sm text-slate-500 mt-1">
-                Manage your store locations and details
-              </p>
+              <CardTitle className="text-2xl font-bold text-slate-900">Quản lý cửa hàng</CardTitle>
+              {/* <p className="text-sm text-slate-500 mt-1">
+                Quản lý tất cả các cửa hàng của bạn
+              </p> */}
             </div>
             <div className="flex items-center gap-3 w-full sm:w-auto">
               <Input
