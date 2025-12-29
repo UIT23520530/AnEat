@@ -14,7 +14,7 @@ services:
       - "${DB_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./backend/docker/database/init.sql:/docker-entrypoint-initdb.d/init.sql
     networks:
       - aneat-network
     healthcheck:
@@ -27,7 +27,7 @@ services:
   backend:
     build:
       context: ./backend
-      dockerfile: Dockerfile
+      dockerfile: docker/Dockerfile
     container_name: aneat-backend
     restart: unless-stopped
     depends_on:
@@ -52,21 +52,23 @@ services:
     networks:
       - aneat-network
 
-  # Frontend (Optional - for production)
-  # frontend:
-  #   build:
-  #     context: ./frontend
-  #     dockerfile: Dockerfile
-  #   container_name: aneat-frontend
-  #   restart: unless-stopped
-  #   depends_on:
-  #     - backend
-  #   environment:
-  #     NEXT_PUBLIC_API_URL: http://backend:3001
-  #   ports:
-  #     - "3000:3000"
-  #   networks:
-  #     - aneat-network
+  # Frontend (Next.js)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: aneat-frontend
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_started
+    environment:
+      NEXT_PUBLIC_API_URL: http://backend:3001
+      NODE_ENV: ${NODE_ENV:-production}
+    ports:
+      - "3000:3000"
+    networks:
+      - aneat-network
 
   # pgAdmin (Optional - for database management)
   pgadmin:
