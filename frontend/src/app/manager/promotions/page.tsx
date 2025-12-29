@@ -6,7 +6,7 @@ import { Table, Space, Button, Tag, Modal, Form, Popconfirm, App, Statistic, Row
 import type { TableColumnsType } from "antd";
 import { PlusOutlined, EditOutlined, DeleteOutlined, PercentageOutlined, GiftOutlined, TruckOutlined, TagsOutlined } from "@ant-design/icons";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import PromotionsForm from "@/components/forms/Manager/PromotionsForm";
+import PromotionsForm from "@/components/forms/manager/PromotionsForm";
 import dayjs from "dayjs";
 
 interface Promotion {

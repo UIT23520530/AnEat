@@ -6,7 +6,7 @@ import type { TableColumnsType } from "antd";
 import { EditOutlined, DeleteOutlined, PlusOutlined, PercentageOutlined, GiftOutlined, TruckOutlined, TagsOutlined } from "@ant-design/icons";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AdminLayout } from "@/components/layouts/admin-layout";
-import { PromotionsForm } from "@/components/forms/Admin/PromotionsForm";
+import { PromotionsForm } from "@/components/forms/admin/PromotionsForm";
 import dayjs from "dayjs";
 
 interface Promotion {

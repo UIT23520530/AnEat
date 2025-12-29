@@ -430,9 +430,6 @@ function InvoicesContent() {
               <CardTitle className="text-2xl font-bold text-slate-900">
                 Quản lý Hóa đơn
               </CardTitle>
-              <p className="text-sm text-slate-500 mt-1">
-                Xem và quản lý lịch sử hóa đơn của cửa hàng Downtown Store
-              </p>
             </div>
 
             {/* Stats Cards */}

@@ -9,27 +9,48 @@ import {
   Settings,
   FileCode,
   BarChart,
-  ClipboardList,
+  ChevronRight,
 } from "lucide-react"
+import { usePathname } from "next/navigation"
 import { Sidebar, NavItem } from "./sidebar"
 import { useState } from "react"
 import { AntdProvider } from "@/components/providers/AntdProvider"
+import { cn } from "@/lib/utils"
 import 'antd/dist/reset.css'
 import '@/styles/antd-custom.css'
 
 const managerNavItems: NavItem[] = [
   { href: "/manager/dashboard", icon: LayoutDashboard, label: "Tổng quan" },
   { href: "/manager/analytics", icon: BarChart, label: "Phân tích" },
-  { href: "/manager/staff", icon: Users, label: "Nhân viên" },
-  { href: "/manager/products", icon: ShoppingBag, label: "Sản phẩm" },
-  { href: "/manager/promotions", icon: Ticket, label: "Khuyến mãi" },
-  { href: "/manager/invoices", icon: FileText, label: "Hóa đơn" },
+  { href: "/manager/staffs", icon: Users, label: "Danh sách nhân viên" },
+  { href: "/manager/products", icon: ShoppingBag, label: "Danh sách sản phẩm" },
+  { href: "/manager/promotions", icon: Ticket, label: "Chương trình khuyến mãi" },
+  { href: "/manager/invoices", icon: FileText, label: "Quản lý hóa đơn" },
   { href: "/manager/templates", icon: FileCode, label: "Mẫu" },
   { href: "/manager/settings", icon: Settings, label: "Cài đặt" },
 ]
 
+interface BreadcrumbItem {
+  label: string
+  href?: string
+}
+
+const breadcrumbMap: Record<string, BreadcrumbItem[]> = {
+  "/manager/dashboard": [{ label: "Tổng quan" }],
+  "/manager/analytics": [{ label: "Phân tích" }],
+  "/manager/staffs": [{ label: "Danh sách nhân viên" }],
+  "/manager/products": [{ label: "Danh sách sản phẩm" }],
+  "/manager/promotions": [{ label: "Chương trình khuyến mãi" }],
+  "/manager/invoices": [{ label: "Quản lý hóa đơn" }],
+  "/manager/templates": [{ label: "Mẫu" }],
+  "/manager/settings": [{ label: "Cài đặt" }],
+  "/manager/tables": [{ label: "Quản lý bàn" }],
+}
+
 export function ManagerLayout({ children }: { children: React.ReactNode }) {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
+  const pathname = usePathname()
+  const breadcrumbs = breadcrumbMap[pathname] || [{ label: "Quản lý" }]
 
   return (
     <div className="min-h-screen w-full">
@@ -37,13 +58,31 @@ export function ManagerLayout({ children }: { children: React.ReactNode }) {
         navItems={managerNavItems}
         isCollapsed={isSidebarCollapsed}
         onToggle={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-        roleLabel="Manager Panel"
+        
       />
       <main
         className={`transition-all duration-300 ease-in-out ${
           isSidebarCollapsed ? "ml-20" : "ml-64"
         }`}
       >
+        <div className="bg-white border-b border-gray-200 px-6 h-20 flex items-center">
+          <div className="flex items-center gap-2">
+            <span className="text-gray-400 text-lg font-medium">Quản lý</span>
+            {breadcrumbs.map((item, index) => (
+              <div key={index} className="flex items-center gap-2">
+                <ChevronRight className="w-4 h-4 text-gray-400" />
+                <span className={cn(
+                  "text-lg font-medium",
+                  index === breadcrumbs.length - 1 
+                    ? "text-orange-600" 
+                    : "text-gray-600"
+                )}>
+                  {item.label}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
         <AntdProvider>
           {children}
         </AntdProvider>

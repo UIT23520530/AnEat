@@ -1,8 +1,9 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
+import Image from "next/image"
 import {
   ArrowLeftToLine,
   ArrowRightToLine,
@@ -12,10 +13,11 @@ import {
   UserCircle,
 } from "lucide-react"
 
-import { logout } from "@/lib/auth"
+import { logout, getCurrentUser } from "@/lib/auth"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import type { User } from "@/types"
 
 export interface NavItem {
   href: string
@@ -28,7 +30,6 @@ interface SidebarProps {
   navItems: NavItem[]
   isCollapsed: boolean
   onToggle: () => void
-  roleLabel: string
   className?: string
 }
 
@@ -36,10 +37,15 @@ export function Sidebar({
   navItems,
   isCollapsed,
   onToggle,
-  roleLabel,
   className,
 }: SidebarProps) {
   const pathname = usePathname()
+  const [currentUser, setCurrentUser] = useState<User | null>(null)
+
+  useEffect(() => {
+    const user = getCurrentUser()
+    setCurrentUser(user)
+  }, [])
 
   return (
     <div
@@ -50,27 +56,34 @@ export function Sidebar({
       )}
     >
       <div className="flex h-full max-h-screen flex-col">
-        <div className="flex h-20 items-center px-6 border-b border-gray-100">
+        <div className="flex h-20 items-center justify-center px-6 border-b border-gray-100">
           <Link
             href="/"
             className={cn(
-              "flex items-center gap-2",
+              "flex items-center gap-2 justify-center",
               isCollapsed && "justify-center"
             )}
           >
-            <div className="text-xl font-bold">
-              {!isCollapsed && (
-                <>
-                  <span className="text-slate-900">AnEat</span>
-                </>
-              )}
-              {isCollapsed && <span className="text-slate-900">AE</span>}
-            </div>
+            <Image
+              src="/icons/AnEat.svg"
+              alt="AnEat Logo"
+              width={isCollapsed ? 32 : 32}
+              height={isCollapsed ? 32 : 32}
+              className="object-contain"
+              priority
+            />
+            {!isCollapsed && (
+              <span className="text-xl font-bold text-orange-500">AnEat</span>
+            )}
           </Link>
         </div>
         {!isCollapsed && (
-          <div className="px-4 py-3 text-xs text-slate-500 font-medium">
-            {roleLabel}
+          <div className="px-6 py-3 text-xs text-slate-600 font-medium border-b border-gray-100">
+            <div className="text-center">
+              {currentUser?.role === "ADMIN_SYSTEM"
+                ? "ADMIN SYSTEM"
+                : `MANAGER - ${currentUser?.branchName || "Branch"}`}
+            </div>
           </div>
         )}
         <ScrollArea className="flex-1">
@@ -96,6 +109,22 @@ export function Sidebar({
           </nav>
         </ScrollArea>
         <div className="mt-auto border-t border-gray-100">
+          {currentUser && !isCollapsed && (
+            <div className="p-3 mb-2 bg-slate-50 rounded-lg mx-2">
+              <p className="text-sm font-semibold text-gray-800 truncate">
+                {currentUser.name}
+              </p>
+              <p className="text-xs text-gray-600 capitalize">
+                {currentUser.role === "ADMIN_SYSTEM" 
+                  ? "System Admin"
+                  : currentUser.role === "ADMIN_BRAND"
+                  ? "Brand Admin"
+                  : currentUser.role === "STAFF"
+                  ? "Staff"
+                  : "Customer"}
+              </p>
+            </div>
+          )}
           <div className="p-3 space-y-1">
             <Link href="/profile">
               <Button

@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { ManagerLayout } from "@/components/layouts/manager-layout";
-import ManagerProductsForm from "@/components/forms/Manager/ProductsForm";
+import ManagerProductsForm from "@/components/forms/manager/ProductsForm";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
   Button,
@@ -318,7 +319,7 @@ function ProductsContent() {
       setIsRestockModalOpen(false);
       setSelectedProduct(null);
       message.success(
-        `Successfully restocked ${restockQuantity} units of ${selectedProduct.name}!`
+        `Nhập hàng thành công ${restockQuantity} sản phẩm của ${selectedProduct.name}!`
       );
     }
   };
@@ -343,7 +344,7 @@ function ProductsContent() {
       })
     );
     message.success(
-      `Stock adjusted by ${adjustment > 0 ? "+" : ""}${adjustment}`
+      `Tồn kho đã được cập nhật ${adjustment > 0 ? "+" : ""}${adjustment}`
     );
   };
 
@@ -375,7 +376,7 @@ function ProductsContent() {
 
     setProducts([...products, productToAdd]);
     setIsAddModalOpen(false);
-    message.success("Product added successfully!");
+    message.success("Sản phẩm đã được thêm thành công!");
   };
 
   const handleEditProduct = (values: any) => {
@@ -410,7 +411,7 @@ function ProductsContent() {
     );
     setIsEditModalOpen(false);
     setSelectedProduct(null);
-    message.success("Product updated successfully!");
+    message.success("Sản phẩm đã được cập nhật thành công!");
   };
 
   const handleEdit = (record: ProductData) => {
@@ -420,12 +421,12 @@ function ProductsContent() {
 
   const handleDelete = (id: string) => {
     setProducts(products.filter((product) => product.id !== id));
-    message.success("Product deleted successfully!");
+    message.success("Sản phẩm đã được xóa thành công!");
   };
 
   const columns: TableColumnsType<ProductData> = [
     {
-      title: "Product",
+      title: "Sản phẩm",
       dataIndex: "name",
       key: "name",
       fixed: "left",
@@ -487,7 +488,7 @@ function ProductsContent() {
       ),
     },
     {
-      title: "Category",
+      title: "Danh mục",
       dataIndex: "category",
       key: "category",
       width: 140,
@@ -505,7 +506,7 @@ function ProductsContent() {
       ),
     },
     {
-      title: "Price",
+      title: "Giá",
       dataIndex: "price",
       key: "price",
       width: 130,
@@ -517,7 +518,7 @@ function ProductsContent() {
       ),
     },
     {
-      title: "Stock Level",
+      title: "Tồn kho",
       key: "stockLevel",
       width: 200,
       sorter: (a, b) => a.stock - b.stock,
@@ -574,14 +575,14 @@ function ProductsContent() {
       ),
     },
     {
-      title: "Status",
+      title: "Trạng thái",
       dataIndex: "status",
       key: "status",
       width: 140,
       filters: [
-        { text: "Available", value: "available" },
-        { text: "Low Stock", value: "low-stock" },
-        { text: "Out of Stock", value: "out-of-stock" },
+        { text: "Có sẵn", value: "available" },
+        { text: "Sắp hết hàng", value: "low-stock" },
+        { text: "Hết hàng", value: "out-of-stock" },
       ],
       onFilter: (value, record) => record.status === value,
       render: (status: string) => (
@@ -596,15 +597,15 @@ function ProductsContent() {
           color={getStatusColor(status)}
         >
           {status === "out-of-stock"
-            ? "OUT OF STOCK"
+            ? "Hết hàng"
             : status === "low-stock"
-            ? "LOW STOCK"
-            : status.toUpperCase()}
+            ? "Sắp hết"
+            : "Có sẵn"}
         </Tag>
       ),
     },
     {
-      title: "Last Restocked",
+      title: "Lần nhập hàng cuối",
       dataIndex: "lastRestocked",
       key: "lastRestocked",
       width: 130,
@@ -615,7 +616,7 @@ function ProductsContent() {
       ),
     },
     {
-      title: "Quick Adjust",
+      title: "Thật nhanh",
       key: "quickAdjust",
       width: 140,
       render: (_, record) => (
@@ -635,7 +636,7 @@ function ProductsContent() {
       ),
     },
     {
-      title: "Actions",
+      title: "Thao tác",
       key: "actions",
       fixed: "right",
       width: 180,
@@ -648,7 +649,7 @@ function ProductsContent() {
             onClick={() => handleRestock(record)}
             block
           >
-            Restock
+            Nhập hàng
           </Button>
           <Space size="small" style={{ width: "100%" }}>
             <Button
@@ -656,17 +657,17 @@ function ProductsContent() {
               icon={<EditOutlined />}
               onClick={() => handleEdit(record)}
             >
-              Edit
+              Chỉnh sửa
             </Button>
             <Popconfirm
-              title="Delete product"
-              description="Are you sure?"
+              title="Xóa sản phẩm"
+              description="Bạn chắc chắn?"
               onConfirm={() => handleDelete(record.id)}
-              okText="Yes"
-              cancelText="No"
+              okText="Có"
+              cancelText="Không"
             >
               <Button size="small" danger icon={<DeleteOutlined />}>
-                Delete
+                Xóa
               </Button>
             </Popconfirm>
           </Space>
@@ -681,120 +682,108 @@ function ProductsContent() {
   const outOfStockProducts = products.filter((p) => p.status === "out-of-stock").length;
 
   return (
-    <div style={{ padding: "24px" }}>
-      {/* Header */}
-      <div style={{ marginBottom: "24px" }}>
-        <h1 style={{ fontSize: "28px", fontWeight: "bold", margin: 0 }}>
-          Inventory Management
-        </h1>
-        <p style={{ color: "#6B7280", marginTop: "8px" }}>
-          Manage Downtown Store product inventory
-        </p>
-      </div>
+    <div className="p-8">
+      <Card className="border-0 shadow-sm">
+        <CardHeader>
+          <div className="flex flex-col gap-4">
+            <div>
+              <CardTitle className="text-2xl font-bold text-slate-900">
+                Quản lý Hóa đơn
+              </CardTitle>
+            </div>
 
-      {/* Statistics Cards */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(4, 1fr)",
-          gap: "16px",
-          marginBottom: "24px",
-        }}
-      >
-        <AntCard style={{ border: "1px solid #E5E7EB" }}>
-          <Statistic
-            title="Total Products"
-            value={totalProducts}
-            valueStyle={{ color: "#3B82F6", fontSize: "28px", fontWeight: "bold" }}
-          />
-        </AntCard>
-        <AntCard style={{ border: "1px solid #E5E7EB" }}>
-          <Statistic
-            title="Available"
-            value={availableProducts}
-            valueStyle={{ color: "#10B981", fontSize: "28px", fontWeight: "bold" }}
-            prefix={<CheckCircleOutlined />}
-          />
-        </AntCard>
-        <AntCard style={{ border: "1px solid #E5E7EB" }}>
-          <Statistic
-            title="Low Stock"
-            value={lowStockProducts}
-            valueStyle={{ color: "#F59E0B", fontSize: "28px", fontWeight: "bold" }}
-            prefix={<WarningOutlined />}
-          />
-        </AntCard>
-        <AntCard style={{ border: "1px solid #E5E7EB" }}>
-          <Statistic
-            title="Out of Stock"
-            value={outOfStockProducts}
-            valueStyle={{ color: "#EF4444", fontSize: "28px", fontWeight: "bold" }}
-            prefix={<WarningOutlined />}
-          />
-        </AntCard>
-      </div>
+            {/* Statistics Cards */}
+            <div className="grid grid-cols-4 gap-4">
+              <AntCard className="border border-slate-200 bg-white">
+                <Statistic
+                  title="Tổng số sản phẩm"
+                  value={totalProducts}
+                  valueStyle={{ color: "#3B82F6", fontSize: "28px", fontWeight: "bold" }}
+                />
+              </AntCard>
+              <AntCard className="border border-slate-200 bg-white">
+                <Statistic
+                  title="Có sẵn"
+                  value={availableProducts}
+                  valueStyle={{ color: "#10B981", fontSize: "28px", fontWeight: "bold" }}
+                  prefix={<CheckCircleOutlined />}
+                />
+              </AntCard>
+              <AntCard className="border border-slate-200 bg-white">
+                <Statistic
+                  title="Sắp hết hàng"
+                  value={lowStockProducts}
+                  valueStyle={{ color: "#F59E0B", fontSize: "28px", fontWeight: "bold" }}
+                  prefix={<WarningOutlined />}
+                />
+              </AntCard>
+              <AntCard className="border border-slate-200 bg-white">
+                <Statistic
+                  title="Hết hàng"
+                  value={outOfStockProducts}
+                  valueStyle={{ color: "#EF4444", fontSize: "28px", fontWeight: "bold" }}
+                  prefix={<WarningOutlined />}
+                />
+              </AntCard>
+            </div>
 
-      {/* Search and Filters */}
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: "24px",
-          gap: "16px",
-        }}
-      >
-        <div style={{ display: "flex", gap: "16px", flex: 1 }}>
-          <Input
-            placeholder="Search products by name or SKU..."
-            prefix={<SearchOutlined />}
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            style={{ maxWidth: "400px" }}
-            size="large"
+            {/* Search and Filters */}
+            <div className="flex justify-between items-center gap-4">
+              <div className="flex gap-4 flex-1">
+                <Input
+                  placeholder="Tìm kiếm sản phẩm theo tên hoặc SKU..."
+                  prefix={<SearchOutlined />}
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="max-w-sm"
+                  size="large"
+                />
+                <Select
+                  value={selectedCategory}
+                  onChange={setSelectedCategory}
+                  className="w-56"
+                  size="large"
+                  options={[
+                    { label: "Tất cả danh mục", value: "all" },
+                    { label: "Main Course", value: "Main Course" },
+                    { label: "Side Dish", value: "Side Dish" },
+                    { label: "Appetizer", value: "Appetizer" },
+                    { label: "Dessert", value: "Dessert" },
+                    { label: "Beverage", value: "Beverage" },
+                    { label: "Combo", value: "Combo" },
+                  ]}
+                />
+              </div>
+              <Button
+                type="primary"
+                icon={<PlusOutlined />}
+                size="large"
+                onClick={() => setIsAddModalOpen(true)}
+              >
+                Thêm sản phẩm
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {/* Table */}
+          <Table
+            columns={columns}
+            dataSource={filteredProducts}
+            pagination={{
+              pageSize: 10,
+              showSizeChanger: true,
+              showTotal: (total) => `Tổng cộng ${total} sản phẩm`,
+              pageSizeOptions: ["5", "10", "20", "50"],
+            }}
+            scroll={{ x: 1500 }}
           />
-          <Select
-            value={selectedCategory}
-            onChange={setSelectedCategory}
-            style={{ width: 200 }}
-            size="large"
-            options={[
-              { label: "All Categories", value: "all" },
-              { label: "Main Course", value: "Main Course" },
-              { label: "Side Dish", value: "Side Dish" },
-              { label: "Appetizer", value: "Appetizer" },
-              { label: "Dessert", value: "Dessert" },
-              { label: "Beverage", value: "Beverage" },
-              { label: "Combo", value: "Combo" },
-            ]}
-          />
-        </div>
-        <Button
-          type="primary"
-          icon={<PlusOutlined />}
-          size="large"
-          onClick={() => setIsAddModalOpen(true)}
-        >
-          Add Product
-        </Button>
-      </div>
-
-      {/* Table */}
-      <Table
-        columns={columns}
-        dataSource={filteredProducts}
-        pagination={{
-          pageSize: 10,
-          showSizeChanger: true,
-          showTotal: (total) => `Total ${total} products`,
-          pageSizeOptions: ["5", "10", "20", "50"],
-        }}
-        scroll={{ x: 1500 }}
-      />
+        </CardContent>
+      </Card>
 
       {/* Add Product Modal */}
       <Modal
-        title="Add New Product"
+        title="Thêm sản phẩm mới"
         open={isAddModalOpen}
         onCancel={() => setIsAddModalOpen(false)}
         footer={null}
@@ -811,7 +800,7 @@ function ProductsContent() {
           }}
         >
           <Button onClick={() => setIsAddModalOpen(false)} size="large">
-            Cancel
+            Hủy
           </Button>
           <Button
             type="primary"
@@ -826,14 +815,14 @@ function ProductsContent() {
               }
             }}
           >
-            Add Product
+            Thêm sản phẩm
           </Button>
         </div>
       </Modal>
 
       {/* Edit Product Modal */}
       <Modal
-        title="Edit Product"
+        title="Chỉnh sửa sản phẩm"
         open={isEditModalOpen}
         onCancel={() => {
           setIsEditModalOpen(false);
@@ -863,7 +852,7 @@ function ProductsContent() {
             }}
             size="large"
           >
-            Cancel
+            Hủy
           </Button>
           <Button
             type="primary"
@@ -878,7 +867,7 @@ function ProductsContent() {
               }
             }}
           >
-            Save Changes
+            Lưu thay đổi
           </Button>
         </div>
       </Modal>      {/* Restock Modal */}
@@ -886,7 +875,7 @@ function ProductsContent() {
         title={
           <div>
             <PlusCircleOutlined style={{ marginRight: "8px", color: "#10B981" }} />
-            Restock Product
+            Nhập hàng
           </div>
         }
         open={isRestockModalOpen}
@@ -895,8 +884,8 @@ function ProductsContent() {
           setSelectedProduct(null);
         }}
         onOk={handleConfirmRestock}
-        okText="Confirm Restock"
-        cancelText="Cancel"
+        okText="Xác nhận"
+        cancelText="Hủy"
         width={600}
         destroyOnHidden
       >
@@ -915,18 +904,18 @@ function ProductsContent() {
               </h3>
               <div style={{ fontSize: "13px", color: "#6B7280" }}>
                 <div>SKU: {selectedProduct.sku}</div>
-                <div>Current Stock: {selectedProduct.stock} units</div>
-                <div>Min Stock: {selectedProduct.minStock} units</div>
-                <div>Max Stock: {selectedProduct.maxStock} units</div>
+                <div>Tồn kho hiện tại: {selectedProduct.stock} sản phẩm</div>
+                <div>Tồn kho tối thiểu: {selectedProduct.minStock} sản phẩm</div>
+                <div>Tồn kho tối đa: {selectedProduct.maxStock} sản phẩm</div>
                 {selectedProduct.supplier && (
-                  <div>Supplier: {selectedProduct.supplier}</div>
+                  <div>Nhà cung cấp: {selectedProduct.supplier}</div>
                 )}
               </div>
             </div>
 
             <div>
               <label style={{ display: "block", marginBottom: "8px", fontWeight: 600 }}>
-                Restock Quantity
+                Số lượng nhập hàng
               </label>
               <InputNumber
                 value={restockQuantity}
@@ -935,7 +924,7 @@ function ProductsContent() {
                 max={selectedProduct.maxStock - selectedProduct.stock}
                 style={{ width: "100%" }}
                 size="large"
-                addonAfter="units"
+                addonAfter="sản phẩm"
               />
               <div
                 style={{
@@ -944,9 +933,9 @@ function ProductsContent() {
                   color: "#6B7280",
                 }}
               >
-                New stock level will be:{" "}
+                Tồn kho mới sẽ là:{" "}
                 <strong style={{ color: "#10B981" }}>
-                  {selectedProduct.stock + restockQuantity} units
+                  {selectedProduct.stock + restockQuantity} sản phẩm
                 </strong>
               </div>
             </div>

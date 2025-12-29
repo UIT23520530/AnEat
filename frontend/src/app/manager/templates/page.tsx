@@ -6,7 +6,7 @@ import { Table, Button, Input, Space, Tag, Modal, App } from "antd";
 import type { ColumnsType, TablePaginationConfig } from "antd/es/table";
 import { EditOutlined, DeleteOutlined, PlusOutlined, SearchOutlined, FileTextOutlined, EyeOutlined, PrinterOutlined, StarOutlined, CopyOutlined } from "@ant-design/icons";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { TemplatesForm } from "@/components/forms/Manager/TemplatesForm";
+import { TemplatesForm } from "@/components/forms/manager/TemplatesForm";
 
 interface Template {
   id: string;

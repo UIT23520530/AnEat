@@ -5,7 +5,7 @@ import { AdminLayout } from "@/components/layouts/admin-layout";
 import { Table, Button, Input, Tag, Space, Modal, Popconfirm, App, Image, Badge } from "antd";
 import { SearchOutlined, PlusOutlined, EditOutlined, DeleteOutlined, AppstoreOutlined } from "@ant-design/icons";
 import type { TableColumnsType } from "antd";
-import CategoriesForm from "@/components/forms/Admin/CategoriesForm";
+import CategoriesForm from "@/components/forms/admin/CategoriesForm";
 
 interface CategoryData {
   key: string;

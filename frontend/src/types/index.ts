@@ -9,6 +9,7 @@ export interface User {
   phone: string
   role: UserRole
   branchId?: string // For ADMIN_BRAND and STAFF
+  branchName?: string // For ADMIN_BRAND and STAFF
   avatar?: string
 }
 

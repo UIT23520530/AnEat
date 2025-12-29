@@ -27,7 +27,8 @@ import {
   MailOutlined,
 } from "@ant-design/icons";
 import type { TabsProps, TableColumnsType } from "antd";
-import { StaffForm } from "@/components/forms/Manager/StaffForm";
+import { StaffForm } from "@/components/forms/manager/StaffForm";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 interface StaffData {
   key: string;
@@ -434,7 +435,7 @@ function StaffContent() {
       key: "all",
       label: (
         <span>
-          <TeamOutlined /> All Staff ({staff.length})
+          <TeamOutlined /> Tất cả ({staff.length})
         </span>
       ),
     },
@@ -442,80 +443,83 @@ function StaffContent() {
       key: "active",
       label: (
         <span>
-          <UserOutlined /> Active ({staff.filter((s) => s.status === "active").length})
+          <UserOutlined /> Đang hoạt động ({staff.filter((s) => s.status === "active").length})
         </span>
       ),
     },
     {
       key: "cashier",
-      label: `Cashiers (${staff.filter((s) => s.position === "cashier").length})`,
+      label: `Thu ngân (${staff.filter((s) => s.position === "cashier").length})`,
     },
     {
       key: "on-leave",
-      label: `On Leave (${staff.filter((s) => s.status === "on-leave").length})`,
+      label: `Nghỉ phép (${staff.filter((s) => s.status === "on-leave").length})`,
     },
   ];
 
   return (
-    <div style={{ padding: "24px" }}>
-      {/* Header */}
-      <div style={{ marginBottom: "24px" }}>
-        <h1 style={{ fontSize: "28px", fontWeight: "bold", margin: 0 }}>
-          Staff Management
-        </h1>
-        <p style={{ color: "#6B7280", marginTop: "8px" }}>
-          Manage Downtown Store team members
-        </p>
-      </div>
+    <div className="p-8">
+      <Card className="border-0 shadow-sm">
+        <CardHeader>
+          <div className="flex flex-col gap-4">
+            <div>
+              <CardTitle className="text-2xl font-bold text-slate-900">
+                Quản lý Nhân viên
+              </CardTitle>
+            </div>
 
-      {/* Search and Add Button */}
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: "24px",
-        }}
-      >
-        <Input
-          placeholder="Search staff by name, email, or phone..."
-          prefix={<SearchOutlined />}
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          style={{ maxWidth: "400px" }}
-          size="large"
-        />
-        <Button
-          type="primary"
-          icon={<PlusOutlined />}
-          size="large"
-          onClick={() => setIsAddModalOpen(true)}
-        >
-          Add Staff Member
-        </Button>
-      </div>
+            {/* Search and Add Button */}
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
+              <Input
+                placeholder="Search staff by name, email, or phone..."
+                prefix={<SearchOutlined />}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                style={{ maxWidth: "400px" }}
+                size="large"
+              />
+              <Button
+                type="primary"
+                icon={<PlusOutlined />}
+                size="large"
+                onClick={() => setIsAddModalOpen(true)}
+              >
+                Thêm nhân viên mới
+              </Button>
+            </div>
 
-      {/* Tabs */}
-      <Tabs
-        activeKey={activeTab}
-        onChange={setActiveTab}
-        items={tabItems}
-        size="large"
-      />
+            {/* Tabs */}
+            <Tabs
+              activeKey={activeTab}
+              onChange={setActiveTab}
+              items={tabItems}
+              size="large"
+            />
+          </div>
+        </CardHeader>
 
-      {/* Table */}
-      <Table
-        columns={columns}
-        dataSource={filteredStaff}
-        pagination={{
-          pageSize: 10,
-          showSizeChanger: true,
-          showTotal: (total) => `Total ${total} staff members`,
-          pageSizeOptions: ["5", "10", "20", "50"],
-        }}
-        scroll={{ x: 1400 }}
-        style={{ marginTop: "16px" }}
-      />
+        <CardContent>
+          {/* Table */}
+          <Table
+            columns={columns}
+            dataSource={filteredStaff}
+            pagination={{
+              pageSize: 10,
+              showSizeChanger: true,
+              showTotal: (total) => `Total ${total} staff members`,
+              pageSizeOptions: ["5", "10", "20", "50"],
+            }}
+            scroll={{ x: 1400 }}
+            style={{ marginTop: "16px" }}
+          />
+        </CardContent>
+      </Card>
 
       {/* Add Staff Modal */}
       <Modal
@@ -542,7 +546,7 @@ function StaffContent() {
         }}
         footer={null}
         width={900}
-        destroyOnClose
+        destroyOnHidden
         centered
         maskClosable={false}
       >

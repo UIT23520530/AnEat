@@ -5,7 +5,7 @@ import { AdminLayout } from "@/components/layouts/admin-layout";
 import { Table, Button, Input, Tag, Space, Modal, Popconfirm, App, Image, Badge} from "antd";
 import { SearchOutlined, PlusOutlined, EditOutlined, DeleteOutlined, StarOutlined, StarFilled } from "@ant-design/icons";
 import type { TableColumnsType } from "antd";
-import ProductsForm from "@/components/forms/Admin/ProductsForm";
+import ProductsForm from "@/components/forms/admin/ProductsForm";
 
 interface ProductData {
   key: string;

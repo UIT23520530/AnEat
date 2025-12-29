@@ -7,7 +7,7 @@ import { EditOutlined, DeleteOutlined, PlusOutlined, SearchOutlined } from "@ant
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AdminLayout } from "@/components/layouts/admin-layout";
 
-import { StoresForm } from "@/components/forms/Admin/StoresForm";
+import { StoresForm } from "@/components/forms/admin/StoresForm";
 import { Store } from "@/types";
 import { deleteStore } from "@/lib/actions/store.action";
 

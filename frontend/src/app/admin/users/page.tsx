@@ -24,7 +24,7 @@ import {
   TeamOutlined,
 } from "@ant-design/icons";
 import type { TabsProps, TableColumnsType } from "antd";
-import UsersForm from "@/components/forms/Admin/UsersForm";
+import UsersForm from "@/components/forms/admin/UsersForm";
 
 interface UserData {
   key: string;

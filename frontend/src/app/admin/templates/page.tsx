@@ -6,7 +6,7 @@ import type { ColumnsType, TablePaginationConfig } from "antd/es/table";
 import { EditOutlined, DeleteOutlined, PlusOutlined, SearchOutlined, FileTextOutlined, EyeOutlined, PrinterOutlined, ShopOutlined, StarOutlined, CopyOutlined } from "@ant-design/icons";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AdminLayout } from "@/components/layouts/admin-layout";
-import { TemplatesForm } from "@/components/forms/Admin/TemplatesForm";
+import { TemplatesForm } from "@/components/forms/admin/TemplatesForm";
 
 interface Template {
   id: string;
