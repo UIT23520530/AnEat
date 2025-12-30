@@ -11,7 +11,7 @@ services:
       POSTGRES_PASSWORD: ${DB_PASSWORD:-aneat_password}
       POSTGRES_DB: ${DB_NAME:-aneat_db}
     ports:
-      - "${DB_PORT:-5432}:5432"
+      - "${DB_PORT:-5433}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./backend/docker/database/init.sql:/docker-entrypoint-initdb.d/init.sql

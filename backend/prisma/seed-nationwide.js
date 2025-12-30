@@ -4,11 +4,11 @@ const bcrypt = require('bcryptjs')
 const prisma = new PrismaClient()
 
 async function seedNationwideData() {
-  console.log('🌏 Seeding nationwide data for AnEat...\n')
+  console.log('Seeding nationwide data for AnEat...\n')
 
   try {
     // ==================== Xóa dữ liệu cũ ====================
-    console.log('🗑️  Clearing old data...')
+    console.log('Clearing old data...')
     await prisma.review.deleteMany({})
     await prisma.paymentTransaction.deleteMany({})
     await prisma.orderItem.deleteMany({})
@@ -21,10 +21,10 @@ async function seedNationwideData() {
     await prisma.user.deleteMany({})
     await prisma.productCategory.deleteMany({})
     await prisma.branch.deleteMany({})
-    console.log('✅ Old data cleared\n')
+    console.log('Old data cleared\n')
 
     // ==================== Tạo danh mục sản phẩm ====================
-    console.log('📂 Creating product categories...')
+    console.log('Creating product categories...')
     const categories = {
       burger: await prisma.productCategory.create({
         data: { code: 'BURGER', name: 'Burger', description: 'Các loại bánh burger', isActive: true }

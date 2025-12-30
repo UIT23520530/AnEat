@@ -1,75 +1,65 @@
 "use client";
 
-import { useEffect } from "react";
-import { Form, Input, Button, Row, Col, Select, App, InputNumber, DatePicker } from "antd";
-import dayjs from "dayjs";
-
-interface StaffData {
-  key: string;
-  id: string;
-  name: string;
-  email: string;
-  phone?: string;
-  role: "manager" | "staff";
-  position: "cashier" | "kitchen" | "delivery" | "supervisor";
-  store: string;
-  status: "active" | "inactive" | "on-leave";
-  shift: "morning" | "afternoon" | "evening" | "full-time";
-  joinDate: string;
-  salary?: number;
-  lastActive: string;
-}
+import { useEffect, useState } from "react";
+import { Form, Input, Button, Row, Col, App, Switch } from "antd";
+import { StaffDTO, CreateStaffRequest, UpdateStaffRequest } from "@/types/staff";
 
 interface StaffFormProps {
-  staff?: StaffData;
+  staff?: StaffDTO;
   onSuccess?: () => void;
+  onSubmit: (data: CreateStaffRequest | UpdateStaffRequest) => Promise<boolean>;
 }
 
-export function StaffForm({ staff, onSuccess }: StaffFormProps) {
+export function StaffForm({ staff, onSuccess, onSubmit }: StaffFormProps) {
   const { message } = App.useApp();
   const [form] = Form.useForm();
+  const [loading, setLoading] = useState(false);
   const isEditing = !!staff;
 
   useEffect(() => {
     if (staff) {
       form.setFieldsValue({
-        ...staff,
-        joinDate: staff.joinDate ? dayjs(staff.joinDate) : null,
+        name: staff.name,
+        email: staff.email,
+        phone: staff.phone,
+        isActive: staff.isActive,
+        avatar: staff.avatar || undefined,
       });
     } else {
       // Reset form when creating new staff
       form.resetFields();
+      form.setFieldsValue({
+        isActive: true, // Default active
+      });
     }
   }, [staff, form]);
 
   const handleSubmit = async (values: any) => {
+    setLoading(true);
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      // Format the data - ensure joinDate is properly converted
-      const formattedValues = {
-        ...values,
-        joinDate: values.joinDate && dayjs.isDayjs(values.joinDate) 
-          ? values.joinDate.format("YYYY-MM-DD") 
-          : values.joinDate,
+      const submitData: CreateStaffRequest | UpdateStaffRequest = {
+        name: values.name,
+        email: values.email,
+        phone: values.phone,
+        isActive: values.isActive ?? true,
+        avatar: values.avatar || undefined,
       };
 
-      console.log("Formatted values:", formattedValues);
-
-      if (isEditing) {
-        message.success("Cập nhật nhân viên thành công!");
-      } else {
-        message.success("Thêm nhân viên thành công!");
+      // Thêm password nếu đang tạo mới hoặc có thay đổi password
+      if (!isEditing || values.password) {
+        (submitData as CreateStaffRequest).password = values.password;
       }
 
-      form.resetFields();
-      if (onSuccess) {
-        onSuccess();
+      const success = await onSubmit(submitData);
+
+      if (success) {
+        form.resetFields();
+        onSuccess?.();
       }
-    } catch (error) {
-      console.error("Form submission error:", error);
-      message.error(isEditing ? "Cập nhật nhân viên thất bại" : "Thêm nhân viên thất bại");
+    } catch (error: any) {
+      message.error(error.message || "Có lỗi xảy ra!");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -78,13 +68,6 @@ export function StaffForm({ staff, onSuccess }: StaffFormProps) {
       form={form}
       layout="vertical"
       onFinish={handleSubmit}
-      initialValues={staff || {
-        role: "staff",
-        position: "cashier",
-        status: "active",
-        shift: "morning",
-        store: "Downtown Store",
-      }}
       className="staff-form"
     >
       <Row gutter={16}>
@@ -94,7 +77,7 @@ export function StaffForm({ staff, onSuccess }: StaffFormProps) {
             name="name"
             rules={[
               { required: true, message: "Vui lòng nhập họ tên!" },
-              { min: 3, message: "Họ tên phải có ít nhất 3 ký tự!" },
+              { max: 100, message: "Họ tên không được quá 100 ký tự!" },
             ]}
           >
             <Input placeholder="Nhập họ và tên" size="large" />
@@ -109,7 +92,11 @@ export function StaffForm({ staff, onSuccess }: StaffFormProps) {
               { type: "email", message: "Email không hợp lệ!" },
             ]}
           >
-            <Input placeholder="example@fastfood.com" size="large" />
+            <Input 
+              placeholder="example@aneat.com" 
+              size="large"
+              disabled={isEditing} // Email không thể thay đổi khi edit
+            />
           </Form.Item>
         </Col>
       </Row>
@@ -120,31 +107,34 @@ export function StaffForm({ staff, onSuccess }: StaffFormProps) {
             label="Số điện thoại"
             name="phone"
             rules={[
-              { pattern: /^[0-9]{10}$/, message: "Số điện thoại phải có 10 chữ số!" },
+              { required: true, message: "Vui lòng nhập số điện thoại!" },
+              { 
+                pattern: /^[0-9]{10,11}$/, 
+                message: "Số điện thoại phải có 10-11 chữ số!" 
+              },
             ]}
           >
-            <Input placeholder="0901234567" size="large" maxLength={10} />
+            <Input placeholder="0901234567" size="large" maxLength={11} />
           </Form.Item>
         </Col>
         <Col span={12}>
           <Form.Item
-            label="Ngày vào làm"
-            name="joinDate"
-            rules={[
-              { required: true, message: "Vui lòng chọn ngày vào làm!" },
-            ]}
-            getValueProps={(value) => ({
-              value: value ? dayjs(value) : null,
-            })}
-            normalize={(value) => {
-              return value ? dayjs(value) : null;
-            }}
+            label={isEditing ? "Mật khẩu mới (để trống nếu không đổi)" : "Mật khẩu"}
+            name="password"
+            rules={
+              isEditing 
+                ? [
+                    { min: 6, message: "Mật khẩu phải có ít nhất 6 ký tự!" },
+                  ]
+                : [
+                    { required: true, message: "Vui lòng nhập mật khẩu!" },
+                    { min: 6, message: "Mật khẩu phải có ít nhất 6 ký tự!" },
+                  ]
+            }
           >
-            <DatePicker
-              placeholder="Chọn ngày"
-              style={{ width: "100%" }}
-              size="large"
-              format="YYYY-MM-DD"
+            <Input.Password 
+              placeholder={isEditing ? "Để trống nếu không đổi" : "Nhập mật khẩu"} 
+              size="large" 
             />
           </Form.Item>
         </Col>
@@ -153,98 +143,39 @@ export function StaffForm({ staff, onSuccess }: StaffFormProps) {
       <Row gutter={16}>
         <Col span={12}>
           <Form.Item
-            label="Vai trò"
-            name="role"
-            rules={[{ required: true, message: "Vui lòng chọn vai trò!" }]}
+            label="URL Avatar (tùy chọn)"
+            name="avatar"
           >
-            <Select size="large" placeholder="Chọn vai trò">
-              <Select.Option value="staff">Nhân viên</Select.Option>
-              <Select.Option value="manager">Quản lý</Select.Option>
-            </Select>
+            <Input placeholder="https://example.com/avatar.jpg" size="large" />
           </Form.Item>
         </Col>
         <Col span={12}>
           <Form.Item
-            label="Vị trí"
-            name="position"
-            rules={[{ required: true, message: "Vui lòng chọn vị trí!" }]}
+            label="Trạng thái hoạt động"
+            name="isActive"
+            valuePropName="checked"
           >
-            <Select size="large" placeholder="Chọn vị trí">
-              <Select.Option value="supervisor">Giám sát (Supervisor)</Select.Option>
-              <Select.Option value="cashier">Thu ngân (Cashier)</Select.Option>
-              <Select.Option value="kitchen">Bếp (Kitchen)</Select.Option>
-              <Select.Option value="delivery">Giao hàng (Delivery)</Select.Option>
-            </Select>
-          </Form.Item>
-        </Col>
-      </Row>
-
-      <Row gutter={16}>
-        <Col span={12}>
-          <Form.Item
-            label="Ca làm việc"
-            name="shift"
-            rules={[{ required: true, message: "Vui lòng chọn ca làm việc!" }]}
-          >
-            <Select size="large" placeholder="Chọn ca làm việc">
-              <Select.Option value="morning">Sáng (6AM-2PM)</Select.Option>
-              <Select.Option value="afternoon">Chiều (2PM-10PM)</Select.Option>
-              <Select.Option value="evening">Tối (10PM-6AM)</Select.Option>
-              <Select.Option value="full-time">Toàn thời gian</Select.Option>
-            </Select>
-          </Form.Item>
-        </Col>
-        <Col span={12}>
-          <Form.Item
-            label="Trạng thái"
-            name="status"
-            rules={[{ required: true, message: "Vui lòng chọn trạng thái!" }]}
-          >
-            <Select size="large" placeholder="Chọn trạng thái">
-              <Select.Option value="active">Đang làm việc</Select.Option>
-              <Select.Option value="on-leave">Nghỉ phép</Select.Option>
-              <Select.Option value="inactive">Không hoạt động</Select.Option>
-            </Select>
-          </Form.Item>
-        </Col>
-      </Row>
-
-      <Row gutter={16}>
-        <Col span={12}>
-          <Form.Item
-            label="Lương (VND)"
-            name="salary"
-            rules={[
-              { required: true, message: "Vui lòng nhập lương!" },
-              { type: "number", min: 0, message: "Lương phải lớn hơn 0!" },
-            ]}
-          >
-            <InputNumber
-              placeholder="8000000"
-              style={{ width: "100%" }}
-              size="large"
-              formatter={(value) => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ",")}
-              parser={(value) => Number(value?.replace(/\$\s?|(,*)/g, "") || 0) as any}
-              min={0}
+            <Switch 
+              checkedChildren="Hoạt động" 
+              unCheckedChildren="Vô hiệu hóa"
+              defaultChecked
             />
-          </Form.Item>
-        </Col>
-        <Col span={12}>
-          <Form.Item
-            label="Cửa hàng"
-            name="store"
-          >
-            <Input disabled size="large" placeholder="Downtown Store" />
           </Form.Item>
         </Col>
       </Row>
 
       <Form.Item className="mb-0 mt-6">
         <div className="flex justify-end gap-3">
-          <Button size="large" onClick={onSuccess}>
+          <Button size="large" onClick={onSuccess} disabled={loading}>
             Hủy
           </Button>
-          <Button type="primary" htmlType="submit" size="large" className="bg-blue-500 hover:bg-blue-600">
+          <Button 
+            type="primary" 
+            htmlType="submit" 
+            size="large" 
+            className="bg-blue-500 hover:bg-blue-600"
+            loading={loading}
+          >
             {isEditing ? "Cập nhật" : "Thêm nhân viên"}
           </Button>
         </div>

@@ -83,6 +83,7 @@ model User {
   ordersAssigned  Order[]
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+  deletedAt       DateTime? // Soft delete support
 
   @@map("User")
 }

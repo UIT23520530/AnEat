@@ -77,15 +77,7 @@ export function Sidebar({
             )}
           </Link>
         </div>
-        {!isCollapsed && (
-          <div className="px-6 py-3 text-xs text-slate-600 font-medium border-b border-gray-100">
-            <div className="text-center">
-              {currentUser?.role === "ADMIN_SYSTEM"
-                ? "ADMIN SYSTEM"
-                : `MANAGER - ${currentUser?.branchName || "Branch"}`}
-            </div>
-          </div>
-        )}
+
         <ScrollArea className="flex-1">
           <nav className="grid items-start gap-1 px-3 py-2 text-sm">
             {navItems.map((item) => {
@@ -109,23 +101,49 @@ export function Sidebar({
           </nav>
         </ScrollArea>
         <div className="mt-auto border-t border-gray-100">
-          {currentUser && !isCollapsed && (
-            <div className="p-3 mb-2 bg-slate-50 rounded-lg mx-2">
-              <p className="text-sm font-semibold text-gray-800 truncate">
-                {currentUser.name}
-              </p>
-              <p className="text-xs text-gray-600 capitalize">
-                {currentUser.role === "ADMIN_SYSTEM" 
-                  ? "System Admin"
-                  : currentUser.role === "ADMIN_BRAND"
-                  ? "Brand Admin"
-                  : currentUser.role === "STAFF"
-                  ? "Staff"
-                  : "Customer"}
-              </p>
+          {currentUser && (
+            <div className={cn(
+              "p-4 mx-3 my-3 bg-gradient-to-br from-orange-50 to-green-50 rounded-xl border border-orange-100",
+              isCollapsed && "mx-2 p-2"
+            )}>
+              {!isCollapsed ? (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-orange-500 to-green-500 flex items-center justify-center text-white font-bold shadow-md">
+                      {currentUser.name.charAt(0).toUpperCase()}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-gray-900 truncate">
+                        {currentUser.name}
+                      </p>
+                      <p className="text-xs text-gray-600">
+                        {currentUser.role === "ADMIN_SYSTEM" 
+                          ? "Quản trị hệ thống"
+                          : currentUser.role === "ADMIN_BRAND"
+                          ? "Quản lý chi nhánh"
+                          : currentUser.role === "STAFF"
+                          ? "Nhân viên"
+                          : "Khách hàng"}
+                      </p>
+                    </div>
+                  </div>
+                  {currentUser.role === "ADMIN_BRAND" && currentUser.branchName && (
+                    <div className="pt-2 border-t border-orange-100">
+                      <div className="flex items-center gap-2 text-xs text-gray-700">
+                        <Shield className="w-3.5 h-3.5 text-orange-600" />
+                        <span className="font-medium">{currentUser.branchName}</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-orange-500 to-green-500 flex items-center justify-center text-white font-bold shadow-md mx-auto">
+                  {currentUser.name.charAt(0).toUpperCase()}
+                </div>
+              )}
             </div>
           )}
-          <div className="p-3 space-y-1">
+          <div className="px-3 pb-3 space-y-1">
             <Link href="/profile">
               <Button
                 variant="ghost"
