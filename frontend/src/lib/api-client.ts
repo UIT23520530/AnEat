@@ -21,7 +21,7 @@ export const apiClient = axios.create({
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     // Lấy token từ localStorage
-    const token = localStorage.getItem('accessToken');
+    const token = localStorage.getItem('token');
     
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
@@ -54,17 +54,17 @@ apiClient.interceptors.response.use(
             refreshToken,
           });
 
-          const { accessToken } = response.data.data;
-          localStorage.setItem('accessToken', accessToken);
+          const { token } = response.data.data;
+          localStorage.setItem('token', token);
 
           if (originalRequest.headers) {
-            originalRequest.headers.Authorization = `Bearer ${accessToken}`;
+            originalRequest.headers.Authorization = `Bearer ${token}`;
           }
           return apiClient(originalRequest);
         } catch (refreshError) {
           // Refresh failed - Try auto login with dev account
           console.log('Token refresh failed, attempting auto-login...');
-          localStorage.removeItem('accessToken');
+          localStorage.removeItem('token');
           localStorage.removeItem('refreshToken');
         }
       }

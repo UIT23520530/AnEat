@@ -64,6 +64,7 @@ export function useStaff(initialParams?: StaffQueryParams): UseStaffResult {
           total: response.meta.totalItems,
           totalPages: response.meta.totalPages,
         });
+        return response; // Return response for external use
       } else {
         throw new Error(response.message || 'Failed to fetch staff list');
       }
@@ -71,6 +72,7 @@ export function useStaff(initialParams?: StaffQueryParams): UseStaffResult {
       const errorMessage = err.response?.data?.message || err.message || 'Failed to fetch staff';
       setError(errorMessage);
       // Component sẽ xử lý hiển thị error thông qua error state
+      throw err;
     } finally {
       setLoading(false);
     }

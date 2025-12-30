@@ -76,6 +76,14 @@ enum StockRequestType {
   RETURN
 }
 
+enum BillStatus {
+  DRAFT
+  ISSUED
+  PAID
+  CANCELLED
+  REFUNDED
+}
+
 // ==================== MODELS ====================
 
 model User {
@@ -100,6 +108,9 @@ model User {
   approvedStockRequests  StockRequest[] @relation("approvedStockRequests")
   stockTransactions      StockTransaction[] @relation("performedStockTransactions")
   
+  issuedBills         Bill[]        @relation("issuedBills")
+  editedBillHistories BillHistory[] @relation("editedBillHistories")
+  
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
   deletedAt       DateTime? // Soft delete support
@@ -118,6 +129,7 @@ model Branch {
   manager   User?   @relation("manager", fields: [managerId], references: [id], onDelete: SetNull)
 stockRequests     StockRequest[]
   stockTransactions StockTransaction[]
+  bills             Bill[]
   
   
   staff     User[]    @relation("staff")
@@ -223,6 +235,9 @@ model Order {
 
   // ✨ Cải thiện: Thêm trường discount để báo cáo
   discountAmount Int @default(0)
+  
+  // Relation với Bill
+  bill Bill?
 
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
@@ -411,3 +426,102 @@ model StockTransaction {
 
   @@map("StockTransaction")
 }
+
+// ✨ NEW: Bảng hoá đơn (Bill/Invoice)
+model Bill {
+  id          String     @id @default(cuid())
+  billNumber  String     @unique // Mã hoá đơn
+  status      BillStatus @default(ISSUED)
+  
+  // Thông tin hoá đơn
+  subtotal    Int        // Tổng tiền trước thuế và giảm giá
+  taxAmount   Int        @default(0) // Thuế VAT
+  discountAmount Int     @default(0) // Số tiền giảm giá
+  total       Int        // Tổng tiền cuối cùng
+  
+  // Thông tin khách hàng
+  customerName    String?
+  customerPhone   String?
+  customerEmail   String?
+  customerAddress String?
+  
+  // Thông tin thanh toán
+  paymentMethod   PaymentMethod?
+  paymentStatus   PaymentStatus @default(PENDING)
+  paidAmount      Int           @default(0)
+  changeAmount    Int           @default(0)
+  
+  // Thông tin bổ sung
+  notes           String?
+  internalNotes   String? // Ghi chú nội bộ (không in ra bill)
+  
+  // Relations
+  orderId  String  @unique
+  order    Order   @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  
+  branchId String
+  branch   Branch  @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  
+  issuedById String
+  issuedBy   User   @relation("issuedBills", fields: [issuedById], references: [id], onDelete: Restrict)
+  
+  // Lịch sử chỉnh sửa
+  histories  BillHistory[]
+  
+  // Tracking
+  isEdited    Boolean   @default(false)
+  editCount   Int       @default(0)
+  lastEditedAt DateTime?
+  
+  printedCount Int      @default(0)
+  lastPrintedAt DateTime?
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("Bill")
+}
+
+// ✨ NEW: Bảng lịch sử chỉnh sửa hoá đơn
+model BillHistory {
+  id          String   @id @default(cuid())
+  version     Int      // Phiên bản (1, 2, 3...)
+  
+  // Snapshot của hoá đơn tại thời điểm chỉnh sửa
+  billNumber  String
+  status      BillStatus
+  
+  subtotal       Int
+  taxAmount      Int
+  discountAmount Int
+  total          Int
+  
+  customerName    String?
+  customerPhone   String?
+  customerEmail   String?
+  customerAddress String?
+  
+  paymentMethod   PaymentMethod?
+  paymentStatus   PaymentStatus
+  paidAmount      Int
+  changeAmount    Int
+  
+  notes          String?
+  internalNotes  String?
+  
+  // Lý do chỉnh sửa
+  editReason     String // Lý do chỉnh sửa (bắt buộc)
+  changedFields  String // JSON array của các trường đã thay đổi
+  
+  // Relations
+  billId String
+  bill   Bill   @relation(fields: [billId], references: [id], onDelete: Cascade)
+  
+  editedById String
+  editedBy   User   @relation("editedBillHistories", fields: [editedById], references: [id], onDelete: Restrict)
+  
+  createdAt DateTime @default(now())
+
+  @@map("BillHistory")
+}
+

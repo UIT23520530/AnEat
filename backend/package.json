@@ -15,7 +15,7 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:migrate:deploy": "prisma migrate deploy",
     "prisma:studio": "prisma studio",
-    "prisma:seed": "ts-node prisma/seed-nationwide.ts",
+    "prisma:seed": "node prisma/seed-nationwide.js",
     "db:push": "prisma db push",
     "db:reset": "prisma migrate reset",
     "lint": "eslint . --ext .ts",
@@ -65,6 +65,6 @@
     "typescript": "^5.3.3"
   },
   "prisma": {
-    "seed": "ts-node prisma/seed-nationwide.ts"
+    "seed": "node prisma/seed-nationwide.js"
   }
 }

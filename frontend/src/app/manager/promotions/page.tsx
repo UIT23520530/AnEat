@@ -1,249 +1,200 @@
 "use client";
 
+import React, { useState, useEffect } from "react";
 import { ManagerLayout } from "@/components/layouts/manager-layout";
-import { useState } from "react";
-import { Table, Space, Button, Tag, Modal, Form, Popconfirm, App, Statistic, Row, Col, Tabs } from "antd";
-import type { TableColumnsType } from "antd";
-import { PlusOutlined, EditOutlined, DeleteOutlined, PercentageOutlined, GiftOutlined, TruckOutlined, TagsOutlined } from "@ant-design/icons";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import PromotionsForm from "@/components/forms/manager/PromotionsForm";
+import {
+  Table,
+  Input,
+  Button,
+  Modal,
+  Form,
+  Space,
+  Tag,
+  Popconfirm,
+  Row,
+  Col,
+  Statistic,
+  Spin,
+  Select,
+  DatePicker,
+  InputNumber,
+  Switch,
+  App,
+} from "antd";
+import {
+  PlusOutlined,
+  SearchOutlined,
+  TagOutlined,
+  CheckCircleOutlined,
+  CloseCircleOutlined,
+  PercentageOutlined,
+  DollarOutlined,
+} from "@ant-design/icons";
+import type { ColumnsType } from "antd/es/table";
+import {
+  promotionService,
+  type Promotion,
+  type CreatePromotionDto,
+  type PromotionStatistics,
+} from "@/services/promotion.service";
 import dayjs from "dayjs";
 
-interface Promotion {
-  key: string;
-  id: string;
-  name: string;
-  code: string;
-  type: "percentage" | "fixed" | "freeship" | "bogo";
-  value: number;
-  startDate: string;
-  endDate: string;
-  minOrderValue: number;
-  usageLimit?: number;
-  usedCount: number;
-  description?: string;
-  active: boolean;
-  status: "active" | "scheduled" | "expired";
-}
-
-// Mock data for Downtown Store promotions
-const initialPromotions: Promotion[] = [
-  {
-    key: "1",
-    id: "PROMO001",
-    name: "Giảm 20% đơn hàng trên 500k",
-    code: "SALE20",
-    type: "percentage",
-    value: 20,
-    startDate: "2024-01-01",
-    endDate: "2024-12-31",
-    minOrderValue: 500000,
-    usageLimit: 1000,
-    usedCount: 456,
-    description: "Áp dụng cho tất cả món ăn",
-    active: true,
-    status: "active",
-  },
-  {
-    key: "2",
-    id: "PROMO002",
-    name: "Miễn phí vận chuyển",
-    code: "FREESHIP",
-    type: "freeship",
-    value: 0,
-    startDate: "2024-01-01",
-    endDate: "2024-12-31",
-    minOrderValue: 200000,
-    usedCount: 892,
-    description: "Miễn phí ship cho đơn từ 200k",
-    active: true,
-    status: "active",
-  },
-  {
-    key: "3",
-    id: "PROMO003",
-    name: "Giảm 50k đơn đầu tiên",
-    code: "WELCOME50",
-    type: "fixed",
-    value: 50000,
-    startDate: "2024-01-01",
-    endDate: "2024-12-31",
-    minOrderValue: 100000,
-    usageLimit: 500,
-    usedCount: 234,
-    description: "Dành cho khách hàng mới",
-    active: true,
-    status: "active",
-  },
-  {
-    key: "4",
-    id: "PROMO004",
-    name: "Mua 1 tặng 1 Cà phê",
-    code: "BOGO-COFFEE",
-    type: "bogo",
-    value: 0,
-    startDate: "2024-06-01",
-    endDate: "2024-06-30",
-    minOrderValue: 0,
-    usageLimit: 200,
-    usedCount: 167,
-    description: "Áp dụng cho menu cà phê",
-    active: false,
-    status: "expired",
-  },
-  {
-    key: "5",
-    id: "PROMO005",
-    name: "Flash Sale Cuối Tuần",
-    code: "WEEKEND30",
-    type: "percentage",
-    value: 30,
-    startDate: "2024-11-01",
-    endDate: "2024-11-30",
-    minOrderValue: 300000,
-    usageLimit: 100,
-    usedCount: 0,
-    description: "Giảm 30% vào thứ 7 & CN",
-    active: true,
-    status: "scheduled",
-  },
-  {
-    key: "6",
-    id: "PROMO006",
-    name: "Sinh Nhật Cửa Hàng",
-    code: "BDAY50",
-    type: "percentage",
-    value: 50,
-    startDate: "2024-05-01",
-    endDate: "2024-05-07",
-    minOrderValue: 0,
-    usageLimit: 1000,
-    usedCount: 856,
-    description: "Kỷ niệm 5 năm thành lập",
-    active: false,
-    status: "expired",
-  },
-];
+const { Search } = Input;
 
 function PromotionsContent() {
   const { message } = App.useApp();
-  const [promotions, setPromotions] = useState<Promotion[]>(initialPromotions);
+
+  // States
+  const [promotions, setPromotions] = useState<Promotion[]>([]);
+  const [statistics, setStatistics] = useState<PromotionStatistics | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isActiveFilter, setIsActiveFilter] = useState<string>("all");
+  const [pagination, setPagination] = useState({
+    current: 1,
+    pageSize: 10,
+    total: 0,
+  });
+
+  // Modal states
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingPromotion, setEditingPromotion] = useState<Promotion | null>(null);
   const [form] = Form.useForm();
-  const [activeTab, setActiveTab] = useState("all");
 
-  const handleAdd = () => {
-    setEditingPromotion(null);
-    form.resetFields();
-    setIsModalOpen(true);
+  // Load promotions
+  const loadPromotions = async () => {
+    try {
+      setLoading(true);
+      const response = await promotionService.getPromotions({
+        page: pagination.current,
+        limit: pagination.pageSize,
+        isActive: isActiveFilter === "all" ? undefined : isActiveFilter === "active",
+        search: searchQuery || undefined,
+      });
+
+      setPromotions(response.data);
+      setPagination((prev) => ({
+        ...prev,
+        total: response.meta.totalItems,
+      }));
+    } catch (error: any) {
+      message.error(error.response?.data?.message || "Không thể tải danh sách khuyến mãi");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleEdit = (record: Promotion) => {
-    setEditingPromotion(record);
-    setIsModalOpen(true);
+  // Load statistics
+  const loadStatistics = async () => {
+    try {
+      const response = await promotionService.getStatistics();
+      setStatistics(response.data);
+    } catch (error: any) {
+      console.error("Failed to load statistics:", error);
+    }
   };
 
-  const handleDelete = (key: string) => {
-    setPromotions(promotions.filter((item) => item.key !== key));
-    message.success("Xóa khuyến mãi thành công!");
-  };
+  useEffect(() => {
+    loadStatistics();
+  }, []);
 
-  const handleSubmit = (values: any) => {
-    const [startDate, endDate] = values.dateRange;
-    const formattedValues = {
-      ...values,
-      startDate: startDate.format("YYYY-MM-DD"),
-      endDate: endDate.format("YYYY-MM-DD"),
-    };
+  useEffect(() => {
+    loadPromotions();
+  }, [pagination.current, pagination.pageSize, searchQuery, isActiveFilter]);
 
-    if (editingPromotion) {
-      // Edit existing promotion
-      setPromotions(
-        promotions.map((item) =>
-          item.key === editingPromotion.key
-            ? {
-                ...item,
-                ...formattedValues,
-                status: dayjs().isBefore(startDate) ? "scheduled" as const : dayjs().isAfter(endDate) ? "expired" as const : "active" as const,
-              }
-            : item
-        )
-      );
-      message.success("Cập nhật khuyến mãi thành công!");
+  // Handle create/edit
+  const handleOpenModal = (promotion?: Promotion) => {
+    if (promotion) {
+      setEditingPromotion(promotion);
+      form.setFieldsValue({
+        code: promotion.code,
+        type: promotion.type,
+        value: promotion.value,
+        maxUses: promotion.maxUses,
+        isActive: promotion.isActive,
+        expiryDate: promotion.expiryDate ? dayjs(promotion.expiryDate) : undefined,
+        minOrderAmount: promotion.minOrderAmount,
+      });
     } else {
-      // Add new promotion
-      const newPromotion: Promotion = {
-        key: Date.now().toString(),
-        id: `PROMO${String(promotions.length + 1).padStart(3, "0")}`,
-        ...formattedValues,
-        usedCount: 0,
-        status: dayjs().isBefore(startDate) ? "scheduled" as const : "active" as const,
+      setEditingPromotion(null);
+      form.resetFields();
+      form.setFieldsValue({
+        isActive: true,
+        type: "PERCENTAGE",
+      });
+    }
+    setIsModalOpen(true);
+  };
+
+  const handleSubmit = async (values: CreatePromotionDto) => {
+    try {
+      const data = {
+        ...values,
+        expiryDate: values.expiryDate ? dayjs(values.expiryDate).toISOString() : undefined,
       };
-      setPromotions([...promotions, newPromotion]);
-      message.success("Tạo khuyến mãi thành công!");
-    }
 
-    setIsModalOpen(false);
-    form.resetFields();
-  };
+      if (editingPromotion) {
+        await promotionService.updatePromotion(editingPromotion.id, data);
+        message.success("Cập nhật khuyến mãi thành công!");
+      } else {
+        await promotionService.createPromotion(data);
+        message.success("Tạo khuyến mãi thành công!");
+      }
 
-  const handleModalOk = () => {
-    form.submit();
-  };
-
-  const getTypeIcon = (type: string) => {
-    switch (type) {
-      case "percentage":
-        return <PercentageOutlined />;
-      case "fixed":
-        return <TagsOutlined />;
-      case "freeship":
-        return <TruckOutlined />;
-      case "bogo":
-        return <GiftOutlined />;
-      default:
-        return null;
+      setIsModalOpen(false);
+      form.resetFields();
+      setEditingPromotion(null);
+      loadPromotions();
+      loadStatistics();
+    } catch (error: any) {
+      message.error(error.response?.data?.message || "Không thể lưu khuyến mãi");
     }
   };
 
-  const getTypeText = (type: string) => {
-    switch (type) {
-      case "percentage":
-        return "Giảm %";
-      case "fixed":
-        return "Giảm cố định";
-      case "freeship":
-        return "Freeship";
-      case "bogo":
-        return "BOGO";
-      default:
-        return type;
+  // Handle delete
+  const handleDelete = async (id: string) => {
+    try {
+      await promotionService.deletePromotion(id);
+      message.success("Xóa khuyến mãi thành công!");
+      loadPromotions();
+      loadStatistics();
+    } catch (error: any) {
+      message.error(error.response?.data?.message || "Không thể xóa khuyến mãi");
     }
   };
 
-  const columns: TableColumnsType<Promotion> = [
+  // Get promotion status
+  const getPromotionStatus = (promotion: Promotion) => {
+    if (!promotion.isActive) {
+      return { color: "default", text: "Ngừng hoạt động" };
+    }
+    if (promotion.expiryDate && new Date(promotion.expiryDate) < new Date()) {
+      return { color: "error", text: "Đã hết hạn" };
+    }
+    if (promotion.maxUses && promotion.usedCount >= promotion.maxUses) {
+      return { color: "warning", text: "Đã hết lượt" };
+    }
+    return { color: "success", text: "Đang hoạt động" };
+  };
+
+  // Columns
+  const columns: ColumnsType<Promotion> = [
     {
-      title: "Mã KM",
+      title: "Mã khuyến mãi",
       dataIndex: "code",
       key: "code",
-      width: 120,
-      render: (code) => <strong style={{ color: "#52c41a" }}>{code}</strong>,
-    },
-    {
-      title: "Tên chương trình",
-      dataIndex: "name",
-      key: "name",
-      width: 200,
+      width: 150,
+      render: (code: string) => <Tag color="blue">{code}</Tag>,
     },
     {
       title: "Loại",
       dataIndex: "type",
       key: "type",
-      width: 130,
-      render: (type) => (
-        <Tag icon={getTypeIcon(type)} color="blue">
-          {getTypeText(type)}
+      width: 120,
+      render: (type: string) => (
+        <Tag color={type === "PERCENTAGE" ? "orange" : "green"} icon={type === "PERCENTAGE" ? <PercentageOutlined /> : <DollarOutlined />}>
+          {type === "PERCENTAGE" ? "Phần trăm" : "Cố định"}
         </Tag>
       ),
     },
@@ -251,113 +202,81 @@ function PromotionsContent() {
       title: "Giá trị",
       dataIndex: "value",
       key: "value",
-      width: 100,
-      render: (value, record) => {
-        if (record.type === "percentage") {
-          return `${value}%`;
-        } else if (record.type === "fixed") {
-          return `${value.toLocaleString()}đ`;
-        }
-        return "-";
-      },
+      width: 120,
+      align: "center",
+      render: (value: number, record: Promotion) =>
+        record.type === "PERCENTAGE" ? `${value}%` : `${value.toLocaleString()} ₫`,
     },
     {
-      title: "Đơn tối thiểu",
-      dataIndex: "minOrderValue",
-      key: "minOrderValue",
-      width: 130,
-      render: (value) => `${value.toLocaleString()}đ`,
+      title: "Điều kiện tối thiểu",
+      dataIndex: "minOrderAmount",
+      key: "minOrderAmount",
+      width: 150,
+      align: "right",
+      render: (amount: number | null) =>
+        amount ? `${amount.toLocaleString()} ₫` : "-",
     },
     {
-      title: "Thời gian",
-      key: "period",
-      width: 200,
-      render: (_, record) => (
-        <div style={{ fontSize: "12px" }}>
-          <div>{record.startDate}</div>
-          <div>{record.endDate}</div>
+      title: "Số lượt",
+      key: "usage",
+      width: 120,
+      align: "center",
+      render: (_, record: Promotion) => (
+        <div>
+          <div className="font-medium">{record.usedCount}</div>
+          <div className="text-xs text-gray-500">
+            {record.maxUses ? `/ ${record.maxUses}` : "Không giới hạn"}
+          </div>
         </div>
       ),
     },
     {
-      title: "Sử dụng",
-      key: "usage",
+      title: "Ngày hết hạn",
+      dataIndex: "expiryDate",
+      key: "expiryDate",
       width: 120,
-      render: (_, record) => (
-        <span>
-          {record.usedCount}
-          {record.usageLimit && ` / ${record.usageLimit}`}
-        </span>
-      ),
+      render: (date: string | null) =>
+        date ? dayjs(date).format("DD/MM/YYYY") : "Không giới hạn",
     },
     {
       title: "Trạng thái",
-      dataIndex: "status",
       key: "status",
-      width: 120,
-      render: (status) => {
-        let color = "default";
-        let text = status;
-        if (status === "active") {
-          color = "green";
-          text = "Đang chạy";
-        } else if (status === "scheduled") {
-          color = "blue";
-          text = "Sắp diễn ra";
-        } else if (status === "expired") {
-          color = "red";
-          text = "Đã kết thúc";
-        }
-        return <Tag color={color}>{text}</Tag>;
+      width: 150,
+      render: (_, record: Promotion) => {
+        const status = getPromotionStatus(record);
+        return <Tag color={status.color}>{status.text}</Tag>;
       },
-      filters: [
-        { text: "Đang chạy", value: "active" },
-        { text: "Sắp diễn ra", value: "scheduled" },
-        { text: "Đã kết thúc", value: "expired" },
-      ],
-      onFilter: (value, record) => record.status === value,
     },
     {
-      title: "Hành động",
+      title: "Thao tác",
       key: "action",
-      width: 120,
+      width: 150,
       fixed: "right",
-      render: (_, record) => (
-        <Space size="small">
+      render: (_, record: Promotion) => (
+        <Space>
           <Button
             type="link"
-            icon={<EditOutlined />}
-            onClick={() => handleEdit(record)}
+            icon={<SearchOutlined />}
+            onClick={() => handleOpenModal(record)}
           >
+            Sửa
           </Button>
           <Popconfirm
-            title="Xóa khuyến mãi"
+            title="Xóa khuyến mãi?"
             description="Bạn có chắc muốn xóa khuyến mãi này?"
-            onConfirm={() => handleDelete(record.key)}
+            onConfirm={() => handleDelete(record.id)}
             okText="Xóa"
             cancelText="Hủy"
+            okButtonProps={{ danger: true }}
           >
-            <Button type="link" danger icon={<DeleteOutlined />}>
+            <Button type="link" danger>
+              Xóa
             </Button>
           </Popconfirm>
         </Space>
       ),
     },
   ];
-
-  // Filter promotions based on active tab
-  const filteredPromotions = promotions.filter((promo) => {
-    if (activeTab === "all") return true;
-    if (activeTab === "active") return promo.status === "active";
-    if (activeTab === "scheduled") return promo.status === "scheduled";
-    if (activeTab === "expired") return promo.status === "expired";
-    return true;
-  });
-
-  // Calculate stats
-  const activeCount = promotions.filter((p) => p.status === "active").length;
-  const scheduledCount = promotions.filter((p) => p.status === "scheduled").length;
-  const totalUsage = promotions.reduce((sum, p) => sum + p.usedCount, 0);
 
   return (
     <div className="p-8">
@@ -368,9 +287,6 @@ function PromotionsContent() {
               <CardTitle className="text-2xl font-bold text-slate-900">
                 Quản lý Khuyến mãi
               </CardTitle>
-              <p className="text-sm text-slate-500 mt-1">
-                Tạo và quản lý các chương trình khuyến mãi cho cửa hàng Downtown Store
-              </p>
             </div>
 
             {/* Stats Cards */}
@@ -378,9 +294,9 @@ function PromotionsContent() {
               <Col span={6}>
                 <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
                   <Statistic
-                    title="Tổng chương trình"
-                    value={promotions.length}
-                    prefix={<GiftOutlined />}
+                    title="Tổng khuyến mãi"
+                    value={statistics?.totalPromotions || 0}
+                    prefix={<TagOutlined />}
                     valueStyle={{ color: "#1890ff" }}
                   />
                 </div>
@@ -388,117 +304,233 @@ function PromotionsContent() {
               <Col span={6}>
                 <div className="bg-green-50 p-4 rounded-lg border border-green-100">
                   <Statistic
-                    title="Đang chạy"
-                    value={activeCount}
-                    prefix={<TagsOutlined />}
+                    title="Đang hoạt động"
+                    value={statistics?.activePromotions || 0}
+                    prefix={<CheckCircleOutlined />}
                     valueStyle={{ color: "#52c41a" }}
                   />
                 </div>
               </Col>
               <Col span={6}>
-                <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
+                <div className="bg-red-50 p-4 rounded-lg border border-red-100">
                   <Statistic
-                    title="Sắp diễn ra"
-                    value={scheduledCount}
-                    prefix={<PercentageOutlined />}
-                    valueStyle={{ color: "#1890ff" }}
+                    title="Đã hết hạn"
+                    value={statistics?.expiredPromotions || 0}
+                    prefix={<CloseCircleOutlined />}
+                    valueStyle={{ color: "#ff4d4f" }}
                   />
                 </div>
               </Col>
               <Col span={6}>
                 <div className="bg-orange-50 p-4 rounded-lg border border-orange-100">
                   <Statistic
-                    title="Lượt sử dụng"
-                    value={totalUsage}
-                    prefix={<TruckOutlined />}
+                    title="Tổng lượt sử dụng"
+                    value={statistics?.totalUses || 0}
+                    prefix={<DollarOutlined />}
                     valueStyle={{ color: "#faad14" }}
                   />
                 </div>
               </Col>
             </Row>
 
-            {/* Action Button */}
-            <div>
-              <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd} className="bg-blue-500 hover:bg-blue-600">
-                Tạo khuyến mãi mới
+            {/* Filters */}
+            <div className="flex justify-between items-center">
+              <Space>
+                <Search
+                  placeholder="Tìm mã khuyến mãi..."
+                  allowClear
+                  enterButton={<SearchOutlined />}
+                  size="large"
+                  onSearch={setSearchQuery}
+                  onChange={(e) => {
+                    if (!e.target.value) setSearchQuery("");
+                  }}
+                  style={{ width: 300 }}
+                />
+                <Select
+                  value={isActiveFilter}
+                  onChange={setIsActiveFilter}
+                  style={{ width: 180 }}
+                  size="large"
+                >
+                  <Select.Option value="all">Tất cả</Select.Option>
+                  <Select.Option value="active">Đang hoạt động</Select.Option>
+                  <Select.Option value="inactive">Ngừng hoạt động</Select.Option>
+                </Select>
+              </Space>
+              <Button
+                type="primary"
+                icon={<PlusOutlined />}
+                size="large"
+                onClick={() => handleOpenModal()}
+              >
+                Tạo khuyến mãi
               </Button>
             </div>
-
-            {/* Tabs */}
-            <Tabs
-              activeKey={activeTab}
-              onChange={setActiveTab}
-              items={[
-                {
-                  key: "all",
-                  label: `Tất cả (${promotions.length})`,
-                },
-                {
-                  key: "active",
-                  label: `Đang chạy (${activeCount})`,
-                },
-                {
-                  key: "scheduled",
-                  label: `Sắp diễn ra (${scheduledCount})`,
-                },
-                {
-                  key: "expired",
-                  label: `Đã kết thúc (${promotions.filter((p) => p.status === "expired").length})`,
-                },
-              ]}
-            />
           </div>
         </CardHeader>
 
         <CardContent>
-          {/* Table */}
-          <Table
-            columns={columns}
-            dataSource={filteredPromotions}
-            pagination={{
-              pageSize: 10,
-              showSizeChanger: true,
-              showTotal: (total) => `Tổng ${total} khuyến mãi`,
-            }}
-            scroll={{ x: 1200 }}
-            bordered={false}
-            className="ant-table-custom"
-          />
+          <Spin spinning={loading}>
+            {/* Promotions Table */}
+            <Table
+              columns={columns}
+              dataSource={promotions}
+              rowKey="id"
+              pagination={{
+                ...pagination,
+                onChange: (page, pageSize) => {
+                  setPagination({ ...pagination, current: page, pageSize });
+                },
+                showSizeChanger: true,
+                showTotal: (total) => `Tổng ${total} khuyến mãi`,
+              }}
+              scroll={{ x: 1200 }}
+              bordered={false}
+              className="ant-table-custom"
+            />
+          </Spin>
         </CardContent>
       </Card>
 
-      {/* Modal */}
+      {/* Create/Edit Modal */}
       <Modal
-        title={<span className="text-lg font-semibold">{editingPromotion ? "Chỉnh sửa khuyến mãi" : "Tạo khuyến mãi mới"}</span>}
+        title={editingPromotion ? "Sửa khuyến mãi" : "Tạo khuyến mãi"}
         open={isModalOpen}
-        onOk={handleModalOk}
         onCancel={() => {
           setIsModalOpen(false);
           form.resetFields();
+          setEditingPromotion(null);
         }}
-        width={900}
-        okText={editingPromotion ? "Cập nhật" : "Tạo mới"}
-        cancelText="Hủy"
-        destroyOnHidden
-        centered
-        maskClosable={false}
-        transitionName="ant-fade"
-        maskTransitionName="ant-fade"
+        footer={null}
+        width={600}
       >
-        <PromotionsForm
+        <Form
           form={form}
-          initialValues={editingPromotion}
+          layout="vertical"
           onFinish={handleSubmit}
-        />
+          className="mt-4"
+        >
+          <Form.Item
+            label="Mã khuyến mãi"
+            name="code"
+            rules={[
+              { required: true, message: "Vui lòng nhập mã khuyến mãi!" },
+              { min: 3, max: 20, message: "Mã phải từ 3-20 ký tự!" },
+            ]}
+          >
+            <Input
+              size="large"
+              placeholder="VD: SALE20"
+              style={{ textTransform: "uppercase" }}
+            />
+          </Form.Item>
+
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item
+                label="Loại khuyến mãi"
+                name="type"
+                rules={[{ required: true, message: "Vui lòng chọn loại!" }]}
+              >
+                <Select size="large">
+                  <Select.Option value="PERCENTAGE">Phần trăm (%)</Select.Option>
+                  <Select.Option value="FIXED">Cố định (₫)</Select.Option>
+                </Select>
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
+                label="Giá trị"
+                name="value"
+                rules={[
+                  { required: true, message: "Vui lòng nhập giá trị!" },
+                  {
+                    type: "number",
+                    min: 0,
+                    message: "Giá trị phải lớn hơn 0!",
+                  },
+                ]}
+              >
+                <InputNumber size="large" style={{ width: "100%" }} min={0} />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item label="Số lượt sử dụng tối đa" name="maxUses">
+                <InputNumber
+                  size="large"
+                  style={{ width: "100%" }}
+                  min={1}
+                  placeholder="Không giới hạn"
+                />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item label="Giá trị đơn hàng tối thiểu" name="minOrderAmount">
+                <InputNumber
+                  size="large"
+                  style={{ width: "100%" }}
+                  min={0}
+                  placeholder="0"
+                  formatter={(value) =>
+                    `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ",")
+                  }
+                />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Form.Item label="Ngày hết hạn" name="expiryDate">
+            <DatePicker
+              size="large"
+              style={{ width: "100%" }}
+              format="DD/MM/YYYY"
+              placeholder="Không giới hạn"
+              disabledDate={(current) => {
+                return current && current < dayjs().startOf("day");
+              }}
+            />
+          </Form.Item>
+
+          <Form.Item
+            label="Trạng thái"
+            name="isActive"
+            valuePropName="checked"
+          >
+            <Switch checkedChildren="Bật" unCheckedChildren="Tắt" />
+          </Form.Item>
+
+          <Form.Item className="mb-0 text-right">
+            <Space>
+              <Button
+                onClick={() => {
+                  setIsModalOpen(false);
+                  form.resetFields();
+                  setEditingPromotion(null);
+                }}
+              >
+                Hủy
+              </Button>
+              <Button type="primary" htmlType="submit">
+                {editingPromotion ? "Cập nhật" : "Tạo mới"}
+              </Button>
+            </Space>
+          </Form.Item>
+        </Form>
       </Modal>
     </div>
   );
 }
 
-export default function ManagerPromotionsPage() {
+export default function PromotionsPage() {
   return (
     <ManagerLayout>
-      <PromotionsContent />
+        <App>
+            <PromotionsContent />
+        </App>
     </ManagerLayout>
   );
 }

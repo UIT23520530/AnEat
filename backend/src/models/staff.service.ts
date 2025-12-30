@@ -48,7 +48,7 @@ export class StaffService {
 
     const where: Prisma.UserWhereInput = {
       role: {
-        in: [UserRole.STAFF, UserRole.ADMIN_BRAND],
+        in: [UserRole.STAFF],
       },
     };
 

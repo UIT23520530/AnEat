@@ -9,6 +9,8 @@ async function seedNationwideData() {
   try {
     // ==================== Xóa dữ liệu cũ ====================
     console.log('Clearing old data...')
+    await prisma.billHistory.deleteMany({})
+    await prisma.bill.deleteMany({})
     await prisma.review.deleteMany({})
     await prisma.paymentTransaction.deleteMany({})
     await prisma.orderItem.deleteMany({})
@@ -141,6 +143,12 @@ async function seedNationwideData() {
         }
       })
       branches.push(branch)
+
+      // Update manager với branchId
+      await prisma.user.update({
+        where: { id: manager.id },
+        data: { branchId: branch.id }
+      })
 
       // Tạo 2-3 nhân viên cho mỗi chi nhánh
       for (let j = 0; j < 2; j++) {
@@ -329,6 +337,74 @@ async function seedNationwideData() {
 
     console.log(`✅ ${orderCount} orders created with payments and reviews\n`)
 
+    // ==================== Tạo hoá đơn cho đơn hàng đã hoàn thành ====================
+    console.log('🧾 Creating bills for completed orders...')
+    const completedOrders = await prisma.order.findMany({
+      where: { status: 'COMPLETED' },
+      include: {
+        customer: true,
+        staff: true,
+        branch: true
+      }
+    })
+
+    let billCount = 0
+    const paymentMethods = ['CASH', 'CARD', 'E_WALLET', 'BANK_TRANSFER']
+    
+    for (let i = 0; i < completedOrders.length; i++) {
+      const order = completedOrders[i]
+      const staff = order.staff || users.find(u => u.role === 'STAFF')
+      
+      if (!staff) continue
+
+      // Generate bill number
+      const billDate = new Date(order.createdAt)
+      const year = billDate.getFullYear().toString().slice(-2)
+      const month = (billDate.getMonth() + 1).toString().padStart(2, '0')
+      const day = billDate.getDate().toString().padStart(2, '0')
+      const sequence = (billCount + 1).toString().padStart(4, '0')
+      const billNumber = `BILL-${order.branch.code}-${year}${month}${day}-${sequence}`
+
+      // Calculate amounts
+      const subtotal = order.total
+      const taxAmount = Math.round(subtotal * 0.1) // 10% VAT
+      const discountAmount = order.discountAmount || 0
+      const total = subtotal + taxAmount - discountAmount
+      const paymentMethod = paymentMethods[Math.floor(Math.random() * paymentMethods.length)]
+      const paidAmount = total
+      const changeAmount = 0
+
+      await prisma.bill.create({
+        data: {
+          billNumber,
+          status: 'PAID',
+          subtotal,
+          taxAmount,
+          discountAmount,
+          total,
+          customerName: order.customer?.name || 'Khách hàng',
+          customerPhone: order.customer?.phone || null,
+          customerEmail: order.customer?.email || null,
+          customerAddress: order.deliveryAddress || null,
+          paymentMethod,
+          paymentStatus: 'PAID',
+          paidAmount,
+          changeAmount,
+          notes: `Thanh toán bằng ${paymentMethod === 'CASH' ? 'tiền mặt' : paymentMethod === 'CARD' ? 'thẻ' : paymentMethod === 'E_WALLET' ? 'ví điện tử' : 'chuyển khoản'}`,
+          internalNotes: `Bill tạo tự động cho đơn hàng ${order.orderNumber}`,
+          orderId: order.id,
+          branchId: order.branchId,
+          issuedById: staff.id,
+          createdAt: order.createdAt,
+          updatedAt: order.createdAt
+        }
+      })
+
+      billCount++
+    }
+
+    console.log(`✅ ${billCount} bills created for completed orders\n`)
+
     // ==================== Tạo admin system ====================
     console.log('👑 Creating system admin...')
     const admin = await prisma.user.create({
@@ -355,6 +431,7 @@ async function seedNationwideData() {
     console.log(`  • Tables: ${allTables.length}`)
     console.log(`  • Promotions: ${promotions.length}`)
     console.log(`  • Orders: ${orderCount}`)
+    console.log(`  • Bills: ${billCount}`)
     console.log(`  • Total Products in DB: ${productData.length * branches.length}`)
     console.log()
 

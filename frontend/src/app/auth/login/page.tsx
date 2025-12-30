@@ -38,7 +38,7 @@ export default function LoginPage() {
         const { user, token } = response.data.data
 
         // Save token to localStorage
-        localStorage.setItem("accessToken", token)
+        localStorage.setItem("token", token)
 
         // Save user info
         const userInfo: User = {
@@ -108,7 +108,7 @@ export default function LoginPage() {
             <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
               <p className="font-semibold text-sm mb-2">Test Accounts:</p>
               <ul className="space-y-1 text-xs">
-                <li>• Manager: manager@aneat.com / manager123</li>
+                <li>• Manager: manager1@aneat.com / password123</li>
                 <li>• Staff: staff001@aneat.com / staff123</li>
               </ul>
             </div>

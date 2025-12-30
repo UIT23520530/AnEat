@@ -18,7 +18,7 @@ app.use(helmet());
 
 // CORS configuration
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || 'http://localhost:3001',
+  origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
   credentials: true,
 }));
 
@@ -83,17 +83,21 @@ import customerRoutes from './routes/customer.routes';
 import categoryRoutes from './routes/category.routes';
 import productRoutes from './routes/product.routes';
 import stockRequestRoutes from './routes/stock-request.routes';
+import promotionRoutes from './routes/promotion.routes';
+import billRoutes from './routes/bill.routes';
 
 // Mount routes
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/users', userRoutes);
 app.use('/api/v1/admin', adminRoutes);
 app.use('/api/v1/manager', managerRoutes);
+app.use('/api/v1/manager/bills', billRoutes);
 app.use('/api/v1/staff', staffRoutes);
 app.use('/api/v1/customer', customerRoutes);
 app.use('/api/v1/categories', categoryRoutes);
 app.use('/api/v1/products', productRoutes);
 app.use('/api/v1/stock-requests', stockRequestRoutes);
+app.use('/api/v1/promotions', promotionRoutes);
 
 // ==================== ERROR HANDLING ====================
 

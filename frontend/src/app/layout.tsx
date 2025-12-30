@@ -6,6 +6,11 @@ import './globals.css'
 import { CartProvider } from '@/contexts/cart-context'
 import './fonts.css'
 
+// Import dev helper in development mode
+if (process.env.NODE_ENV === 'development') {
+  import('@/lib/dev-auth');
+}
+
 export const metadata: Metadata = {
   title: 'AnEat',
   description: 'FastFood Delivery Website',

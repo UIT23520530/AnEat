@@ -144,19 +144,7 @@ export function Sidebar({
             </div>
           )}
           <div className="px-3 pb-3 space-y-1">
-            <Link href="/profile">
-              <Button
-                variant="ghost"
-                className={cn(
-                  "w-full justify-start text-gray-600 hover:bg-green-50 hover:text-green-600",
-                  isCollapsed && "w-auto justify-center p-2"
-                )}
-                title={isCollapsed ? "Profile" : undefined}
-              >
-                <UserCircle className="h-5 w-5" />
-                {!isCollapsed && <span className="ml-3">Hồ sơ</span>}
-              </Button>
-            </Link>
+          
             <Button
               variant="ghost"
               className={cn(

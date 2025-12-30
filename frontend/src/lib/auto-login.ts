@@ -7,10 +7,10 @@ import axios from 'axios';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
 
-// Development credentials
+// Development credentials (updated after database reset)
 const DEV_CREDENTIALS = {
-  email: 'manager@aneat.com',
-  password: 'manager123',
+  email: 'manager1@aneat.com',
+  password: 'password123',
 };
 
 /**
@@ -20,7 +20,7 @@ const DEV_CREDENTIALS = {
 export async function autoLoginForDev(): Promise<boolean> {
   try {
     // Kiểm tra xem đã có token chưa
-    const existingToken = localStorage.getItem('accessToken');
+    const existingToken = localStorage.getItem('token');
     if (existingToken) {
       console.log('✅ Token already exists, skipping auto-login');
       return true;
@@ -39,7 +39,7 @@ export async function autoLoginForDev(): Promise<boolean> {
       const { token, user } = response.data.data;
       
       // Lưu token vào localStorage
-      localStorage.setItem('accessToken', token);
+      localStorage.setItem('token', token);
       
       // Lưu user info
       if (user) {
@@ -72,7 +72,7 @@ export async function autoLoginForDev(): Promise<boolean> {
  * Clear tokens and force re-login
  */
 export function clearDevTokens() {
-  localStorage.removeItem('accessToken');
+  localStorage.removeItem('token');
   localStorage.removeItem('refreshToken');
   console.log('🗑️ Tokens cleared');
 }

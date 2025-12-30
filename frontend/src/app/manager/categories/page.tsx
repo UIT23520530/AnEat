@@ -27,6 +27,7 @@ import {
   SearchOutlined,
   EyeOutlined,
   EyeInvisibleOutlined,
+  FolderOpenOutlined,
 } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import {
@@ -259,65 +260,63 @@ function CategoriesContent() {
   ];
 
   return (
-    <div className="p-6">
-      <Spin spinning={loading}>
-
-        {/* Statistics */}
-        <Row gutter={16} className="mb-6">
-          <Col span={8}>
-            <Card>
-              <Statistic
-                title="Tổng danh mục"
-                value={totalCategories}
-                valueStyle={{ color: "#1890ff" }}
-              />
-            </Card>
-          </Col>
-          <Col span={8}>
-            <Card>
-              <Statistic
-                title="Đang hiển thị"
-                value={activeCategories}
-                valueStyle={{ color: "#52c41a" }}
-              />
-            </Card>
-          </Col>
-          <Col span={8}>
-            <Card>
-              <Statistic
-                title="Đã ẩn"
-                value={inactiveCategories}
-                valueStyle={{ color: "#ff4d4f" }}
-              />
-            </Card>
-          </Col>
-        </Row>
-
-        {/* Actions and Search */}
-        <Card className="mt-6">
-          <CardHeader className="mb-4">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-              <CardTitle className="text-xl font-semibold text-gray-800">
-                Quản lý danh mục sản phẩm
+    <div className="p-8">
+      <Card className="border-0 shadow-sm">
+        <CardHeader>
+          <div className="flex flex-col gap-4">
+            <div>
+              <CardTitle className="text-2xl font-bold text-slate-900">
+                Quản lý Danh mục Sản phẩm
               </CardTitle>
             </div>
-          </CardHeader>
 
-          <CardContent>
-            <div className="mb-4 flex justify-between items-center gap-3">
-              <Space>
-                <Search
-                  placeholder="Tìm theo tên hoặc mã danh mục..."
-                  allowClear
-                  enterButton={<SearchOutlined />}
-                  size="large"
-                  onSearch={setSearchQuery}
-                  onChange={(e) => {
-                    if (!e.target.value) setSearchQuery("");
-                  }}
-                  style={{ width: 400 }}
-                />
-              </Space>
+            {/* Stats Cards */}
+            <Row gutter={16}>
+              <Col span={8}>
+                <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
+                  <Statistic
+                    title="Tổng danh mục"
+                    value={totalCategories}
+                    prefix={<FolderOpenOutlined />}
+                    valueStyle={{ color: "#1890ff" }}
+                  />
+                </div>
+              </Col>
+              <Col span={8}>
+                <div className="bg-green-50 p-4 rounded-lg border border-green-100">
+                  <Statistic
+                    title="Đang hiển thị"
+                    value={activeCategories}
+                    prefix={<EyeOutlined />}
+                    valueStyle={{ color: "#52c41a" }}
+                  />
+                </div>
+              </Col>
+              <Col span={8}>
+                <div className="bg-red-50 p-4 rounded-lg border border-red-100">
+                  <Statistic
+                    title="Đã ẩn"
+                    value={inactiveCategories}
+                    prefix={<EyeInvisibleOutlined />}
+                    valueStyle={{ color: "#ff4d4f" }}
+                  />
+                </div>
+              </Col>
+            </Row>
+
+            {/* Filters */}
+            <div className="flex justify-between items-center">
+              <Search
+                placeholder="Tìm theo tên hoặc mã danh mục..."
+                allowClear
+                enterButton={<SearchOutlined />}
+                size="large"
+                onSearch={setSearchQuery}
+                onChange={(e) => {
+                  if (!e.target.value) setSearchQuery("");
+                }}
+                style={{ width: 300 }}
+              />
               <Button
                 type="primary"
                 icon={<PlusOutlined />}
@@ -327,7 +326,11 @@ function CategoriesContent() {
                 Thêm danh mục
               </Button>
             </div>
+          </div>
+        </CardHeader>
 
+        <CardContent>
+          <Spin spinning={loading}>
             {/* Categories Table */}
             <Table
               columns={columns}
@@ -342,9 +345,12 @@ function CategoriesContent() {
                 showTotal: (total) => `Tổng ${total} danh mục`,
               }}
               scroll={{ x: 1200 }}
+              bordered={false}
+              className="ant-table-custom"
             />
-          </CardContent>
-        </Card>
+          </Spin>
+        </CardContent>
+      </Card>
 
         {/* Add Category Modal */}
         <Modal
@@ -507,8 +513,7 @@ function CategoriesContent() {
             </Form.Item>
           </Form>
         </Modal>
-      </Spin>
-    </div>
+      </div>
   );
 }
 

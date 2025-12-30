@@ -66,7 +66,7 @@ export interface StaffQueryParams {
   page?: number;
   limit?: number;
   sort?: string; // e.g., "-createdAt", "name"
-  isActive?: boolean;
+  status?: 'active' | 'inactive'; // Backend expects 'status' not 'isActive'
   search?: string;
 }
 

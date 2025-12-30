@@ -446,212 +446,213 @@ function WarehouseContent() {
   ];
 
   return (
-    <div className="p-6">
-      {/* Statistics */}
-      {statistics && (
-        <div className="mb-6">
-          <Row gutter={[16, 16]}>
-            <Col xs={24} sm={12} lg={8}>
-              <Card>
-                <Statistic
-                  title="Tổng yêu cầu"
-                  value={statistics.totalRequests}
-                  valueStyle={{ color: "#1890ff" }}
-                  prefix={<InboxOutlined />}
-                />
-              </Card>
-            </Col>
-            <Col xs={24} sm={12} lg={8}>
-              <Card>
-                <Statistic
-                  title="Chờ duyệt"
-                  value={statistics.pendingRequests}
-                  valueStyle={{ color: "#faad14" }}
-                  prefix={<ClockCircleOutlined />}
-                />
-              </Card>
-            </Col>
-            <Col xs={24} sm={12} lg={8}>
-              <Card>
-                <Statistic
-                  title="Đã duyệt"
-                  value={statistics.approvedRequests}
-                  valueStyle={{ color: "#1890ff" }}
-                  prefix={<CheckCircleOutlined />}
-                />
-              </Card>
-            </Col>
-            <Col xs={24} sm={12} lg={8}>
-              <Card>
-                <Statistic
-                  title="Hoàn thành"
-                  value={statistics.completedRequests}
-                  valueStyle={{ color: "#52c41a" }}
-                  prefix={<CheckCircleOutlined />}
-                />
-              </Card>
-            </Col>
-            <Col xs={24} sm={12} lg={8}>
-              <Card>
-                <Statistic
-                  title="Từ chối"
-                  value={statistics.rejectedRequests}
-                  valueStyle={{ color: "#ff4d4f" }}
-                  prefix={<CloseCircleOutlined />}
-                />
-              </Card>
-            </Col>
-            <Col xs={24} sm={12} lg={8}>
-              <Card>
-                <Statistic
-                  title="Đã hủy"
-                  value={statistics.cancelledRequests}
-                  valueStyle={{ color: "#8c8c8c" }}
-                  prefix={<CloseCircleOutlined />}
-                />
-              </Card>
-            </Col>
-          </Row>
-        </div>
-      )}
-
-      {/* Main Content */}
-      <Card className="mt-6">
+    <div className="p-8">
+      <Card className="border-0 shadow-sm">
         <CardHeader>
-          <CardTitle className="text-xl font-semibold text-gray-800">
-            Quản lý kho hàng
-          </CardTitle>
+          <div className="flex flex-col gap-4">
+            <div>
+              <CardTitle className="text-2xl font-bold text-slate-900">
+                Quản lý Kho hàng
+              </CardTitle>
+            </div>
+
+            {/* Stats Cards */}
+            <Row gutter={16}>
+              <Col span={4}>
+                <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
+                  <Statistic
+                    title="Tổng yêu cầu"
+                    value={statistics?.totalRequests || 0}
+                    prefix={<InboxOutlined />}
+                    valueStyle={{ color: "#1890ff" }}
+                  />
+                </div>
+              </Col>
+              <Col span={4}>
+                <div className="bg-orange-50 p-4 rounded-lg border border-orange-100">
+                  <Statistic
+                    title="Chờ duyệt"
+                    value={statistics?.pendingRequests || 0}
+                    prefix={<ClockCircleOutlined />}
+                    valueStyle={{ color: "#faad14" }}
+                  />
+                </div>
+              </Col>
+              <Col span={4}>
+                <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
+                  <Statistic
+                    title="Đã duyệt"
+                    value={statistics?.approvedRequests || 0}
+                    prefix={<CheckCircleOutlined />}
+                    valueStyle={{ color: "#1890ff" }}
+                  />
+                </div>
+              </Col>
+              <Col span={4}>
+                <div className="bg-green-50 p-4 rounded-lg border border-green-100">
+                  <Statistic
+                    title="Hoàn thành"
+                    value={statistics?.completedRequests || 0}
+                    prefix={<CheckCircleOutlined />}
+                    valueStyle={{ color: "#52c41a" }}
+                  />
+                </div>
+              </Col>
+              <Col span={4}>
+                <div className="bg-red-50 p-4 rounded-lg border border-red-100">
+                  <Statistic
+                    title="Từ chối"
+                    value={statistics?.rejectedRequests || 0}
+                    prefix={<CloseCircleOutlined />}
+                    valueStyle={{ color: "#ff4d4f" }}
+                  />
+                </div>
+              </Col>
+              <Col span={4}>
+                <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
+                  <Statistic
+                    title="Đã hủy"
+                    value={statistics?.cancelledRequests || 0}
+                    prefix={<CloseCircleOutlined />}
+                    valueStyle={{ color: "#8c8c8c" }}
+                  />
+                </div>
+              </Col>
+            </Row>
+
+            {/* Tabs */}
+            <Tabs
+              activeKey={activeTab}
+              onChange={setActiveTab}
+              items={[
+                {
+                  key: "inventory",
+                  label: `Tồn kho (${products.length})`,
+                },
+                {
+                  key: "requests",
+                  label: `Yêu cầu nhập kho (${stockRequests.length})`,
+                },
+              ]}
+            />
+          </div>
         </CardHeader>
+
         <CardContent>
-          <Tabs
-            activeKey={activeTab}
-            onChange={setActiveTab}
-            items={[
-              {
-                key: "inventory",
-                label: (
-                  <span>
-                    <InboxOutlined /> Tồn kho sản phẩm
-                  </span>
-                ),
-                children: (
-                  <>
-                    <div className="mb-4 flex justify-between items-center">
-                      <Space size="middle">
-                        <Search
-                          placeholder="Tìm sản phẩm..."
-                          allowClear
-                          enterButton={<SearchOutlined />}
-                          size="large"
-                          onSearch={setSearchQuery}
-                          onChange={(e) => {
-                            if (!e.target.value) setSearchQuery("");
-                          }}
-                          style={{ width: 400 }}
-                        />
-                        <Select
-                          value={categoryFilter}
-                          onChange={setCategoryFilter}
-                          style={{ width: 180 }}
-                          size="large"
-                          placeholder="Chọn danh mục"
-                        >
-                          <Select.Option value="all">Tất cả danh mục</Select.Option>
-                          {categories.map((cat) => (
-                            <Select.Option key={cat.id} value={cat.id}>
-                              {cat.name}
-                            </Select.Option>
-                          ))}
-                        </Select>
-                        <Button
-                          type="primary"
-                          icon={<PlusOutlined />}
-                          size="large"
-                          onClick={() => setIsRequestModalOpen(true)}
-                        >
-                          Tạo yêu cầu nhanh
-                        </Button>
-                      </Space>
-                    </div>
+          {activeTab === "inventory" && (
+            <>
+              {/* Filters */}
+              <div className="mb-4 flex justify-between items-center">
+                <Space>
+                  <Search
+                    placeholder="Tìm sản phẩm..."
+                    allowClear
+                    enterButton={<SearchOutlined />}
+                    size="large"
+                    onSearch={setSearchQuery}
+                    onChange={(e) => {
+                      if (!e.target.value) setSearchQuery("");
+                    }}
+                    style={{ width: 300 }}
+                  />
+                  <Select
+                    value={categoryFilter}
+                    onChange={setCategoryFilter}
+                    style={{ width: 180 }}
+                    size="large"
+                    placeholder="Chọn danh mục"
+                  >
+                    <Select.Option value="all">Tất cả danh mục</Select.Option>
+                    {categories.map((cat) => (
+                      <Select.Option key={cat.id} value={cat.id}>
+                        {cat.name}
+                      </Select.Option>
+                    ))}
+                  </Select>
+                </Space>
+                <Button
+                  type="primary"
+                  icon={<PlusOutlined />}
+                  size="large"
+                  onClick={() => setIsRequestModalOpen(true)}
+                >
+                  Tạo yêu cầu nhanh
+                </Button>
+              </div>
 
-                    <Spin spinning={loading}>
-                      <Table
-                        columns={inventoryColumns}
-                        dataSource={products}
-                        rowKey="id"
-                        pagination={{
-                          ...pagination,
-                          onChange: (page, pageSize) => {
-                            setPagination({ ...pagination, current: page, pageSize });
-                          },
-                          showSizeChanger: true,
-                          showTotal: (total) => `Tổng ${total} sản phẩm`,
-                        }}
-                        scroll={{ x: 1200 }}
-                      />
-                    </Spin>
-                  </>
-                ),
-              },
-              {
-                key: "requests",
-                label: (
-                  <span>
-                    <HistoryOutlined /> Yêu cầu nhập kho
-                  </span>
-                ),
-                children: (
-                  <>
-                    <div className="mb-4 flex justify-between items-center gap-3">
-                      <Space>
-                        <Search
-                          placeholder="Tìm theo mã yêu cầu hoặc sản phẩm..."
-                          allowClear
-                          enterButton={<SearchOutlined />}
-                          size="large"
-                          onSearch={setSearchQuery}
-                          onChange={(e) => {
-                            if (!e.target.value) setSearchQuery("");
-                          }}
-                          style={{ width: 400 }}
-                        />
-                        <Select
-                          value={statusFilter}
-                          onChange={setStatusFilter}
-                          style={{ width: 150 }}
-                          size="large"
-                        >
-                          <Select.Option value="all">Tất cả</Select.Option>
-                          <Select.Option value="PENDING">Chờ duyệt</Select.Option>
-                          <Select.Option value="APPROVED">Đã duyệt</Select.Option>
-                          <Select.Option value="COMPLETED">Hoàn thành</Select.Option>
-                          <Select.Option value="REJECTED">Từ chối</Select.Option>
-                          <Select.Option value="CANCELLED">Đã hủy</Select.Option>
-                        </Select>
-                      </Space>
-                    </div>
+              <Spin spinning={loading}>
+                <Table
+                  columns={inventoryColumns}
+                  dataSource={products}
+                  rowKey="id"
+                  pagination={{
+                    ...pagination,
+                    onChange: (page, pageSize) => {
+                      setPagination({ ...pagination, current: page, pageSize });
+                    },
+                    showSizeChanger: true,
+                    showTotal: (total) => `Tổng ${total} sản phẩm`,
+                  }}
+                  scroll={{ x: 1200 }}
+                  bordered={false}
+                  className="ant-table-custom"
+                />
+              </Spin>
+            </>
+          )}
 
-                    <Spin spinning={loading}>
-                      <Table
-                        columns={requestsColumns}
-                        dataSource={stockRequests}
-                        rowKey="id"
-                        pagination={{
-                          ...pagination,
-                          onChange: (page, pageSize) => {
-                            setPagination({ ...pagination, current: page, pageSize });
-                          },
-                          showSizeChanger: true,
-                          showTotal: (total) => `Tổng ${total} yêu cầu`,
-                        }}
-                        scroll={{ x: 1400 }}
-                      />
-                    </Spin>
-                  </>
-                ),
-              },
-            ]}
-          />
+          {activeTab === "requests" && (
+            <>
+              {/* Filters */}
+              <div className="mb-4 flex justify-between items-center">
+                <Space>
+                  <Search
+                    placeholder="Tìm theo mã yêu cầu hoặc sản phẩm..."
+                    allowClear
+                    enterButton={<SearchOutlined />}
+                    size="large"
+                    onSearch={setSearchQuery}
+                    onChange={(e) => {
+                      if (!e.target.value) setSearchQuery("");
+                    }}
+                    style={{ width: 300 }}
+                  />
+                  <Select
+                    value={statusFilter}
+                    onChange={setStatusFilter}
+                    style={{ width: 150 }}
+                    size="large"
+                  >
+                    <Select.Option value="all">Tất cả</Select.Option>
+                    <Select.Option value="PENDING">Chờ duyệt</Select.Option>
+                    <Select.Option value="APPROVED">Đã duyệt</Select.Option>
+                    <Select.Option value="COMPLETED">Hoàn thành</Select.Option>
+                    <Select.Option value="REJECTED">Từ chối</Select.Option>
+                    <Select.Option value="CANCELLED">Đã hủy</Select.Option>
+                  </Select>
+                </Space>
+              </div>
+
+              <Spin spinning={loading}>
+                <Table
+                  columns={requestsColumns}
+                  dataSource={stockRequests}
+                  rowKey="id"
+                  pagination={{
+                    ...pagination,
+                    onChange: (page, pageSize) => {
+                      setPagination({ ...pagination, current: page, pageSize });
+                    },
+                    showSizeChanger: true,
+                    showTotal: (total) => `Tổng ${total} yêu cầu`,
+                  }}
+                  scroll={{ x: 1400 }}
+                  bordered={false}
+                  className="ant-table-custom"
+                />
+              </Spin>
+            </>
+          )}
         </CardContent>
       </Card>
 

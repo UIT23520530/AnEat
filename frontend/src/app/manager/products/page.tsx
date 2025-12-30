@@ -346,72 +346,76 @@ function ProductsContent() {
   ];
 
   return (
-    <div className="p-8 space-y-6">
-      <Spin spinning={loading}>
-        {/* Statistics */}
-        <Row gutter={16}>
-          <Col xs={24} sm={12} lg={8}>
-            <AntCard>
-              <Statistic
-                title="Tổng sản phẩm"
-                value={totalProducts}
-                valueStyle={{ color: "#1890ff" }}
-              />
-            </AntCard>
-          </Col>
-          <Col xs={24} sm={12} lg={8}>
-            <AntCard>
-              <Statistic
-                title="Đang bán"
-                value={activeProducts}
-                valueStyle={{ color: "#52c41a" }}
-              />
-            </AntCard>
-          </Col>
-          <Col xs={24} sm={12} lg={8}>
-            <AntCard>
-              <Statistic
-                title="Sắp hết hàng"
-                value={lowStockProducts}
-                valueStyle={{ color: "#faad14" }}
-              />
-            </AntCard>
-          </Col>
-        </Row>
-
-        {/* Products Table */}
-        <Card className="mt-6">
-          <CardHeader className="mb-4">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-              <CardTitle className="text-xl font-semibold text-gray-800">
-                Quản lý sản phẩm
+    <div className="p-8">
+      <Card className="border-0 shadow-sm">
+        <CardHeader>
+          <div className="flex flex-col gap-4">
+            <div>
+              <CardTitle className="text-2xl font-bold text-slate-900">
+                Quản lý Sản phẩm
               </CardTitle>
             </div>
-          </CardHeader>
-          <CardContent>
-            <div className="mb-4 flex flex-col sm:flex-row gap-3">
-              <Input
-                placeholder="Tìm kiếm theo tên hoặc mã sản phẩm"
-                prefix={<SearchOutlined />}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="flex-1"
-                size="large"
-              />
-              <Select
-                value={selectedCategory}
-                onChange={setSelectedCategory}
-                style={{ width: 200 }}
-                size="large"
-              >
-                <Select.Option value="all">Tất cả danh mục</Select.Option>
-                {categories.map((cat) => (
-                  <Select.Option key={cat.id} value={cat.id}>
-                    {cat.name}
-                  </Select.Option>
-                ))}
-              </Select>
 
+            {/* Stats Cards */}
+            <Row gutter={16}>
+              <Col span={8}>
+                <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
+                  <Statistic
+                    title="Tổng sản phẩm"
+                    value={totalProducts}
+                    prefix={<PlusOutlined />}
+                    valueStyle={{ color: "#1890ff" }}
+                  />
+                </div>
+              </Col>
+              <Col span={8}>
+                <div className="bg-green-50 p-4 rounded-lg border border-green-100">
+                  <Statistic
+                    title="Đang bán"
+                    value={activeProducts}
+                    prefix={<CheckCircleOutlined />}
+                    valueStyle={{ color: "#52c41a" }}
+                  />
+                </div>
+              </Col>
+              <Col span={8}>
+                <div className="bg-orange-50 p-4 rounded-lg border border-orange-100">
+                  <Statistic
+                    title="Sắp hết hàng"
+                    value={lowStockProducts}
+                    prefix={<CloseCircleOutlined />}
+                    valueStyle={{ color: "#faad14" }}
+                  />
+                </div>
+              </Col>
+            </Row>
+
+            {/* Filters */}
+            <div className="flex justify-between items-center">
+              <Space>
+                <Input
+                  placeholder="Tìm kiếm theo tên hoặc mã sản phẩm"
+                  prefix={<SearchOutlined />}
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  style={{ width: 300 }}
+                  size="large"
+                  allowClear
+                />
+                <Select
+                  value={selectedCategory}
+                  onChange={setSelectedCategory}
+                  style={{ width: 180 }}
+                  size="large"
+                >
+                  <Select.Option value="all">Tất cả danh mục</Select.Option>
+                  {categories.map((cat) => (
+                    <Select.Option key={cat.id} value={cat.id}>
+                      {cat.name}
+                    </Select.Option>
+                  ))}
+                </Select>
+              </Space>
               <Button
                 type="primary"
                 icon={<PlusOutlined />}
@@ -421,12 +425,15 @@ function ProductsContent() {
                 Thêm sản phẩm
               </Button>
             </div>
+          </div>
+        </CardHeader>
 
+        <CardContent>
+          <Spin spinning={loading}>
             <Table
               columns={columns}
               dataSource={products}
               rowKey="id"
-              loading={loading}
               pagination={{
                 current: pagination.current,
                 pageSize: pagination.pageSize,
@@ -438,10 +445,12 @@ function ProductsContent() {
                 },
               }}
               scroll={{ x: 1400 }}
+              bordered={false}
+              className="ant-table-custom"
             />
-          </CardContent>
-        </Card>
-      </Spin>
+          </Spin>
+        </CardContent>
+      </Card>
 
       {/* Add Product Modal */}
       <Modal

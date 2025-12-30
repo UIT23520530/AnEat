@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { ManagerLayout } from "@/components/layouts/manager-layout";
+import { StaffService } from "@/services/staff.service";
 import {
   Table,
   Button,
@@ -9,11 +10,14 @@ import {
   Tag,
   Space,
   Avatar,
-  Tabs,
+  Select,
   Modal,
   Popconfirm,
   App,
   Spin,
+  Row,
+  Col,
+  Statistic,
 } from "antd";
 import {
   SearchOutlined,
@@ -26,8 +30,9 @@ import {
   PhoneOutlined,
   MailOutlined,
   LoadingOutlined,
+  CloseCircleOutlined,
 } from "@ant-design/icons";
-import type { TabsProps, TableColumnsType, TablePaginationConfig } from "antd";
+import type { TableColumnsType, TablePaginationConfig } from "antd";
 import { StaffForm } from "@/components/forms/manager/StaffForm";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useStaff } from "@/hooks/useStaff";
@@ -54,11 +59,12 @@ function StaffContent() {
   } = useStaff({ page: 1, limit: 10 });
 
   const [searchQuery, setSearchQuery] = useState("");
-  const [activeTab, setActiveTab] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all");
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedStaff, setSelectedStaff] = useState<StaffDTO | null>(null);
   const [isAuthReady, setIsAuthReady] = useState(false);
+  const [stats, setStats] = useState({ total: 0, active: 0, inactive: 0 });
 
   // Display error message when error occurs
   useEffect(() => {
@@ -76,21 +82,63 @@ function StaffContent() {
     initAuth();
   }, []);
 
-  // Debounced search - chỉ chạy khi đã auth
+  // Fetch statistics for correct tab counts (independent of main data)
+  useEffect(() => {
+    if (!isAuthReady) return;
+
+    // Debounce stats fetch to avoid excessive API calls
+    const timer = setTimeout(async () => {
+      try {
+        // Use StaffService directly for stats to not affect main loading state
+        // Backend expects 'status' not 'isActive'
+        const [allData, activeData, inactiveData] = await Promise.all([
+          StaffService.getList({ page: 1, limit: 1, search: searchQuery || undefined }),
+          StaffService.getList({ page: 1, limit: 1, search: searchQuery || undefined, status: 'active' }),
+          StaffService.getList({ page: 1, limit: 1, search: searchQuery || undefined, status: 'inactive' }),
+        ]);
+
+        setStats({
+          total: allData.meta.totalItems,
+          active: activeData.meta.totalItems,
+          inactive: inactiveData.meta.totalItems,
+        });
+      } catch (error) {
+        console.error('Failed to fetch stats:', error);
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [isAuthReady, searchQuery]);
+
+  // Fetch data when status filter changes (immediate, no debounce)
+  useEffect(() => {
+    if (!isAuthReady) return;
+
+    fetchStaffList({
+      page: 1,
+      limit: 10,
+      search: searchQuery || undefined,
+      status: statusFilter === "active" ? "active" : statusFilter === "inactive" ? "inactive" : undefined,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [statusFilter, isAuthReady]);
+
+  // Debounced search
   useEffect(() => {
     if (!isAuthReady) return;
 
     const timer = setTimeout(() => {
       fetchStaffList({
         page: 1,
-        limit: pagination.pageSize,
+        limit: 10,
         search: searchQuery || undefined,
-        isActive: activeTab === "active" ? true : activeTab === "inactive" ? false : undefined,
+        status: statusFilter === "active" ? "active" : statusFilter === "inactive" ? "inactive" : undefined,
       });
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [searchQuery, activeTab, isAuthReady]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchQuery, isAuthReady]);
 
   const getInitials = (name: string) => {
     return name
@@ -119,7 +167,7 @@ function StaffContent() {
       page: pagination.current || 1,
       limit: pagination.pageSize || 10,
       search: searchQuery || undefined,
-      isActive: activeTab === "active" ? true : activeTab === "inactive" ? false : undefined,
+      status: statusFilter === "active" ? "active" : statusFilter === "inactive" ? "inactive" : undefined,
     });
   };
 
@@ -241,32 +289,6 @@ function StaffContent() {
     },
   ];
 
-  const activeStaffCount = staffList.filter((s) => s.isActive).length;
-  const inactiveStaffCount = staffList.filter((s) => !s.isActive).length;
-
-  const tabItems: TabsProps["items"] = [
-    {
-      key: "all",
-      label: (
-        <span>
-          <TeamOutlined /> Tất cả ({pagination.total})
-        </span>
-      ),
-    },
-    {
-      key: "active",
-      label: (
-        <span>
-          <UserOutlined /> Đang hoạt động ({activeStaffCount})
-        </span>
-      ),
-    },
-    {
-      key: "inactive",
-      label: <span>Vô hiệu hóa ({inactiveStaffCount})</span>,
-    },
-  ];
-
   return (
     <div className="p-8">
       <Card className="border-0 shadow-sm">
@@ -274,26 +296,68 @@ function StaffContent() {
           <div className="flex flex-col gap-4">
             <div>
               <CardTitle className="text-2xl font-bold text-slate-900">
-                Quản lý nhân viên
+                Quản lý Nhân viên
               </CardTitle>
             </div>
 
-            {/* Search and Add Button */}
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-              }}
-            >
-              <Input
-                placeholder="Tìm kiếm theo tên, email, hoặc số điện thoại..."
-                prefix={<SearchOutlined />}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                style={{ maxWidth: "400px" }}
-                size="large"
-              />
+            {/* Stats Cards */}
+            <Row gutter={16}>
+              <Col span={8}>
+                <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
+                  <Statistic
+                    title="Tổng nhân viên"
+                    value={stats.total}
+                    prefix={<TeamOutlined />}
+                    valueStyle={{ color: "#1890ff" }}
+                  />
+                </div>
+              </Col>
+              <Col span={8}>
+                <div className="bg-green-50 p-4 rounded-lg border border-green-100">
+                  <Statistic
+                    title="Đang hoạt động"
+                    value={stats.active}
+                    prefix={<UserOutlined />}
+                    valueStyle={{ color: "#52c41a" }}
+                  />
+                </div>
+              </Col>
+              <Col span={8}>
+                <div className="bg-red-50 p-4 rounded-lg border border-red-100">
+                  <Statistic
+                    title="Vô hiệu hóa"
+                    value={stats.inactive}
+                    prefix={<CloseCircleOutlined />}
+                    valueStyle={{ color: "#ff4d4f" }}
+                  />
+                </div>
+              </Col>
+            </Row>
+
+            {/* Filters */}
+            <div className="flex justify-between items-center gap-4">
+              <div className="flex items-center gap-3 flex-1">
+                <Input
+                  placeholder="Tìm kiếm theo tên, email, hoặc số điện thoại..."
+                  prefix={<SearchOutlined />}
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  style={{ flex: 1, maxWidth: 400 }}
+                  size="large"
+                  allowClear
+                />
+                <Select
+                  value={statusFilter}
+                  onChange={setStatusFilter}
+                  size="large"
+                  style={{ width: 200 }}
+                  options={[
+                    { value: "all", label: `Tất cả (${stats.total})` },
+                    { value: "active", label: `Đang hoạt động (${stats.active})` },
+                    { value: "inactive", label: `Vô hiệu hóa (${stats.inactive})` },
+                  ]}
+                />
+              </div>
               <Button
                 type="primary"
                 icon={<PlusOutlined />}
@@ -303,19 +367,10 @@ function StaffContent() {
                 Thêm nhân viên mới
               </Button>
             </div>
-
-            {/* Tabs */}
-            <Tabs
-              activeKey={activeTab}
-              onChange={setActiveTab}
-              items={tabItems}
-              size="large"
-            />
           </div>
         </CardHeader>
 
         <CardContent>
-          {/* Table */}
           <Spin spinning={loading} indicator={<LoadingOutlined spin />}>
             <Table
               columns={columns}
@@ -330,7 +385,8 @@ function StaffContent() {
               }}
               onChange={handleTableChange}
               scroll={{ x: 1400 }}
-              style={{ marginTop: "16px" }}
+              bordered={false}
+              className="ant-table-custom"
             />
           </Spin>
         </CardContent>
@@ -408,7 +464,9 @@ function StaffContent() {
 export default function StaffManagementPage() {
   return (
     <ManagerLayout>
+      <App>
       <StaffContent />
+      </App>
     </ManagerLayout>
   );
 }
