@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { prisma } from '../db';
 import bcrypt from 'bcryptjs';
 import { UserRole } from '@prisma/client';
+import { StaffService } from '../models/staff.service';
 
 /**
  * Get manager's branch statistics
@@ -177,40 +178,23 @@ export const getStaffById = async (req: Request, res: Response): Promise<void> =
 
     const { id } = req.params;
 
-    const staff = await prisma.user.findFirst({
-      where: {
-        id,
-        branchId: req.user.branchId,
-        role: UserRole.STAFF,
-        isActive: true,
-      },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        phone: true,
-        avatar: true,
-        role: true,
-        branchId: true,
-        branch: {
-          select: {
-            id: true,
-            name: true,
-            code: true,
-          },
-        },
-        isActive: true,
-        createdAt: true,
-        updatedAt: true,
-        lastLogin: true,
-      },
-    });
+    const staff = await StaffService.findById(id);
 
     if (!staff) {
       res.status(404).json({
         success: false,
         code: 404,
-        message: 'Staff not found in your branch',
+        message: 'Staff not found',
+      });
+      return;
+    }
+
+    // Check if staff belongs to manager's branch
+    if (req.user.role === UserRole.ADMIN_BRAND && staff.branch?.id !== req.user.branchId) {
+      res.status(403).json({
+        success: false,
+        code: 403,
+        message: 'You can only view staff in your branch',
       });
       return;
     }
@@ -245,12 +229,10 @@ export const createStaff = async (req: Request, res: Response): Promise<void> =>
       return;
     }
 
-    const { email, password, name, phone, avatar } = req.body;
+    const { email, password, name, phone } = req.body;
 
     // Check if email already exists
-    const existingUser = await prisma.user.findUnique({
-      where: { email },
-    });
+    const existingUser = await StaffService.findByEmail(email);
 
     if (existingUser) {
       res.status(400).json({
@@ -265,34 +247,14 @@ export const createStaff = async (req: Request, res: Response): Promise<void> =>
     const hashedPassword = await bcrypt.hash(password, 10);
 
     // Create staff
-    const staff = await prisma.user.create({
-      data: {
-        email,
-        password: hashedPassword,
-        name,
-        phone,
-        role: UserRole.STAFF,
-        branchId: req.user.branchId,
-        avatar,
-      },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        phone: true,
-        role: true,
-        avatar: true,
-        branchId: true,
-        branch: {
-          select: {
-            id: true,
-            name: true,
-            code: true,
-          },
-        },
-        isActive: true,
-        createdAt: true,
-      },
+    const staff = await StaffService.create({
+      email,
+      password: hashedPassword,
+      name,
+      phone,
+      role: UserRole.STAFF,
+      branchId: req.user.branchId,
+      isActive: true,
     });
 
     res.status(201).json({
@@ -326,45 +288,36 @@ export const updateStaff = async (req: Request, res: Response): Promise<void> =>
     }
 
     const { id } = req.params;
-    const { name, phone, avatar, isActive } = req.body;
+    const { name, phone, role, isActive } = req.body;
 
-    // Check if staff exists in manager's branch
-    const existingStaff = await prisma.user.findFirst({
-      where: {
-        id,
-        branchId: req.user.branchId,
-        role: UserRole.STAFF,
-        isActive: true,
-      },
-    });
+    // Check if staff exists
+    const existingStaff = await StaffService.findById(id);
 
     if (!existingStaff) {
       res.status(404).json({
         success: false,
         code: 404,
-        message: 'Staff not found in your branch',
+        message: 'Staff not found',
+      });
+      return;
+    }
+
+    // Check if staff belongs to manager's branch
+    if (req.user.role === UserRole.ADMIN_BRAND && existingStaff.branch?.id !== req.user.branchId) {
+      res.status(403).json({
+        success: false,
+        code: 403,
+        message: 'You can only update staff in your branch',
       });
       return;
     }
 
     // Update staff
-    const staff = await prisma.user.update({
-      where: { id },
-      data: {
-        ...(name && { name }),
-        ...(phone && { phone }),
-        ...(avatar !== undefined && { avatar }),
-        ...(isActive !== undefined && { isActive }),
-      },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        phone: true,
-        avatar: true,
-        isActive: true,
-        updatedAt: true,
-      },
+    const staff = await StaffService.update(id, {
+      name,
+      phone,
+      role,
+      isActive,
     });
 
     res.status(200).json({
@@ -399,32 +352,30 @@ export const deleteStaff = async (req: Request, res: Response): Promise<void> =>
 
     const { id } = req.params;
 
-    // Check if staff exists in manager's branch
-    const existingStaff = await prisma.user.findFirst({
-      where: {
-        id,
-        branchId: req.user.branchId,
-        role: UserRole.STAFF,
-        isActive: true,
-      },
-    });
+    // Check if staff exists
+    const existingStaff = await StaffService.findById(id);
 
     if (!existingStaff) {
       res.status(404).json({
         success: false,
         code: 404,
-        message: 'Staff not found in your branch',
+        message: 'Staff not found',
+      });
+      return;
+    }
+
+    // Check if staff belongs to manager's branch
+    if (req.user.role === UserRole.ADMIN_BRAND && existingStaff.branch?.id !== req.user.branchId) {
+      res.status(403).json({
+        success: false,
+        code: 403,
+        message: 'You can only delete staff in your branch',
       });
       return;
     }
 
     // Soft delete staff
-    await prisma.user.update({
-      where: { id },
-      data: {
-        isActive: false,
-      },
-    });
+    await StaffService.delete(id);
 
     res.status(200).json({
       success: true,
@@ -463,79 +414,33 @@ export const getStaffList = async (req: Request, res: Response): Promise<void> =
       sort = 'createdAt', 
       order = 'desc',
       search,
-      isActive 
+      status,
+      role 
     } = req.query;
 
-    const skip = (Number(page) - 1) * Number(limit);
-    const take = Number(limit);
-
-    // Build where clause
-    const where: any = {
-      role: UserRole.STAFF,
+    const params = {
+      page: Number(page),
+      limit: Number(limit),
+      sort: sort as string,
+      order: order as 'asc' | 'desc',
+      search: search as string | undefined,
+      status: status as string | undefined,
+      role: role as UserRole | undefined,
+      // ADMIN_BRAND only sees their branch staff, ADMIN_SYSTEM sees all
+      branchId: (req.user?.role === UserRole.ADMIN_BRAND ? req.user.branchId : undefined) || undefined,
     };
 
-    // ADMIN_BRAND can only see staff in their branch
-    // ADMIN_SYSTEM can see all staff
-    if (req.user?.role === UserRole.ADMIN_BRAND) {
-      where.branchId = req.user.branchId;
-    }
-
-    // Add search filter
-    if (search) {
-      where.OR = [
-        { name: { contains: search as string, mode: 'insensitive' } },
-        { email: { contains: search as string, mode: 'insensitive' } },
-        { phone: { contains: search as string } },
-      ];
-    }
-
-    // Add active filter
-    if (isActive !== undefined) {
-      where.isActive = isActive === 'true';
-    }
-
-    // Build orderBy clause
-    const orderBy: any = {};
-    orderBy[sort as string] = order === 'asc' ? 'asc' : 'desc';
-
-    // Execute queries
-    const [staff, total] = await Promise.all([
-      prisma.user.findMany({
-        where,
-        skip,
-        take,
-        orderBy,
-        select: {
-          id: true,
-          email: true,
-          name: true,
-          phone: true,
-          avatar: true,
-          branchId: true,
-          branch: {
-            select: {
-              id: true,
-              name: true,
-              code: true,
-            },
-          },
-          isActive: true,
-          createdAt: true,
-          lastLogin: true,
-        },
-      }),
-      prisma.user.count({ where }),
-    ]);
+    const { staffs, total } = await StaffService.findAll(params);
 
     res.status(200).json({
       success: true,
       code: 200,
       message: 'Staff list retrieved successfully',
-      data: staff,
+      data: staffs,
       meta: {
-        currentPage: Number(page),
-        totalPages: Math.ceil(total / take),
-        limit: take,
+        currentPage: params.page,
+        totalPages: Math.ceil(total / params.limit),
+        limit: params.limit,
         totalItems: total,
       },
     });

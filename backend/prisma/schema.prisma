@@ -62,6 +62,20 @@ enum CustomerTier {
   VIP
 }
 
+enum StockRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  COMPLETED
+  CANCELLED
+}
+
+enum StockRequestType {
+  RESTOCK
+  ADJUSTMENT
+  RETURN
+}
+
 // ==================== MODELS ====================
 
 model User {
@@ -81,6 +95,11 @@ model User {
 
   managedBranches Branch?  @relation("manager")
   ordersAssigned  Order[]
+  
+  requestedStockRequests StockRequest[] @relation("requestedStockRequests")
+  approvedStockRequests  StockRequest[] @relation("approvedStockRequests")
+  stockTransactions      StockTransaction[] @relation("performedStockTransactions")
+  
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
   deletedAt       DateTime? // Soft delete support
@@ -97,7 +116,10 @@ model Branch {
   email     String?
   managerId String? @unique
   manager   User?   @relation("manager", fields: [managerId], references: [id], onDelete: SetNull)
-
+stockRequests     StockRequest[]
+  stockTransactions StockTransaction[]
+  
+  
   staff     User[]    @relation("staff")
   products  Product[]
   tables    Table[]
@@ -138,6 +160,9 @@ model Product {
   quantity     Int     @default(0) // Số lượng tồn kho
   costPrice    Int     @default(0) // Giá vốn (tính theo cent)
   prepTime     Int     @default(15) // Thời gian chuẩn bị (phút)
+  stockRequests     StockRequest[]
+  stockTransactions StockTransaction[]
+  
   isAvailable  Boolean @default(true)
 
   // ✨ Cải thiện: Thêm danh mục sản phẩm
@@ -190,6 +215,8 @@ model Order {
   paymentMethod PaymentMethod?
   paymentStatus PaymentStatus @default(PENDING)
 
+  
+  stockTransactions StockTransaction[]
   // ✨ Cải thiện: Thêm thông tin giao hàng
   deliveryAddress String?
   deliveryDate    DateTime?
@@ -316,4 +343,71 @@ model PaymentTransaction {
   updatedAt DateTime @updatedAt
 
   @@map("PaymentTransaction")
+}
+
+// ✨ NEW: Bảng yêu cầu nhập kho
+model StockRequest {
+  id             String             @id @default(cuid())
+  requestNumber  String             @unique
+  type           StockRequestType   @default(RESTOCK)
+  status         StockRequestStatus @default(PENDING)
+  
+  requestedQuantity Int
+  approvedQuantity  Int?
+  notes             String?
+  
+  requestedDate DateTime? // Thời gian yêu cầu nhập
+  expectedDate  DateTime? // Thời gian dự kiến giao hàng
+  completedDate DateTime? // Thời gian hoàn thành
+  rejectedReason String?
+  
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+  
+  branchId String
+  branch   Branch @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  
+  requestedById String
+  requestedBy   User   @relation("requestedStockRequests", fields: [requestedById], references: [id], onDelete: Restrict)
+  
+  approvedById String?
+  approvedBy   User?   @relation("approvedStockRequests", fields: [approvedById], references: [id], onDelete: SetNull)
+  
+  transactions StockTransaction[]
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("StockRequest")
+}
+
+// ✨ NEW: Bảng lịch sử giao dịch kho
+model StockTransaction {
+  id                String  @id @default(cuid())
+  transactionNumber String  @unique
+  type              String  // 'STOCK_IN', 'STOCK_OUT', 'ADJUSTMENT', 'ORDER_COMPLETED', 'DELIVERY_CONFIRMED'
+  quantity          Int     // Số lượng thay đổi (dương = tăng, âm = giảm)
+  previousQuantity  Int     // Số lượng trước khi thay đổi
+  newQuantity       Int     // Số lượng sau khi thay đổi
+  reason            String?
+  reference         String? // Mã tham chiếu (order number, request number, etc.)
+  
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+  
+  branchId String
+  branch   Branch @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  
+  performedById String
+  performedBy   User   @relation("performedStockTransactions", fields: [performedById], references: [id], onDelete: Restrict)
+  
+  stockRequestId String?
+  stockRequest   StockRequest? @relation(fields: [stockRequestId], references: [id], onDelete: SetNull)
+  
+  orderId String?
+  order   Order?  @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  
+  createdAt DateTime @default(now())
+
+  @@map("StockTransaction")
 }

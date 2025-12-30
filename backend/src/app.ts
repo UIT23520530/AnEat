@@ -80,6 +80,9 @@ import adminRoutes from './routes/admin.routes';
 import managerRoutes from './routes/manager.routes';
 import staffRoutes from './routes/staff.routes';
 import customerRoutes from './routes/customer.routes';
+import categoryRoutes from './routes/category.routes';
+import productRoutes from './routes/product.routes';
+import stockRequestRoutes from './routes/stock-request.routes';
 
 // Mount routes
 app.use('/api/v1/auth', authRoutes);
@@ -88,6 +91,9 @@ app.use('/api/v1/admin', adminRoutes);
 app.use('/api/v1/manager', managerRoutes);
 app.use('/api/v1/staff', staffRoutes);
 app.use('/api/v1/customer', customerRoutes);
+app.use('/api/v1/categories', categoryRoutes);
+app.use('/api/v1/products', productRoutes);
+app.use('/api/v1/stock-requests', stockRequestRoutes);
 
 // ==================== ERROR HANDLING ====================
 

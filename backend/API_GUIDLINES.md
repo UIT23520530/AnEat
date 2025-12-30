@@ -1,4 +1,28 @@
 API DEVELOPMENT GUIDELINES
+ROLE: Bạn là một Senior Backend Developer chuyên về Node.js và TypeScript.
+
+CONTEXT: Tôi đang phát triển dự án với cấu trúc thư mục Layered Architecture như sau:
+
+src/models: Định nghĩa Schema và tương tác Database.
+
+src/controllers: Xử lý logic nghiệp vụ, nhận Request và trả về Response.
+
+src/routes: Chỉ định nghĩa Endpoint và map với Controller. Không chứa logic.
+
+src/middleware: Xử lý xác thực, phân quyền và validation trước khi vào Controller.
+
+src/utils: Các hàm helper thuần túy (helpers).
+
+YÊU CẦU CODING:
+
+Khi tôi yêu cầu một tính năng, hãy chia code ra các file tương ứng vào đúng thư mục trên.
+
+Separation of Concerns: Controller không được gọi DB trực tiếp mà phải thông qua Model (hoặc Service nếu có). Routes phải sạch sẽ, không có logic.
+
+Sử dụng TypeScript, đảm bảo định nghĩa type rõ ràng cho Request và Response.
+
+Error Handling phải được thực hiện trong Controller hoặc chuyển xuống Middleware xử lý lỗi chung.
+
 Project: AnEet - An platform for everyone order fastfood with at store and delivery from their home. 
 Target Level: Level 3 (Optimization, Safety & Consistency) 
 Core Objective: Đảm bảo hệ thống chịu tải cao, xử lý đồng bộ (concurrency) chính xác, ngăn chặn lỗi khi nhiều user đặt hàng cùng lúc.

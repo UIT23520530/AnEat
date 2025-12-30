@@ -10,6 +10,8 @@ import {
   FileCode,
   BarChart,
   ChevronRight,
+  Warehouse,
+  FolderOpen,
 } from "lucide-react"
 import { usePathname } from "next/navigation"
 import { Sidebar, NavItem } from "./sidebar"
@@ -23,7 +25,9 @@ const managerNavItems: NavItem[] = [
   { href: "/manager/dashboard", icon: LayoutDashboard, label: "Tổng quan" },
   // { href: "/manager/analytics", icon: BarChart, label: "Phân tích" },
   { href: "/manager/staffs", icon: Users, label: "Danh sách nhân viên" },
+  { href: "/manager/categories", icon: FolderOpen, label: "Danh mục sản phẩm" },
   { href: "/manager/products", icon: ShoppingBag, label: "Danh sách sản phẩm" },
+  { href: "/manager/warehouse", icon: Warehouse, label: "Quản lý kho hàng" },
   { href: "/manager/promotions", icon: Ticket, label: "Chương trình khuyến mãi" },
   { href: "/manager/invoices", icon: FileText, label: "Quản lý hóa đơn" },
   // { href: "/manager/templates", icon: FileCode, label: "Mẫu" },
@@ -39,12 +43,13 @@ const breadcrumbMap: Record<string, BreadcrumbItem[]> = {
   "/manager/dashboard": [{ label: "Tổng quan" }],
   "/manager/analytics": [{ label: "Phân tích" }],
   "/manager/staffs": [{ label: "Danh sách nhân viên" }],
+  "/manager/categories": [{ label: "Danh mục sản phẩm" }],
+  "/manager/warehouse": [{ label: "Quản lý kho hàng" }],
   "/manager/products": [{ label: "Danh sách sản phẩm" }],
   "/manager/promotions": [{ label: "Chương trình khuyến mãi" }],
   "/manager/invoices": [{ label: "Quản lý hóa đơn" }],
   "/manager/templates": [{ label: "Mẫu" }],
   "/manager/settings": [{ label: "Cài đặt" }],
-  "/manager/tables": [{ label: "Quản lý bàn" }],
 }
 
 export function ManagerLayout({ children }: { children: React.ReactNode }) {
