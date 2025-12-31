@@ -89,6 +89,7 @@ import branchRoutes from './routes/branch.routes';
 import managerCustomerRoutes from './routes/manager-customer.routes';
 import dashboardRoutes from './routes/dashboard.routes';
 import templateRoutes from './routes/template.routes';
+import logisticsStaffRoutes from './routes/logistics-staff.routes';
 
 // Mount routes
 app.use('/api/v1/auth', authRoutes);
@@ -102,6 +103,7 @@ app.use('/api/v1/manager/dashboard', dashboardRoutes);
 app.use('/api/v1/manager/templates', templateRoutes);
 app.use('/api/v1/staff', staffRoutes);
 app.use('/api/v1/customer', customerRoutes);
+app.use('/api/v1/logistics', logisticsStaffRoutes);
 app.use('/api/v1/categories', categoryRoutes);
 app.use('/api/v1/products', productRoutes);
 app.use('/api/v1/stock-requests', stockRequestRoutes);
