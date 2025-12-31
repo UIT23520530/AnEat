@@ -1,127 +1,176 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import { ManagerLayout } from "@/components/layouts/manager-layout"
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Switch } from "@/components/ui/switch"
-import { Separator } from "@/components/ui/separator"
-import { Textarea } from "@/components/ui/textarea"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button, Input, Form, message, Spin, Row, Col } from "antd"
+import { 
+  SaveOutlined, 
+  ShopOutlined,
+  PhoneOutlined,
+  MailOutlined,
+  EnvironmentOutlined
+} from "@ant-design/icons"
+import { branchService, type Branch } from "@/services/branch.service"
 
 export default function ManagerSettingsPage() {
+  const [form] = Form.useForm()
+  const [loading, setLoading] = useState(false)
+  const [loadingData, setLoadingData] = useState(true)
+  const [branchInfo, setBranchInfo] = useState<Branch | null>(null)
+
+  useEffect(() => {
+    loadBranchInfo()
+  }, [])
+
+  const loadBranchInfo = async () => {
+    setLoadingData(true)
+    try {
+      const response = await branchService.getManagerBranch()
+      setBranchInfo(response.data)
+      form.setFieldsValue(response.data)
+    } catch (error: any) {
+      message.error(error.response?.data?.message || "Không thể tải thông tin cửa hàng")
+    } finally {
+      setLoadingData(false)
+    }
+  }
+
+  const handleSubmit = async (values: any) => {
+    setLoading(true)
+    try {
+      const response = await branchService.updateManagerBranch(values)
+      message.success("Đã cập nhật thông tin cửa hàng thành công")
+      setBranchInfo(response.data)
+    } catch (error: any) {
+      message.error(error.response?.data?.message || "Không thể cập nhật thông tin")
+    } finally {
+      setLoading(false)
+    }
+  }
+
   return (
     <ManagerLayout>
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold">Cài đặt cửa hàng</h1>
-          <p className="text-muted-foreground">
-            Quản lý thông tin và cấu hình cho cửa hàng của bạn.
-          </p>
-        </div>
+      <div className="p-8">
+        {/* <div className="mb-8">
+          <h1 className="text-3xl font-bold text-slate-900">Cài đặt cửa hàng</h1>
+          <p className="text-slate-500 mt-1">Quản lý thông tin và cấu hình cho cửa hàng của bạn</p>
+        </div> */}
 
-        {/* Store Information */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Thông tin cửa hàng</CardTitle>
-            <CardDescription>
-              Cập nhật thông tin chi tiết của cửa hàng.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="store-name">Tên cửa hàng</Label>
-              <Input id="store-name" defaultValue="AnEat - Chi nhánh Quận 1" />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="store-address">Địa chỉ</Label>
-              <Input
-                id="store-address"
-                defaultValue="123 Nguyễn Huệ, P. Bến Nghé, Quận 1, TP.HCM"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="store-phone">Số điện thoại</Label>
-              <Input id="store-phone" defaultValue="0987 654 321" />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="store-description">Mô tả</Label>
-              <Textarea
-                id="store-description"
-                defaultValue="Chuyên các món ăn nhanh, giao hàng tận nơi."
-              />
-            </div>
-            <Button>Lưu thay đổi</Button>
-          </CardContent>
-        </Card>
+        <Spin spinning={loadingData}>
+          <Card className="border-0 shadow-sm">
+            <CardHeader className="border-b border-slate-100 pb-4">
+              <CardTitle className="text-lg font-semibold text-slate-900 flex items-center gap-2">
+                <ShopOutlined className="text-blue-600" />
+                Thông tin cửa hàng
+              </CardTitle>
+              <p className="text-sm text-slate-500 mt-1">
+                Cập nhật thông tin chi tiết của cửa hàng
+              </p>
+            </CardHeader>
+            <CardContent className="pt-6">
+              <Form
+                form={form}
+                layout="vertical"
+                onFinish={handleSubmit}
+                autoComplete="off"
+              >
+                <Row gutter={16}>
+                  <Col span={12}>
+                    <Form.Item
+                      label={<span className="text-slate-700 font-medium">Tên cửa hàng</span>}
+                      name="name"
+                      rules={[{ required: true, message: 'Vui lòng nhập tên cửa hàng' }]}
+                    >
+                      <Input 
+                        size="large"
+                        prefix={<ShopOutlined className="text-slate-400" />}
+                        placeholder="Nhập tên cửa hàng"
+                      />
+                    </Form.Item>
+                  </Col>
 
-        {/* Operating Hours */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Giờ hoạt động</CardTitle>
-            <CardDescription>Cài đặt thời gian mở và đóng cửa.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-3 gap-4 items-center">
-              <Label>Thứ 2 - Thứ 6</Label>
-              <Input type="time" defaultValue="08:00" />
-              <Input type="time" defaultValue="22:00" />
-            </div>
-            <div className="grid grid-cols-3 gap-4 items-center">
-              <Label>Thứ 7 - Chủ nhật</Label>
-              <Input type="time" defaultValue="09:00" />
-              <Input type="time" defaultValue="23:00" />
-            </div>
-            <Button>Lưu giờ hoạt động</Button>
-          </CardContent>
-        </Card>
+                  <Col span={12}>
+                    <Form.Item
+                      label={<span className="text-slate-700 font-medium">Mã cửa hàng</span>}
+                      name="code"
+                    >
+                      <Input 
+                        size="large"
+                        disabled
+                        placeholder="Mã cửa hàng"
+                      />
+                    </Form.Item>
+                  </Col>
+                </Row>
 
-        {/* Store Services */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Dịch vụ tại cửa hàng</CardTitle>
-            <CardDescription>
-              Bật hoặc tắt các dịch vụ có sẵn.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                <Label>Giao hàng</Label>
-                <p className="text-sm text-muted-foreground">
-                  Cho phép khách hàng đặt giao hàng tận nơi.
-                </p>
-              </div>
-              <Switch defaultChecked />
-            </div>
-            <Separator />
-            <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                <Label>Đặt bàn</Label>
-                <p className="text-sm text-muted-foreground">
-                  Cho phép khách hàng đặt bàn trước.
-                </p>
-              </div>
-              <Switch />
-            </div>
-            <Separator />
-            <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                <Label>Thanh toán trực tuyến</Label>
-                <p className="text-sm text-muted-foreground">
-                  Chấp nhận thanh toán qua thẻ và ví điện tử.
-                </p>
-              </div>
-              <Switch defaultChecked />
-            </div>
-          </CardContent>
-        </Card>
+                <Row gutter={16}>
+                  <Col span={24}>
+                    <Form.Item
+                      label={<span className="text-slate-700 font-medium">Địa chỉ</span>}
+                      name="address"
+                      rules={[{ required: true, message: 'Vui lòng nhập địa chỉ' }]}
+                    >
+                      <Input 
+                        size="large"
+                        prefix={<EnvironmentOutlined className="text-slate-400" />}
+                        placeholder="Nhập địa chỉ cửa hàng"
+                      />
+                    </Form.Item>
+                  </Col>
+                </Row>
+
+                <Row gutter={16}>
+                  <Col span={12}>
+                    <Form.Item
+                      label={<span className="text-slate-700 font-medium">Số điện thoại</span>}
+                      name="phone"
+                      rules={[
+                        { required: true, message: 'Vui lòng nhập số điện thoại' },
+                        { pattern: /^[0-9]{10}$/, message: 'Số điện thoại không hợp lệ' }
+                      ]}
+                    >
+                      <Input 
+                        size="large"
+                        prefix={<PhoneOutlined className="text-slate-400" />}
+                        placeholder="Nhập số điện thoại"
+                      />
+                    </Form.Item>
+                  </Col>
+
+                  <Col span={12}>
+                    <Form.Item
+                      label={<span className="text-slate-700 font-medium">Email</span>}
+                      name="email"
+                      rules={[
+                        { type: 'email', message: 'Email không hợp lệ' }
+                      ]}
+                    >
+                      <Input 
+                        size="large"
+                        prefix={<MailOutlined className="text-slate-400" />}
+                        placeholder="Nhập email cửa hàng"
+                      />
+                    </Form.Item>
+                  </Col>
+                </Row>
+
+                <Form.Item className="mb-0 mt-6">
+                  <Button 
+                    type="primary" 
+                    htmlType="submit" 
+                    size="large"
+                    loading={loading}
+                    icon={<SaveOutlined />}
+                    className="bg-blue-600 hover:bg-blue-700"
+                  >
+                    Lưu thay đổi
+                  </Button>
+                </Form.Item>
+              </Form>
+            </CardContent>
+          </Card>
+        </Spin>
       </div>
     </ManagerLayout>
   )

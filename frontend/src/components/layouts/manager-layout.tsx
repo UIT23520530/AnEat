@@ -25,6 +25,7 @@ const managerNavItems: NavItem[] = [
   { href: "/manager/dashboard", icon: LayoutDashboard, label: "Tổng quan" },
   // { href: "/manager/analytics", icon: BarChart, label: "Phân tích" },
   { href: "/manager/staffs", icon: Users, label: "Danh sách nhân viên" },
+  { href: "/manager/customers", icon: Users, label: "Quản lý khách hàng" },
   { href: "/manager/categories", icon: FolderOpen, label: "Danh mục sản phẩm" },
   { href: "/manager/products", icon: ShoppingBag, label: "Danh sách sản phẩm" },
   { href: "/manager/warehouse", icon: Warehouse, label: "Quản lý kho hàng" },
@@ -48,7 +49,7 @@ const breadcrumbMap: Record<string, BreadcrumbItem[]> = {
   "/manager/products": [{ label: "Danh sách sản phẩm" }],
   "/manager/promotions": [{ label: "Chương trình khuyến mãi" }],
   "/manager/invoices": [{ label: "Quản lý hóa đơn" }],
-  "/manager/templates": [{ label: "Mẫu" }],
+  "/manager/templates": [{ label: "Cài đặt mẫu hoá đơn" }],
   "/manager/settings": [{ label: "Cài đặt" }],
 }
 
@@ -63,7 +64,6 @@ export function ManagerLayout({ children }: { children: React.ReactNode }) {
         navItems={managerNavItems}
         isCollapsed={isSidebarCollapsed}
         onToggle={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-        
       />
       <main
         className={`transition-all duration-300 ease-in-out ${

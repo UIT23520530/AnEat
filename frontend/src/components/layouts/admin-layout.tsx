@@ -50,7 +50,6 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
         navItems={adminNavItems}
         isCollapsed={isSidebarCollapsed}
         onToggle={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-        roleLabel="Admin"
       />
       <div
         className={`transition-all duration-300 ease-in-out ${

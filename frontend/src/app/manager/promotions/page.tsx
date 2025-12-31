@@ -30,6 +30,7 @@ import {
   CloseCircleOutlined,
   PercentageOutlined,
   DollarOutlined,
+  EditOutlined,
 } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import {
@@ -256,7 +257,7 @@ function PromotionsContent() {
         <Space>
           <Button
             type="link"
-            icon={<SearchOutlined />}
+            icon={<EditOutlined />}
             onClick={() => handleOpenModal(record)}
           >
             Sửa
