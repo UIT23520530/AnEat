@@ -42,31 +42,18 @@ apiClient.interceptors.response.use(
   async (error: AxiosError<any>) => {
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
 
-    // Handle 401 Unauthorized - Try refresh token
+    // Handle 401 Unauthorized - Clear token and redirect to login
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
 
-      const refreshToken = localStorage.getItem('refreshToken');
+      // Clear all auth data
+      console.log('Authentication failed - Token invalid or expired. Logging out...');
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
       
-      if (refreshToken) {
-        try {
-          const response = await axios.post(`${API_BASE_URL}/auth/refresh`, {
-            refreshToken,
-          });
-
-          const { token } = response.data.data;
-          localStorage.setItem('token', token);
-
-          if (originalRequest.headers) {
-            originalRequest.headers.Authorization = `Bearer ${token}`;
-          }
-          return apiClient(originalRequest);
-        } catch (refreshError) {
-          // Refresh failed - Try auto login with dev account
-          console.log('Token refresh failed, attempting auto-login...');
-          localStorage.removeItem('token');
-          localStorage.removeItem('refreshToken');
-        }
+      // Redirect to login page
+      if (typeof window !== 'undefined') {
+        window.location.href = '/auth/login';
       }
     }
 

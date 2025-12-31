@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AnEat - Quick Auto Login</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-width: 800px;
+            width: 100%;
+            padding: 40px;
+        }
+        
+        h1 {
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 32px;
+        }
+        
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 16px;
+        }
+        
+        .users-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+        
+        .user-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            border: none;
+            text-align: left;
+        }
+        
+        .user-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+        }
+        
+        .user-card:active {
+            transform: translateY(-2px);
+        }
+        
+        .user-name {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+        
+        .user-email {
+            font-size: 13px;
+            opacity: 0.9;
+            margin-bottom: 5px;
+        }
+        
+        .user-role {
+            display: inline-block;
+            background: rgba(255,255,255,0.2);
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            margin-top: 8px;
+        }
+        
+        .user-branch {
+            font-size: 12px;
+            opacity: 0.8;
+            margin-top: 5px;
+        }
+        
+        .admin-system { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
+        .admin-brand { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
+        .staff { background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); }
+        
+        .section-title {
+            font-size: 20px;
+            font-weight: 600;
+            margin: 30px 0 15px 0;
+            color: #333;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+        
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .info-box {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+        
+        .info-box h3 {
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 18px;
+        }
+        
+        .info-box p {
+            color: #666;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 AnEat Quick Auto Login</h1>
+        <p class="subtitle">Click vào tài khoản để đăng nhập tự động</p>
+        
+        <div id="content">
+            <div class="loading">
+                <div class="spinner"></div>
+                <p>Đang tải danh sách tài khoản...</p>
+            </div>
+        </div>
+        
+        <div class="info-box">
+            <h3>💡 Hướng dẫn sử dụng</h3>
+            <p>
+                1. Click vào bất kỳ tài khoản nào để đăng nhập tự động<br>
+                2. Trang sẽ tự động chuyển về dashboard<br>
+                3. Token có hiệu lực 7 ngày<br>
+                4. Dành cho Development mode only
+            </p>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:3001/api/v1';
+        
+        async function loadUsers() {
+            try {
+                // Fetch users from backend or use hardcoded list
+                const response = await fetch(`${API_URL}/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email: 'manager1@aneat.com',
+                        password: 'password123'
+                    })
+                });
+                
+                // Hardcoded list for quick access
+                const users = [
+                    { name: 'Admin Hệ Thống', email: 'admin@aneat.com', role: 'ADMIN_SYSTEM', branch: null },
+                    { name: 'Trần Quản Lý 1', email: 'manager1@aneat.com', role: 'ADMIN_BRAND', branch: 'AnEat - Hoàn Kiếm (Hà Nội)' },
+                    { name: 'Phạm Quản Lý 2', email: 'manager2@aneat.com', role: 'ADMIN_BRAND', branch: 'AnEat - Tây Hồ (Hà Nội)' },
+                    { name: 'Võ Quản Lý 3', email: 'manager3@aneat.com', role: 'ADMIN_BRAND', branch: 'AnEat - Ngô Quyền (Hải Phòng)' },
+                    { name: 'Bùi Quản Lý 4', email: 'manager4@aneat.com', role: 'ADMIN_BRAND', branch: 'AnEat - Thanh Khê (Đà Nẵng)' },
+                    { name: 'Nhân viên 1 - BR001', email: 'staff.BR001.0@aneat.com', role: 'STAFF', branch: 'AnEat - Hoàn Kiếm (Hà Nội)' },
+                    { name: 'Nhân viên 2 - BR001', email: 'staff.BR001.1@aneat.com', role: 'STAFF', branch: 'AnEat - Hoàn Kiếm (Hà Nội)' },
+                    { name: 'Nhân viên 1 - BR002', email: 'staff.BR002.0@aneat.com', role: 'STAFF', branch: 'AnEat - Tây Hồ (Hà Nội)' },
+                ];
+                
+                renderUsers(users);
+            } catch (error) {
+                document.getElementById('content').innerHTML = `
+                    <div class="loading">
+                        <p style="color: #f5576c;">⚠️ Không thể kết nối với backend. Vui lòng khởi động server backend trước.</p>
+                    </div>
+                `;
+            }
+        }
+        
+        function renderUsers(users) {
+            const byRole = {
+                'ADMIN_SYSTEM': [],
+                'ADMIN_BRAND': [],
+                'STAFF': []
+            };
+            
+            users.forEach(user => {
+                byRole[user.role].push(user);
+            });
+            
+            let html = '';
+            
+            Object.entries(byRole).forEach(([role, roleUsers]) => {
+                if (roleUsers.length === 0) return;
+                
+                const roleNames = {
+                    'ADMIN_SYSTEM': '👑 Admin Hệ Thống',
+                    'ADMIN_BRAND': '👨‍💼 Quản Lý Chi Nhánh',
+                    'STAFF': '👥 Nhân Viên'
+                };
+                
+                html += `<div class="section-title">${roleNames[role]}</div>`;
+                html += `<div class="users-grid">`;
+                
+                roleUsers.forEach(user => {
+                    const roleClass = role.toLowerCase().replace('_', '-');
+                    html += `
+                        <button class="user-card ${roleClass}" onclick="login('${user.email}', 'password123')">
+                            <div class="user-name">${user.name}</div>
+                            <div class="user-email">${user.email}</div>
+                            ${user.branch ? `<div class="user-branch">🏪 ${user.branch}</div>` : ''}
+                            <div class="user-role">${role.replace('_', ' ')}</div>
+                        </button>
+                    `;
+                });
+                
+                html += `</div>`;
+            });
+            
+            document.getElementById('content').innerHTML = html;
+        }
+        
+        async function login(email, password) {
+            try {
+                const response = await fetch(`${API_URL}/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+                
+                const data = await response.json();
+                
+                if (data.status === 'success' && data.data.token) {
+                    localStorage.setItem('token', data.data.token);
+                    localStorage.setItem('user', JSON.stringify(data.data.user));
+                    
+                    alert(`✅ Đăng nhập thành công!\n\n👤 ${data.data.user.name}\n📧 ${data.data.user.email}\n🔑 ${data.data.user.role}`);
+                    
+                    // Redirect to dashboard
+                    window.location.href = '/';
+                } else {
+                    alert('❌ Đăng nhập thất bại: ' + (data.message || 'Unknown error'));
+                }
+            } catch (error) {
+                alert('❌ Lỗi kết nối: ' + error.message);
+            }
+        }
+        
+        // Load users on page load
+        loadUsers();
+    </script>
+</body>
+</html>

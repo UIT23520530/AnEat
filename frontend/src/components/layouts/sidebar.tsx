@@ -41,11 +41,49 @@ export function Sidebar({
 }: SidebarProps) {
   const pathname = usePathname()
   const [currentUser, setCurrentUser] = useState<User | null>(null)
+  const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
-    const user = getCurrentUser()
-    setCurrentUser(user)
+    setMounted(true)
   }, [])
+
+  useEffect(() => {
+    if (!mounted) return
+
+    const loadUser = () => {
+      const user = getCurrentUser()
+      console.log("Sidebar - Loading User from localStorage:", user)
+      console.log("Sidebar - localStorage.currentUser:", localStorage.getItem('currentUser'))
+      setCurrentUser(user)
+    }
+
+    // Load immediately
+    loadUser()
+
+    // Listen for storage changes (in case user logs in another tab)
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'currentUser') {
+        console.log("Sidebar - Storage changed:", e.newValue)
+        loadUser()
+      }
+    }
+
+    window.addEventListener('storage', handleStorageChange)
+    
+    // Also check periodically in case currentUser was set after component mount
+    const intervalId = setInterval(() => {
+      const updatedUser = getCurrentUser()
+      if (updatedUser && JSON.stringify(updatedUser) !== JSON.stringify(currentUser)) {
+        console.log("Sidebar - User found/changed on interval check:", updatedUser)
+        setCurrentUser(updatedUser)
+      }
+    }, 1000)
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange)
+      clearInterval(intervalId)
+    }
+  }, [mounted])
 
   return (
     <div

@@ -1,149 +1,13 @@
 "use client";
 
 import { ManagerLayout } from "@/components/layouts/manager-layout";
-import { useState } from "react";
-import { Table, Button, Input, Space, Tag, Modal, App } from "antd";
+import { useState, useEffect } from "react";
+import { Table, Button, Input, Space, Tag, Modal, App, Spin } from "antd";
 import type { ColumnsType, TablePaginationConfig } from "antd/es/table";
 import { EditOutlined, DeleteOutlined, PlusOutlined, SearchOutlined, FileTextOutlined, EyeOutlined, PrinterOutlined, StarOutlined, CopyOutlined } from "@ant-design/icons";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { TemplatesForm } from "@/components/forms/manager/TemplatesForm";
-
-interface Template {
-  id: string;
-  name: string;
-  type: string;
-  description?: string;
-  content: string;
-  category: "invoice" | "order" | "receipt" | "report";
-  status: "active" | "inactive";
-  isDefault?: boolean;
-  lastUpdated: string;
-}
-
-// Mock data for Downtown Store templates
-const mockTemplates: Template[] = [
-  {
-    id: "TPL001",
-    name: "Hóa đơn chuẩn",
-    type: "Mẫu hóa đơn",
-    description: "Mẫu hóa đơn mặc định cho cửa hàng Downtown Store",
-    content: `<!DOCTYPE html>
-<html>
-<head><title>Hóa đơn</title></head>
-<body>
-  <h1>HÓA ĐƠN</h1>
-  <p>Mã đơn hàng: {{orderId}}</p>
-  <p>Khách hàng: {{customerName}}</p>
-  <p>Tổng tiền: {{total}}</p>
-  <p>Ngày: {{date}}</p>
-</body>
-</html>`,
-    category: "invoice",
-    status: "active",
-    isDefault: true,
-    lastUpdated: "2025-10-15",
-  },
-  {
-    id: "TPL002",
-    name: "Đơn hàng tại bàn",
-    type: "Mẫu đơn hàng",
-    description: "Mẫu in phiếu order cho khách tại bàn",
-    content: `<!DOCTYPE html>
-<html>
-<head><title>Đơn hàng</title></head>
-<body>
-  <h1>PHIẾU ORDER</h1>
-  <p>Số bàn: {{tableNumber}}</p>
-  <p>Món ăn: {{items}}</p>
-  <p>Thời gian: {{date}}</p>
-</body>
-</html>`,
-    category: "order",
-    status: "active",
-    isDefault: false,
-    lastUpdated: "2025-10-10",
-  },
-  {
-    id: "TPL003",
-    name: "Hóa đơn khuyến mãi",
-    type: "Mẫu hóa đơn",
-    description: "Hóa đơn có áp dụng giảm giá và khuyến mãi",
-    content: `<!DOCTYPE html>
-<html>
-<head><title>Hóa đơn KM</title></head>
-<body>
-  <h1>HÓA ĐƠN - ƯU ĐÃI ĐẶC BIỆT</h1>
-  <p>Giảm giá: {{discount}}</p>
-  <p>Tổng thanh toán: {{finalTotal}}</p>
-  <p>Tiết kiệm: {{discount}}</p>
-</body>
-</html>`,
-    category: "invoice",
-    status: "active",
-    isDefault: false,
-    lastUpdated: "2025-10-01",
-  },
-  {
-    id: "TPL004",
-    name: "Biên lai mang đi",
-    type: "Mẫu biên lai",
-    description: "Biên lai nhanh cho đơn hàng mang đi",
-    content: `<!DOCTYPE html>
-<html>
-<head><title>Biên lai</title></head>
-<body>
-  <h1>BIÊN LAI MANG ĐI</h1>
-  <p>Đơn hàng: {{orderId}}</p>
-  <p>Tổng tiền: {{total}}</p>
-  <p>Cảm ơn quý khách!</p>
-</body>
-</html>`,
-    category: "receipt",
-    status: "active",
-    isDefault: false,
-    lastUpdated: "2025-09-28",
-  },
-  {
-    id: "TPL005",
-    name: "Báo cáo doanh thu ngày",
-    type: "Mẫu báo cáo",
-    description: "Báo cáo tổng kết doanh thu cuối ngày",
-    content: `<!DOCTYPE html>
-<html>
-<head><title>Báo cáo</title></head>
-<body>
-  <h1>BÁO CÁO DOANH THU NGÀY</h1>
-  <p>Ngày: {{date}}</p>
-  <p>Tổng doanh thu: {{totalSales}}</p>
-  <p>Cửa hàng: Downtown Store</p>
-</body>
-</html>`,
-    category: "report",
-    status: "active",
-    isDefault: true,
-    lastUpdated: "2025-09-25",
-  },
-  {
-    id: "TPL006",
-    name: "Đơn hàng giao hàng",
-    type: "Mẫu đơn hàng",
-    description: "Mẫu đơn hàng giao tận nơi có địa chỉ",
-    content: `<!DOCTYPE html>
-<html>
-<head><title>Giao hàng</title></head>
-<body>
-  <h1>ĐƠN GIAO HÀNG</h1>
-  <p>Địa chỉ: {{address}}</p>
-  <p>Món ăn: {{items}}</p>
-  <p>Khách hàng: {{customerName}}</p>
-</body>
-</html>`,
-    category: "order",
-    status: "active",
-    isDefault: false,
-    lastUpdated: "2025-09-15",
-  },
-];
+import { templateService, Template, TemplateCategory, TemplateStatus } from "@/services/template.service";
 
 function TemplatesContent() {
   const { message, modal } = App.useApp();
@@ -155,6 +19,33 @@ function TemplatesContent() {
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const [loading, setLoading] = useState(false);
+  const [templates, setTemplates] = useState<Template[]>([]);
+  const [totalItems, setTotalItems] = useState(0);
+
+  // Load templates
+  const loadTemplates = async () => {
+    setLoading(true);
+    try {
+      const response = await templateService.getAll(
+        { search: searchTerm || undefined },
+        currentPage,
+        pageSize,
+        "-createdAt"
+      );
+      setTemplates(response.data);
+      setTotalItems(response.meta.total_items);
+    } catch (error: any) {
+      message.error("Không thể tải danh sách mẫu");
+      console.error("Load templates error:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadTemplates();
+  }, [currentPage, pageSize, searchTerm]);
 
   const handleDeleteTemplate = (template: Template) => {
     modal.confirm({
@@ -163,8 +54,14 @@ function TemplatesContent() {
       okText: "Xóa",
       okType: "danger",
       cancelText: "Hủy",
-      onOk: () => {
-        message.success("Xóa mẫu thành công");
+      onOk: async () => {
+        try {
+          await templateService.delete(template.id);
+          message.success("Xóa mẫu thành công");
+          loadTemplates();
+        } catch (error: any) {
+          message.error("Xóa mẫu thất bại");
+        }
       },
     });
   };
@@ -214,27 +111,33 @@ function TemplatesContent() {
       content: "Tạo bản sao của mẫu này?",
       okText: "Sao chép",
       cancelText: "Hủy",
-      onOk: () => {
-        message.success("Sao chép mẫu thành công");
+      onOk: async () => {
+        try {
+          await templateService.duplicate(template.id);
+          message.success("Sao chép mẫu thành công");
+          loadTemplates();
+        } catch (error: any) {
+          message.error("Sao chép mẫu thất bại");
+        }
       },
     });
   };
 
-  const filteredTemplates = mockTemplates.filter(
-    (template) =>
-      template.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      template.type.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      template.category.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const handleFormSuccess = () => {
+    setIsAddDialogOpen(false);
+    setIsEditDialogOpen(false);
+    setSelectedTemplate(null);
+    loadTemplates();
+  };
 
   const columns: ColumnsType<Template> = [
     {
       title: "Mã mẫu",
       dataIndex: "id",
       key: "id",
-      width: 100,
+      width: 120,
       render: (text: string) => (
-        <span className="font-mono text-xs font-semibold text-blue-600">{text}</span>
+        <span className="font-mono text-xs font-semibold text-blue-600">{text.substring(0, 8)}</span>
       ),
     },
     {
@@ -259,24 +162,24 @@ function TemplatesContent() {
       dataIndex: "category",
       key: "category",
       filters: [
-        { text: "Hóa đơn", value: "invoice" },
-        { text: "Đơn hàng", value: "order" },
-        { text: "Biên lai", value: "receipt" },
-        { text: "Báo cáo", value: "report" },
+        { text: "Hóa đơn", value: TemplateCategory.INVOICE },
+        { text: "Đơn hàng", value: TemplateCategory.ORDER },
+        { text: "Biên lai", value: TemplateCategory.RECEIPT },
+        { text: "Báo cáo", value: TemplateCategory.REPORT },
       ],
       onFilter: (value, record) => record.category === value,
-      render: (category: string) => {
-        const colors: Record<string, string> = {
-          invoice: "blue",
-          order: "green",
-          receipt: "orange",
-          report: "purple",
+      render: (category: TemplateCategory) => {
+        const colors: Record<TemplateCategory, string> = {
+          [TemplateCategory.INVOICE]: "blue",
+          [TemplateCategory.ORDER]: "green",
+          [TemplateCategory.RECEIPT]: "orange",
+          [TemplateCategory.REPORT]: "purple",
         };
-        const labels: Record<string, string> = {
-          invoice: "HÓA ĐƠN",
-          order: "ĐƠN HÀNG",
-          receipt: "BIÊN LAI",
-          report: "BÁO CÁO",
+        const labels: Record<TemplateCategory, string> = {
+          [TemplateCategory.INVOICE]: "HÓA ĐƠN",
+          [TemplateCategory.ORDER]: "ĐƠN HÀNG",
+          [TemplateCategory.RECEIPT]: "BIÊN LAI",
+          [TemplateCategory.REPORT]: "BÁO CÁO",
         };
         return <Tag color={colors[category]}>{labels[category]}</Tag>;
       },
@@ -292,9 +195,9 @@ function TemplatesContent() {
     },
     {
       title: "Cập nhật",
-      dataIndex: "lastUpdated",
-      key: "lastUpdated",
-      sorter: (a, b) => new Date(a.lastUpdated).getTime() - new Date(b.lastUpdated).getTime(),
+      dataIndex: "updatedAt",
+      key: "updatedAt",
+      sorter: (a, b) => new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime(),
       render: (date: string) => (
         <span className="text-sm text-slate-600">
           {new Date(date).toLocaleDateString('vi-VN')}
@@ -306,13 +209,13 @@ function TemplatesContent() {
       dataIndex: "status",
       key: "status",
       filters: [
-        { text: "Đang hoạt động", value: "active" },
-        { text: "Không hoạt động", value: "inactive" },
+        { text: "Đang hoạt động", value: TemplateStatus.ACTIVE },
+        { text: "Không hoạt động", value: TemplateStatus.INACTIVE },
       ],
       onFilter: (value, record) => record.status === value,
-      render: (status: string) => (
-        <Tag color={status === "active" ? "green" : "default"}>
-          {status === "active" ? "HOẠT ĐỘNG" : "TẠM DỪNG"}
+      render: (status: TemplateStatus) => (
+        <Tag color={status === TemplateStatus.ACTIVE ? "green" : "default"}>
+          {status === TemplateStatus.ACTIVE ? "HOẠT ĐỘNG" : "TẠM DỪNG"}
         </Tag>
       ),
     },
@@ -375,85 +278,90 @@ function TemplatesContent() {
 
   return (
     <div className="p-8">
-      <Card className="border-0 shadow-sm">
-        <CardHeader>
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div>
-              <CardTitle className="text-2xl font-bold text-slate-900">
-                Quản lý Mẫu
-              </CardTitle>
-              <p className="text-sm text-slate-500 mt-1">
-                Quản lý các mẫu hóa đơn, đơn hàng và báo cáo cho Downtown Store
-              </p>
+      <Spin spinning={loading}>
+        <Card className="border-0 shadow-sm">
+          <CardHeader>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div>
+                <CardTitle className="text-2xl font-bold text-slate-900">
+                  Quản lý Mẫu hoá đơn
+                </CardTitle>
+              </div>
+              <div className="flex items-center gap-3 w-full sm:w-auto">
+                <Input
+                  placeholder="Tìm kiếm mẫu..."
+                  prefix={<SearchOutlined className="text-slate-400" />}
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full sm:w-64"
+                  allowClear
+                />
+                <Button
+                  type="primary"
+                  icon={<PlusOutlined />}
+                  onClick={() => setIsAddDialogOpen(true)}
+                  className="bg-blue-500 hover:bg-blue-600"
+                >
+                  Tạo mẫu
+                </Button>
+              </div>
             </div>
-            <div className="flex items-center gap-3 w-full sm:w-auto">
-              <Input
-                placeholder="Tìm kiếm mẫu..."
-                prefix={<SearchOutlined className="text-slate-400" />}
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full sm:w-64"
-                allowClear
-              />
-              <Button
-                type="primary"
-                icon={<PlusOutlined />}
-                onClick={() => setIsAddDialogOpen(true)}
-                className="bg-blue-500 hover:bg-blue-600"
-              >
-                Tạo mẫu
-              </Button>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <Table
-            columns={columns}
-            dataSource={filteredTemplates}
-            rowKey="id"
-            pagination={{
-              current: currentPage,
-              pageSize: pageSize,
-              total: filteredTemplates.length,
-              showSizeChanger: true,
-              showTotal: (total, range) => `${range[0]}-${range[1]} của ${total} mẫu`,
-              pageSizeOptions: ["5", "10", "20", "50"],
-            }}
-            onChange={handleTableChange}
-            className="ant-table-custom"
-            bordered={false}
-          />
-        </CardContent>
-      </Card>
+          </CardHeader>
+          <CardContent>
+            <Table
+              columns={columns}
+              dataSource={templates}
+              rowKey="id"
+              pagination={{
+                current: currentPage,
+                pageSize: pageSize,
+                total: totalItems,
+                showSizeChanger: true,
+                showTotal: (total, range) => `${range[0]}-${range[1]} của ${total} mẫu`,
+                pageSizeOptions: ["5", "10", "20", "50"],
+              }}
+              onChange={handleTableChange}
+              className="ant-table-custom"
+              bordered={false}
+            />
+          </CardContent>
+        </Card>
+      </Spin>
 
       {/* Add Template Modal */}
       <Modal
         title={<span className="text-lg font-semibold">Tạo mẫu mới</span>}
         open={isAddDialogOpen}
-        onCancel={() => setIsAddDialogOpen(false)}
+        onCancel={() => {
+          setIsAddDialogOpen(false);
+          setSelectedTemplate(null);
+        }}
         footer={null}
         width={900}
         centered
-        destroyOnClose
+        destroyOnHidden
         maskClosable={false}
       >
         <p className="text-slate-500 mb-6">Tạo mẫu mới cho hóa đơn, đơn hàng hoặc báo cáo.</p>
-        <TemplatesForm onSuccess={() => setIsAddDialogOpen(false)} />
+        <TemplatesForm onSuccess={handleFormSuccess} />
       </Modal>
 
       {/* Edit Template Modal */}
       <Modal
         title={<span className="text-lg font-semibold">Chỉnh sửa mẫu: {selectedTemplate?.name}</span>}
         open={isEditDialogOpen}
-        onCancel={() => setIsEditDialogOpen(false)}
+        onCancel={() => {
+          setIsEditDialogOpen(false);
+          setSelectedTemplate(null);
+        }}
         footer={null}
         width={900}
         centered
-        destroyOnClose
+        destroyOnHidden
         maskClosable={false}
       >
         <p className="text-slate-500 mb-6">Cập nhật thông tin và nội dung mẫu.</p>
-        <TemplatesForm template={selectedTemplate!} onSuccess={() => setIsEditDialogOpen(false)} />
+        <TemplatesForm template={selectedTemplate!} onSuccess={handleFormSuccess} />
       </Modal>
 
       {/* View Template Modal */}
@@ -501,14 +409,14 @@ function TemplatesContent() {
         ]}
         width={900}
         centered
-        destroyOnClose
+        destroyOnHidden
       >
         {selectedTemplate && (
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4 p-4 bg-slate-50 rounded-lg">
               <div>
                 <p className="text-xs text-slate-500 font-medium mb-1">Mã mẫu</p>
-                <p className="font-mono text-sm font-semibold text-blue-600">{selectedTemplate.id}</p>
+                <p className="font-mono text-sm font-semibold text-blue-600">{selectedTemplate.id.substring(0, 8)}</p>
               </div>
               <div>
                 <p className="text-xs text-slate-500 font-medium mb-1">Loại</p>
@@ -517,19 +425,19 @@ function TemplatesContent() {
               <div>
                 <p className="text-xs text-slate-500 font-medium mb-1">Danh mục</p>
                 <Tag color={
-                  selectedTemplate.category === "invoice" ? "blue" :
-                  selectedTemplate.category === "order" ? "green" :
-                  selectedTemplate.category === "receipt" ? "orange" : "purple"
+                  selectedTemplate.category === TemplateCategory.INVOICE ? "blue" :
+                  selectedTemplate.category === TemplateCategory.ORDER ? "green" :
+                  selectedTemplate.category === TemplateCategory.RECEIPT ? "orange" : "purple"
                 }>
-                  {selectedTemplate.category === "invoice" ? "HÓA ĐƠN" :
-                   selectedTemplate.category === "order" ? "ĐƠN HÀNG" :
-                   selectedTemplate.category === "receipt" ? "BIÊN LAI" : "BÁO CÁO"}
+                  {selectedTemplate.category === TemplateCategory.INVOICE ? "HÓA ĐƠN" :
+                   selectedTemplate.category === TemplateCategory.ORDER ? "ĐƠN HÀNG" :
+                   selectedTemplate.category === TemplateCategory.RECEIPT ? "BIÊN LAI" : "BÁO CÁO"}
                 </Tag>
               </div>
               <div>
                 <p className="text-xs text-slate-500 font-medium mb-1">Trạng thái</p>
-                <Tag color={selectedTemplate.status === "active" ? "green" : "default"}>
-                  {selectedTemplate.status === "active" ? "HOẠT ĐỘNG" : "TẠM DỪNG"}
+                <Tag color={selectedTemplate.status === TemplateStatus.ACTIVE ? "green" : "default"}>
+                  {selectedTemplate.status === TemplateStatus.ACTIVE ? "HOẠT ĐỘNG" : "TẠM DỪNG"}
                 </Tag>
               </div>
               <div>
@@ -540,7 +448,7 @@ function TemplatesContent() {
               </div>
               <div>
                 <p className="text-xs text-slate-500 font-medium mb-1">Cập nhật lần cuối</p>
-                <p className="text-sm">{new Date(selectedTemplate.lastUpdated).toLocaleString('vi-VN')}</p>
+                <p className="text-sm">{new Date(selectedTemplate.updatedAt).toLocaleString('vi-VN')}</p>
               </div>
             </div>
 
@@ -593,7 +501,7 @@ function TemplatesContent() {
         ]}
         width={800}
         centered
-        destroyOnClose
+        destroyOnHidden
       >
         {selectedTemplate && (
           <div className="space-y-4">

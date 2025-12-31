@@ -26,6 +26,4 @@ Thumbs.db
 dist/
 build/
 
-#MD
-/POSTMAN_TESTING_GUIDE.md
-/AnEat_Product_API.postman_collection.json
+/docs

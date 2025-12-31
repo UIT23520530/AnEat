@@ -88,6 +88,7 @@ import billRoutes from './routes/bill.routes';
 import branchRoutes from './routes/branch.routes';
 import managerCustomerRoutes from './routes/manager-customer.routes';
 import dashboardRoutes from './routes/dashboard.routes';
+import templateRoutes from './routes/template.routes';
 
 // Mount routes
 app.use('/api/v1/auth', authRoutes);
@@ -98,6 +99,7 @@ app.use('/api/v1/manager/branch', branchRoutes);
 app.use('/api/v1/manager/customers', managerCustomerRoutes);
 app.use('/api/v1/manager/bills', billRoutes);
 app.use('/api/v1/manager/dashboard', dashboardRoutes);
+app.use('/api/v1/manager/templates', templateRoutes);
 app.use('/api/v1/staff', staffRoutes);
 app.use('/api/v1/customer', customerRoutes);
 app.use('/api/v1/categories', categoryRoutes);

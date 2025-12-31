@@ -1,22 +1,11 @@
 // src/components/forms/Manager/TemplatesForm.tsx
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Form, Input, Button, Row, Col, Select, App } from "antd";
+import { templateService, TemplateCategory, TemplateStatus, Template } from "@/services/template.service";
 
 const { TextArea } = Input;
-
-interface Template {
-  id: string;
-  name: string;
-  type: string;
-  description?: string;
-  content: string;
-  category: "invoice" | "order" | "receipt" | "report";
-  status: "active" | "inactive";
-  isDefault?: boolean;
-  lastUpdated: string;
-}
 
 interface TemplatesFormProps {
   template?: Template;
@@ -26,24 +15,48 @@ interface TemplatesFormProps {
 export function TemplatesForm({ template, onSuccess }: TemplatesFormProps) {
   const { message } = App.useApp();
   const [form] = Form.useForm();
+  const [loading, setLoading] = useState(false);
   const isEditing = !!template;
 
   useEffect(() => {
     if (template) {
       form.setFieldsValue({
-        ...template,
+        name: template.name,
+        type: template.type,
+        description: template.description,
+        content: template.content,
+        category: template.category,
+        status: template.status,
+        isDefault: template.isDefault,
       });
     }
   }, [template, form]);
 
   const handleSubmit = async (values: any) => {
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      setLoading(true);
 
-      if (isEditing) {
+      if (isEditing && template) {
+        await templateService.update(template.id, {
+          name: values.name,
+          type: values.type,
+          description: values.description,
+          content: values.content,
+          category: values.category,
+          status: values.status,
+          isDefault: values.isDefault,
+        });
         message.success("Cập nhật mẫu thành công!");
       } else {
+        await templateService.create({
+          name: values.name,
+          type: values.type,
+          description: values.description,
+          content: values.content,
+          category: values.category,
+          status: values.status || TemplateStatus.ACTIVE,
+          isDefault: values.isDefault || false,
+        });
         message.success("Tạo mẫu thành công!");
       }
 
@@ -51,8 +64,10 @@ export function TemplatesForm({ template, onSuccess }: TemplatesFormProps) {
       if (onSuccess) {
         onSuccess();
       }
-    } catch (error) {
-      message.error(isEditing ? "Cập nhật mẫu thất bại" : "Tạo mẫu thất bại");
+    } catch (error: any) {
+      message.error(error.response?.data?.message || (isEditing ? "Cập nhật mẫu thất bại" : "Tạo mẫu thất bại"));
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -61,9 +76,9 @@ export function TemplatesForm({ template, onSuccess }: TemplatesFormProps) {
       form={form}
       layout="vertical"
       onFinish={handleSubmit}
-      initialValues={template || {
-        status: "active",
-        category: "invoice",
+      initialValues={{
+        status: TemplateStatus.ACTIVE,
+        category: TemplateCategory.INVOICE,
         isDefault: false,
       }}
       className="stores-form"
@@ -87,7 +102,7 @@ export function TemplatesForm({ template, onSuccess }: TemplatesFormProps) {
             name="type"
             rules={[{ required: true, message: "Vui lòng nhập loại mẫu" }]}
           >
-            <Input placeholder="VD: Hóa đơn, Biên lai, Đơn hàng" size="large" />
+            <Input placeholder="VD: Mẫu hóa đơn, Mẫu biên lai" size="large" />
           </Form.Item>
         </Col>
       </Row>
@@ -100,10 +115,10 @@ export function TemplatesForm({ template, onSuccess }: TemplatesFormProps) {
             rules={[{ required: true, message: "Vui lòng chọn danh mục" }]}
           >
             <Select size="large" placeholder="Chọn danh mục">
-              <Select.Option value="invoice">Hóa đơn</Select.Option>
-              <Select.Option value="order">Đơn hàng</Select.Option>
-              <Select.Option value="receipt">Biên lai</Select.Option>
-              <Select.Option value="report">Báo cáo</Select.Option>
+              <Select.Option value={TemplateCategory.INVOICE}>Hóa đơn</Select.Option>
+              <Select.Option value={TemplateCategory.ORDER}>Đơn hàng</Select.Option>
+              <Select.Option value={TemplateCategory.RECEIPT}>Biên lai</Select.Option>
+              <Select.Option value={TemplateCategory.REPORT}>Báo cáo</Select.Option>
             </Select>
           </Form.Item>
         </Col>
@@ -114,8 +129,8 @@ export function TemplatesForm({ template, onSuccess }: TemplatesFormProps) {
             rules={[{ required: true, message: "Vui lòng chọn trạng thái" }]}
           >
             <Select size="large" placeholder="Chọn trạng thái">
-              <Select.Option value="active">Đang hoạt động</Select.Option>
-              <Select.Option value="inactive">Không hoạt động</Select.Option>
+              <Select.Option value={TemplateStatus.ACTIVE}>Đang hoạt động</Select.Option>
+              <Select.Option value={TemplateStatus.INACTIVE}>Không hoạt động</Select.Option>
             </Select>
           </Form.Item>
         </Col>
@@ -171,10 +186,10 @@ export function TemplatesForm({ template, onSuccess }: TemplatesFormProps) {
 
       <Form.Item className="mb-0 mt-6">
         <div className="flex justify-end gap-3">
-          <Button size="large" onClick={onSuccess}>
+          <Button size="large" onClick={onSuccess} disabled={loading}>
             Hủy
           </Button>
-          <Button type="primary" htmlType="submit" size="large">
+          <Button type="primary" htmlType="submit" size="large" loading={loading}>
             {isEditing ? "Cập nhật mẫu" : "Tạo mẫu"}
           </Button>
         </div>

@@ -84,6 +84,18 @@ enum BillStatus {
   REFUNDED
 }
 
+enum TemplateCategory {
+  INVOICE
+  ORDER
+  RECEIPT
+  REPORT
+}
+
+enum TemplateStatus {
+  ACTIVE
+  INACTIVE
+}
+
 // ==================== MODELS ====================
 
 model User {
@@ -110,6 +122,7 @@ model User {
   
   issuedBills         Bill[]        @relation("issuedBills")
   editedBillHistories BillHistory[] @relation("editedBillHistories")
+  createdTemplates    Template[]
   
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
@@ -127,10 +140,10 @@ model Branch {
   email     String?
   managerId String? @unique
   manager   User?   @relation("manager", fields: [managerId], references: [id], onDelete: SetNull)
-stockRequests     StockRequest[]
+  stockRequests     StockRequest[]
   stockTransactions StockTransaction[]
   bills             Bill[]
-  
+  templates         Template[]
   
   staff     User[]    @relation("staff")
   products  Product[]
@@ -523,5 +536,31 @@ model BillHistory {
   createdAt DateTime @default(now())
 
   @@map("BillHistory")
+}
+
+// ✨ NEW: Template model for invoice/order/receipt templates
+model Template {
+  id          String           @id @default(cuid())
+  name        String
+  type        String           // e.g., "Mẫu hóa đơn", "Mẫu đơn hàng"
+  description String?
+  content     String           // HTML template with placeholders
+  category    TemplateCategory // INVOICE, ORDER, RECEIPT, REPORT
+  status      TemplateStatus   @default(ACTIVE)
+  isDefault   Boolean          @default(false)
+  
+  // Branch relation (null means company-wide template)
+  branchId String?
+  branch   Branch? @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  
+  // Creator tracking
+  createdBy String?
+  creator   User?   @relation(fields: [createdBy], references: [id], onDelete: SetNull)
+  
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime? // Soft delete
+
+  @@map("Template")
 }
 
