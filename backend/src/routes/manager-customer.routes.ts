@@ -10,7 +10,7 @@ import {
   getCustomerOrders,
   searchCustomers,
   createCustomer,
-} from '../controllers/manager-customer.controller';
+} from '../controllers/manager/manager-customer.controller';
 import { authenticate, authorize, validate } from '../middleware';
 import { UserRole } from '@prisma/client';
 

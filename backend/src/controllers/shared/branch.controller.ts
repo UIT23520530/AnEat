@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { BranchService } from '../models/branch.service';
+import { BranchService } from '../../models/branch.service';
 import { Prisma } from '@prisma/client';
 
 /**

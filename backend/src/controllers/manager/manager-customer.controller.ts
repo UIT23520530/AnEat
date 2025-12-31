@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { CustomerService } from '../models/customer.service';
+import { CustomerService } from '../../models/customer.service';
 import { CustomerTier, Prisma } from '@prisma/client';
 
 /**

@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { TemplateService, TemplateFilters } from "../models/template.service";
+import { TemplateService, TemplateFilters } from "../../models/template.service";
 import { TemplateCategory, TemplateStatus } from "@prisma/client";
 
 /**

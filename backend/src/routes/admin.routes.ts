@@ -6,7 +6,7 @@ import {
   createBranch,
   updateBranch,
   deleteBranch,
-} from '../controllers/admin.controller';
+} from '../controllers/admin/admin.controller';
 import { authenticate, isAdmin, validate } from '../middleware';
 
 const router = Router();

@@ -4,7 +4,7 @@ import {
   getManagerBranch,
   updateManagerBranch,
   getBranchStatistics,
-} from '../controllers/branch.controller';
+} from '../controllers/shared/branch.controller';
 import { authenticate, authorize, validate } from '../middleware';
 import { UserRole } from '@prisma/client';
 

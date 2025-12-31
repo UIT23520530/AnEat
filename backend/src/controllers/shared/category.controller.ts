@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { CategoryService } from '../models/category.service';
+import { CategoryService } from '../../models/category.service';
 
 /**
  * Get category list with pagination, sorting and filtering

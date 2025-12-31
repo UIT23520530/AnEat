@@ -9,7 +9,7 @@ import {
   printBill,
   getBillStats,
   batchCreateBills,
-} from '../controllers/bill.controller';
+} from '../controllers/manager/bill.controller';
 import { authenticate, authorize, validate } from '../middleware';
 import { UserRole } from '@prisma/client';
 

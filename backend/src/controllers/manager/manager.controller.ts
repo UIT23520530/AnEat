@@ -1,8 +1,8 @@
 import { Request, Response } from 'express';
-import { prisma } from '../db';
+import { prisma } from '../../db';
 import bcrypt from 'bcryptjs';
 import { UserRole } from '@prisma/client';
-import { StaffService } from '../models/staff.service';
+import { StaffService } from '../../models/staff.service';
 
 /**
  * Get manager's branch statistics

@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { body, query, param } from 'express-validator';
 import { UserRole } from '@prisma/client';
 import { authenticate, authorize } from '../middleware/auth.middleware';
-import * as promotionController from '../controllers/promotion.controller';
+import * as promotionController from '../controllers/shared/promotion.controller';
 
 const router = Router();
 

@@ -9,7 +9,7 @@ import {
   createStockRequest,
   cancelStockRequest,
   getStockStatistics,
-} from '../controllers/stock-request.controller';
+} from '../controllers/manager/stock-request.controller';
 
 const router = Router();
 

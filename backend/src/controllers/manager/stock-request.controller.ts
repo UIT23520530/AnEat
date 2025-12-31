@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { StockRequestService } from '../models/stock-request.service';
+import { StockRequestService } from '../../models/stock-request.service';
 import { StockRequestStatus, StockRequestType } from '@prisma/client';
 
 /**

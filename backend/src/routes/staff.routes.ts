@@ -3,7 +3,7 @@ import { body } from 'express-validator';
 import {
   getAssignedOrders,
   updateOrderStatus,
-} from '../controllers/staff.controller';
+} from '../controllers/staff/staff.controller';
 import { authenticate, isStaff, validate } from '../middleware';
 
 const router = Router();

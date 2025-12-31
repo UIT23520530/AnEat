@@ -6,7 +6,7 @@ import {
   getInventoryAlerts,
   getRecentActivities,
   exportReport,
-} from '../controllers/dashboard.controller';
+} from '../controllers/shared/dashboard.controller';
 import { authenticate, authorize } from '../middleware/auth.middleware';
 
 const router = Router();

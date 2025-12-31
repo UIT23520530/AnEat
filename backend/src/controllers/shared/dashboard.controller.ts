@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { DashboardService } from '../models/dashboard.service';
+import { DashboardService } from '../../models/dashboard.service';
 import ExcelJS from 'exceljs';
 
 export const getDashboardStats = async (req: Request, res: Response): Promise<void> => {

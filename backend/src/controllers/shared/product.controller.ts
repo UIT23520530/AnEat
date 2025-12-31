@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { ProductService } from '../models/product.service';
+import { ProductService } from '../../models/product.service';
 import { UserRole } from '@prisma/client';
 
 /**

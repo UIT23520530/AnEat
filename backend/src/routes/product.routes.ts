@@ -8,7 +8,7 @@ import {
   createProduct,
   updateProduct,
   deleteProduct,
-} from '../controllers/product.controller';
+} from '../controllers/shared/product.controller';
 
 const router = Router();
 

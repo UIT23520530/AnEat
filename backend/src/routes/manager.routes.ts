@@ -9,7 +9,7 @@ import {
   updateStaff,
   deleteStaff,
   getStaffList,
-} from '../controllers/manager.controller';
+} from '../controllers/manager/manager.controller';
 import { authenticate, authorize, validate } from '../middleware';
 import { UserRole } from '@prisma/client';
 

@@ -14,10 +14,10 @@ const prisma = new PrismaClient({
 // Handle connection errors
 prisma.$connect()
   .then(() => {
-    console.log('✅ Database connected successfully');
+    console.log('Database connected successfully');
   })
   .catch((error) => {
-    console.error('❌ Database connection error:', error);
+    console.error('Database connection error:', error);
     process.exit(1);
   });
 
@@ -25,7 +25,7 @@ prisma.$connect()
 const closeDatabase = async () => {
   try {
     await prisma.$disconnect();
-    console.log('🔌 Database connection closed');
+    console.log('Database connection closed');
   } catch (error) {
     console.error('Error closing database connection:', error);
     process.exit(1);

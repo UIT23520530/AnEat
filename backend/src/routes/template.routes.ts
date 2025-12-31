@@ -7,7 +7,7 @@ import {
   deleteTemplate,
   duplicateTemplate,
   getDefaultTemplate,
-} from "../controllers/template.controller";
+} from "../controllers/admin/template.controller";
 import { authenticate, authorize } from "../middleware/auth.middleware";
 
 const router = Router();

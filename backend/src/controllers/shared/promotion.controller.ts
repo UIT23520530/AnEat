@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { PromotionService } from '../models/promotion.service';
+import { PromotionService } from '../../models/promotion.service';
 import { PromotionType } from '@prisma/client';
 
 // Get all promotions

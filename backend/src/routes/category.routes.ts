@@ -9,7 +9,7 @@ import {
   createCategory,
   updateCategory,
   deleteCategory,
-} from '../controllers/category.controller';
+} from '../controllers/shared/category.controller';
 
 const router = Router();
 

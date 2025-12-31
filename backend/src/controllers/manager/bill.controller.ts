@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { BillService, CreateBillInput, UpdateBillInput, BillQueryParams } from '../models/bill.service';
+import { BillService, CreateBillInput, UpdateBillInput, BillQueryParams } from '../../models/bill.service';
 import { BillStatus, PaymentMethod, PaymentStatus } from '@prisma/client';
 
 /**

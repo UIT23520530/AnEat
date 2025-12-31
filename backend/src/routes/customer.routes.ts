@@ -5,7 +5,7 @@ import {
   createOrder,
   getMenu,
   getProfile,
-} from '../controllers/customer.controller';
+} from '../controllers/customer/customer.controller';
 import { authenticate, isCustomer, validate } from '../middleware';
 
 const router = Router();
