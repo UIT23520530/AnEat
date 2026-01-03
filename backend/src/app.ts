@@ -9,9 +9,7 @@ import { prisma } from './db';
 dotenv.config();
 
 // Create Express app
-const app: Application = express();
-
-// ==================== MIDDLEWARE ====================
+const app = express();
 
 // Security middleware
 app.use(helmet());
@@ -33,7 +31,6 @@ if (process.env.NODE_ENV === 'development') {
   app.use(morgan('combined'));
 }
 
-// ==================== HEALTH CHECK ====================
 
 app.get('/health', async (req: Request, res: Response) => {
   try {
