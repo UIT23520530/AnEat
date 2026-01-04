@@ -20,6 +20,7 @@ enum UserRole {
   ADMIN_BRAND
   STAFF
   CUSTOMER
+  LOGISTICS_STAFF
 }
 
 enum OrderStatus {
@@ -96,6 +97,14 @@ enum TemplateStatus {
   INACTIVE
 }
 
+enum ShipmentStatus {
+  READY        // Sẵn sàng giao
+  IN_TRANSIT   // Đang vận chuyển
+  DELIVERED    // Đã giao (chờ xác nhận)
+  COMPLETED    // Hoàn thành
+  CANCELLED    // Đã hủy
+}
+
 // ==================== MODELS ====================
 
 model User {
@@ -119,6 +128,7 @@ model User {
   requestedStockRequests StockRequest[] @relation("requestedStockRequests")
   approvedStockRequests  StockRequest[] @relation("approvedStockRequests")
   stockTransactions      StockTransaction[] @relation("performedStockTransactions")
+  assignedShipments      Shipment[] @relation("assignedShipments")
   
   issuedBills         Bill[]        @relation("issuedBills")
   editedBillHistories BillHistory[] @relation("editedBillHistories")
@@ -142,6 +152,7 @@ model Branch {
   manager   User?   @relation("manager", fields: [managerId], references: [id], onDelete: SetNull)
   stockRequests     StockRequest[]
   stockTransactions StockTransaction[]
+  shipments         Shipment[]
   bills             Bill[]
   templates         Template[]
   
@@ -402,6 +413,7 @@ model StockRequest {
   approvedBy   User?   @relation("approvedStockRequests", fields: [approvedById], references: [id], onDelete: SetNull)
   
   transactions StockTransaction[]
+  shipments    Shipment[]
   
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -562,5 +574,47 @@ model Template {
   deletedAt DateTime? // Soft delete
 
   @@map("Template")
+}
+
+// ✨ NEW: Shipment model for logistics staff
+model Shipment {
+  id             String         @id @default(cuid())
+  shipmentNumber String         @unique // Mã chuyến hàng NL001, NL002...
+  status         ShipmentStatus @default(READY)
+  priority       Boolean        @default(false) // Ưu tiên cao
+  
+  // Thông tin hàng hóa
+  productName    String // Tên món hàng
+  quantity       Int    // Số lượng
+  temperature    String? // Nhiệt độ bảo quản (2-4°C, 4-8°C...)
+  
+  // Thông tin điểm đi - điểm đến
+  fromLocation   String // Kho Trung Tâm
+  toLocation     String // Chi nhánh Quận 1
+  branchCode     String // CN-Q1-01
+  
+  // Thời gian
+  assignedAt     DateTime? // Thời gian phân công
+  startedAt      DateTime? // Thời gian bắt đầu
+  deliveredAt    DateTime? // Thời gian giao hàng
+  completedAt    DateTime? // Thời gian hoàn thành
+  
+  notes          String?
+  issues         Int      @default(0) // Số vấn đề
+  
+  // Relations
+  stockRequestId String?
+  stockRequest   StockRequest? @relation(fields: [stockRequestId], references: [id], onDelete: SetNull)
+  
+  assignedToId   String? // Logistics Staff được phân công
+  assignedTo     User?   @relation("assignedShipments", fields: [assignedToId], references: [id], onDelete: SetNull)
+  
+  branchId       String
+  branch         Branch  @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@map("Shipment")
 }
 

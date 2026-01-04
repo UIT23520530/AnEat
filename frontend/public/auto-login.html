@@ -196,6 +196,14 @@
                     { name: 'Nhân viên 1 - BR001', email: 'staff.BR001.0@aneat.com', role: 'STAFF', branch: 'AnEat - Hoàn Kiếm (Hà Nội)' },
                     { name: 'Nhân viên 2 - BR001', email: 'staff.BR001.1@aneat.com', role: 'STAFF', branch: 'AnEat - Hoàn Kiếm (Hà Nội)' },
                     { name: 'Nhân viên 1 - BR002', email: 'staff.BR002.0@aneat.com', role: 'STAFF', branch: 'AnEat - Tây Hồ (Hà Nội)' },
+                    // Logistics Staff (auto-login by token)
+                    {
+                        name: 'Nguyễn Văn Logistics',
+                        email: 'logistics001@aneat.com',
+                        role: 'LOGISTICS_STAFF',
+                        branch: null,
+                        token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJjbWp1NG5nY2gwMDAwdHk0cWNyZGd6MW05IiwiZW1haWwiOiJsb2dpc3RpY3MwMDFAYW5lYXQuY29tIiwicm9sZSI6IkxPR0lTVElDU19TVEFGRiIsImJyYW5jaElkIjpudWxsLCJpYXQiOjE3NjcxOTQ2NDgsImV4cCI6MTc2Nzc5OTQ0OH0.8ti7kqhbVk60G5tkcdZkBBr-cceQTMLleY4tz3sQUT4'
+                    },
                 ];
                 
                 renderUsers(users);
@@ -212,43 +220,56 @@
             const byRole = {
                 'ADMIN_SYSTEM': [],
                 'ADMIN_BRAND': [],
-                'STAFF': []
+                'STAFF': [],
+                'LOGISTICS_STAFF': []
             };
-            
             users.forEach(user => {
-                byRole[user.role].push(user);
+                byRole[user.role]?.push(user);
             });
-            
             let html = '';
-            
+            const roleNames = {
+                'ADMIN_SYSTEM': '👑 Admin Hệ Thống',
+                'ADMIN_BRAND': '👨‍💼 Quản Lý Chi Nhánh',
+                'STAFF': '👥 Nhân Viên',
+                'LOGISTICS_STAFF': '🚚 Nhân Viên Logistics'
+            };
             Object.entries(byRole).forEach(([role, roleUsers]) => {
                 if (roleUsers.length === 0) return;
-                
-                const roleNames = {
-                    'ADMIN_SYSTEM': '👑 Admin Hệ Thống',
-                    'ADMIN_BRAND': '👨‍💼 Quản Lý Chi Nhánh',
-                    'STAFF': '👥 Nhân Viên'
-                };
-                
                 html += `<div class="section-title">${roleNames[role]}</div>`;
                 html += `<div class="users-grid">`;
-                
                 roleUsers.forEach(user => {
                     const roleClass = role.toLowerCase().replace('_', '-');
-                    html += `
-                        <button class="user-card ${roleClass}" onclick="login('${user.email}', 'password123')">
-                            <div class="user-name">${user.name}</div>
-                            <div class="user-email">${user.email}</div>
-                            ${user.branch ? `<div class="user-branch">🏪 ${user.branch}</div>` : ''}
-                            <div class="user-role">${role.replace('_', ' ')}</div>
-                        </button>
-                    `;
+                    if (user.token) {
+                        html += `
+                            <button class="user-card ${roleClass}" onclick="autoLoginByToken('${user.token}', '${user.name}', '${user.email}', '${role}')">
+                                <div class="user-name">${user.name}</div>
+                                <div class="user-email">${user.email}</div>
+                                ${user.branch ? `<div class=\"user-branch\">🏪 ${user.branch}</div>` : ''}
+                                <div class="user-role">${role.replace('_', ' ')}</div>
+                                <div style=\"margin-top:8px;font-size:12px;opacity:0.8;\">Auto-login (token)</div>
+                            </button>
+                        `;
+                    } else {
+                        html += `
+                            <button class="user-card ${roleClass}" onclick="login('${user.email}', 'password123')">
+                                <div class="user-name">${user.name}</div>
+                                <div class="user-email">${user.email}</div>
+                                ${user.branch ? `<div class=\"user-branch\">🏪 ${user.branch}</div>` : ''}
+                                <div class="user-role">${role.replace('_', ' ')}</div>
+                            </button>
+                        `;
+                    }
                 });
-                
                 html += `</div>`;
             });
-            
             document.getElementById('content').innerHTML = html;
+        }
+
+        function autoLoginByToken(token, name, email, role) {
+            localStorage.setItem('token', token);
+            localStorage.setItem('user', JSON.stringify({ name, email, role }));
+            alert(`✅ Đăng nhập nhanh bằng token!\n\n👤 ${name}\n📧 ${email}\n🔑 ${role}`);
+            window.location.href = '/';
         }
         
         async function login(email, password) {
