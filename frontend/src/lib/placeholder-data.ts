@@ -1,0 +1,48 @@
+import { Store } from "@/types"
+
+export const stores: Store[] = [
+  {
+    id: "1",
+    name: "Store #1",
+    address: "123 Main Street, District 1, Ho Chi Minh City",
+    phone: "0123456789",
+    email: "store1@fastfood.com",
+    manager: "Nguyễn Văn A",
+    status: "active",
+    revenue: 22800000,
+    orders: 454,
+  },
+  {
+    id: "2",
+    name: "Store #2",
+    address: "456 Second Avenue, District 3, Ho Chi Minh City",
+    phone: "0987654321",
+    email: "store2@fastfood.com",
+    manager: "Trần Thị B",
+    status: "active",
+    revenue: 18500000,
+    orders: 378,
+  },
+  {
+    id: "3",
+    name: "Store #3",
+    address: "789 Third Road, District 7, Ho Chi Minh City",
+    phone: "0369852147",
+    email: "store3@fastfood.com",
+    manager: "Lê Văn C",
+    status: "active",
+    revenue: 25600000,
+    orders: 512,
+  },
+  {
+    id: "4",
+    name: "Store #4",
+    address: "321 Fourth Street, District 10, Ho Chi Minh City",
+    phone: "0258963147",
+    email: "store4@fastfood.com",
+    manager: "Phạm Thị D",
+    status: "maintenance",
+    revenue: 19200000,
+    orders: 401,
+  },
+]
