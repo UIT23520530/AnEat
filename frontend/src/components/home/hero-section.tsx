@@ -8,21 +8,21 @@ import { cn } from "@/lib/utils";
 
 const banners = [
   {
-    src: "/fried-chicken-combo-meal.jpg",
+    src: "/assets/fried-chicken-combo-meal.jpg",
     alt: "Combo Gà Rán",
     title: "NỞ CÀNG BỤNG VUI BẤT MOOD",
     description: "Combo 79.000đ",
     badge: "Giá không đổi",
   },
   {
-    src: "/cheese-burger.png",
+    src: "/assets/cheese-burger.png",
     alt: "Cheese Burger",
     title: "BURGER PHÔ MAI",
     description: "Thử ngay burger phô mai mới",
     badge: "Mới",
   },
   {
-    src: "/classic-carbonara.png",
+    src: "/assets/classic-carbonara.png",
     alt: "Pasta Carbonara",
     title: "MỲ Ý THƯỢNG HẠNG",
     description: "Thưởng thức hương vị Ý đích thực",
