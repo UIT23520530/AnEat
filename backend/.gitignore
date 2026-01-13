@@ -27,3 +27,6 @@ dist/
 build/
 
 /docs
+
+/package-lock.json
+/package.json

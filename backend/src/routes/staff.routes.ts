@@ -1,3 +1,4 @@
+import { momoPosPayment } from '../controllers/staff/staff.controller';
 import { Router } from 'express';
 import { body } from 'express-validator';
 import {
@@ -7,6 +8,9 @@ import {
 import { authenticate, isStaff, validate } from '../middleware';
 
 const router = Router();
+
+// MoMo POS cho staff (không cần đăng nhập)
+router.post('/payment-pos', momoPosPayment);
 
 // All routes require staff authentication
 router.use(authenticate);

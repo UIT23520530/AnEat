@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation";
 import { StaffLayout } from "@/components/layouts/staff-layout"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -11,6 +12,8 @@ import { Search, Plus, Minus, X, CreditCard, Banknote, Smartphone, Utensils, Pac
 import { categories, products } from "@/lib/menu-data"
 import Image from "next/image"
 import { cn } from "@/lib/utils"
+import { createMoMoPosPayment, createMoMoPayment } from "@/services/payment.service"
+import router from "next/dist/shared/lib/router/router"
 
 interface CartItem {
   id: string
@@ -27,7 +30,8 @@ export default function POSPage() {
   const [customerName, setCustomerName] = useState("")
   const [tableNumber, setTableNumber] = useState("")
   const [orderType, setOrderType] = useState<"dine-in" | "take-away" | "delivery">("dine-in")
-  const [paymentMethod, setPaymentMethod] = useState<"cash" | "card" | "e-wallet">("cash")
+  const [paymentMethod, setPaymentMethod] = useState<"cash" | "card" | "e-wallet" | "momo-qr">("cash")
+    const router = useRouter();
 
   const allCategories = [
     { id: "all", name: "Tất cả" },
@@ -90,6 +94,60 @@ export default function POSPage() {
     alert(`Đặt hàng thành công!\nTổng cộng: ${total.toLocaleString()} VND`)
     clearCart()
   }
+
+  const [isLoading, setIsLoading] = useState(false);
+  const [barcode, setBarcode] = useState("");
+
+  const handlePayment = async () => {
+    if (paymentMethod === "e-wallet") {
+      if (!barcode) {
+        alert("Vui lòng quét mã thanh toán MoMo (barcode)!");
+        return;
+      }
+      setIsLoading(true);
+      try {
+        const data = await createMoMoPosPayment({
+          amount: total,
+          orderInfo: `Thanh toán đơn hàng tại AnEat (POS)` + (tableNumber ? ` - Bàn ${tableNumber}` : ""),
+          paymentCode: barcode.trim(),
+        });
+        if (data?.data?.payUrl) {
+          window.location.href = data.data.payUrl;
+          return;
+        } else {
+          alert("Không lấy được link thanh toán MoMo!");
+        }
+      } catch (error) {
+        console.error("Payment error:", error);
+        alert("Có lỗi khi thanh toán!");
+      } finally {
+        setIsLoading(false);
+      }
+    } else if (paymentMethod === "momo-qr") {
+      setIsLoading(true);
+      try {
+        const data = await createMoMoPayment({
+          amount: total,
+          orderInfo: `Thanh toán đơn hàng tại AnEat (QR)` + (tableNumber ? ` - Bàn ${tableNumber}` : ""),
+        });
+        if (data?.data?.payUrl) {
+          window.location.href = data.data.payUrl;
+          return;
+        } else {
+          alert("Không lấy được link thanh toán MoMo QR!");
+        }
+      } catch (error) {
+        console.error("Payment error:", error);
+        alert("Có lỗi khi thanh toán!");
+      } finally {
+        setIsLoading(false);
+      }
+    } else {
+      // Thanh toán tiền mặt/thẻ: chuyển sang trang thành công
+      const newOrderNumber = `ORD-${Date.now()}`;
+      router.push(`/checkout/success?orderId=${newOrderNumber}&total=${total}`);
+    }
+  };
 
   return (
     <StaffLayout>
@@ -323,7 +381,7 @@ export default function POSPage() {
                 <h3 className="text-xs font-semibold text-gray-700 mb-2 uppercase tracking-wide">
                   Thanh toán
                 </h3>
-                <div className="grid grid-cols-3 gap-1.5">
+                <div className="grid grid-cols-3 gap-2 mb-2">
                   <button
                     onClick={() => setPaymentMethod("cash")}
                     className={cn(
@@ -337,18 +395,6 @@ export default function POSPage() {
                     <span className="text-xs font-medium">Tiền mặt</span>
                   </button>
                   <button
-                    onClick={() => setPaymentMethod("card")}
-                    className={cn(
-                      "flex flex-col items-center gap-1 p-2 rounded-lg border transition-all",
-                      paymentMethod === "card"
-                        ? "border-orange-500 bg-orange-50 text-orange-700"
-                        : "border-gray-200 hover:border-orange-300 text-gray-600"
-                    )}
-                  >
-                    <CreditCard className="h-4 w-4" />
-                    <span className="text-xs font-medium">Thẻ</span>
-                  </button>
-                  <button
                     onClick={() => setPaymentMethod("e-wallet")}
                     className={cn(
                       "flex flex-col items-center gap-1 p-2 rounded-lg border transition-all",
@@ -358,9 +404,36 @@ export default function POSPage() {
                     )}
                   >
                     <Smartphone className="h-4 w-4" />
-                    <span className="text-xs font-medium">Ví điện tử</span>
+                    <span className="text-xs font-medium">Momo POS</span>
+                  </button>
+                  <button
+                    onClick={() => setPaymentMethod("momo-qr")}
+                    className={cn(
+                      "flex flex-col items-center gap-1 p-2 rounded-lg border transition-all",
+                      paymentMethod === "momo-qr"
+                        ? "border-orange-500 bg-orange-50 text-orange-700"
+                        : "border-gray-200 hover:border-orange-300 text-gray-600"
+                    )}
+                  >
+                    <Smartphone className="h-4 w-4" />
+                    <span className="text-xs font-medium">Momo QR</span>
                   </button>
                 </div>
+                {paymentMethod === "e-wallet" && (
+                  <div className="flex flex-col gap-1 mt-2">
+                    <label className="text-xs text-gray-600 font-medium" htmlFor="barcode-input">
+                      Quét mã MoMo (barcode) hoặc nhập mã thanh toán
+                    </label>
+                    <Input
+                      id="barcode-input"
+                      placeholder="Quét hoặc nhập mã MoMo tại đây"
+                      value={barcode}
+                      onChange={e => setBarcode(e.target.value)}
+                      className="border-orange-300 focus:border-orange-500 focus:ring-orange-500"
+                      autoFocus
+                    />
+                  </div>
+                )}
               </div>
 
               <Separator className="my-3" />
@@ -398,10 +471,11 @@ export default function POSPage() {
                   Hủy đơn
                 </Button>
                 <Button
-                  onClick={handleCheckout}
+                  onClick={handlePayment}
+                  disabled={isLoading}
                   className="flex-1 h-11 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white font-semibold shadow-lg shadow-orange-200"
                 >
-                  Thanh toán
+                  {isLoading ? "Đang xử lý..." : "Thanh toán"}
                 </Button>
               </div>
             </div>
