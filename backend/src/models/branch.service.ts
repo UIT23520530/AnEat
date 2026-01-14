@@ -10,22 +10,69 @@ interface BranchQueryParams {
 }
 
 interface BranchUpdateData {
+  code?: string;
   name?: string;
   address?: string;
   phone?: string;
   email?: string;
+  managerId?: string | null;
 }
 
 interface BranchCreateData {
-  code: string;
+  code?: string;
   name: string;
   address: string;
   phone: string;
   email?: string;
   managerId?: string;
+  isActive?: boolean;
+}
+
+export interface BranchDTO {
+  id: string;
+  code: string;
+  name: string;
+  address: string;
+  phone: string;
+  email?: string;
+  isActive: boolean;
+  managerId?: string | null;
+  manager?: {
+    id: string;
+    name: string;
+    email: string;
+    phone: string;
+    avatar?: string;
+  } | null;
+  createdAt: Date;
+  updatedAt: Date;
+  _count?: {
+    staff: number;
+    products: number;
+    orders: number;
+    tables: number;
+  };
 }
 
 export class BranchService {
+  /**
+   * Generate next available branch code
+   */
+  static async generateBranchCode(): Promise<string> {
+    const lastBranch = await prisma.branch.findFirst({
+      orderBy: { code: 'desc' },
+      select: { code: true },
+    });
+
+    if (!lastBranch) {
+      return 'BR001';
+    }
+
+    const lastNumber = parseInt(lastBranch.code.replace('BR', ''), 10);
+    const nextNumber = lastNumber + 1;
+    return `BR${nextNumber.toString().padStart(3, '0')}`;
+  }
+
   /**
    * Find all branches with pagination, sorting, and filtering
    */
@@ -40,6 +87,7 @@ export class BranchService {
         { name: { contains: search, mode: 'insensitive' } },
         { code: { contains: search, mode: 'insensitive' } },
         { address: { contains: search, mode: 'insensitive' } },
+        { phone: { contains: search } },
       ];
     }
 
@@ -60,6 +108,7 @@ export class BranchService {
           address: true,
           phone: true,
           email: true,
+          isActive: true,
           managerId: true,
           manager: {
             select: {
@@ -67,6 +116,7 @@ export class BranchService {
               name: true,
               email: true,
               phone: true,
+              avatar: true,
             },
           },
           createdAt: true,
@@ -76,6 +126,7 @@ export class BranchService {
               staff: true,
               products: true,
               orders: true,
+              tables: true,
             },
           },
         },
@@ -87,7 +138,7 @@ export class BranchService {
   }
 
   /**
-   * Find branch by ID
+   * Find branch by ID with detailed information
    */
   static async findById(id: string) {
     return prisma.branch.findUnique({
@@ -99,6 +150,7 @@ export class BranchService {
         address: true,
         phone: true,
         email: true,
+        isActive: true,
         managerId: true,
         manager: {
           select: {
@@ -136,8 +188,18 @@ export class BranchService {
    * Create new branch
    */
   static async create(data: BranchCreateData) {
+    const code = data.code || await this.generateBranchCode();
+    
     return prisma.branch.create({
-      data,
+      data: {
+        code,
+        name: data.name,
+        address: data.address,
+        phone: data.phone,
+        email: data.email,
+        managerId: data.managerId,
+        isActive: data.isActive ?? true,
+      },
       select: {
         id: true,
         code: true,
@@ -146,6 +208,14 @@ export class BranchService {
         phone: true,
         email: true,
         managerId: true,
+        manager: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            phone: true,
+          },
+        },
         createdAt: true,
         updatedAt: true,
       },
@@ -172,15 +242,24 @@ export class BranchService {
             id: true,
             name: true,
             email: true,
+            phone: true,
           },
         },
+        createdAt: true,
         updatedAt: true,
+        _count: {
+          select: {
+            staff: true,
+            products: true,
+            orders: true,
+          },
+        },
       },
     });
   }
 
   /**
-   * Delete branch (soft delete if implemented, otherwise hard delete)
+   * Delete branch
    */
   static async delete(id: string) {
     return prisma.branch.delete({
@@ -191,7 +270,7 @@ export class BranchService {
   /**
    * Assign manager to branch
    */
-  static async assignManager(branchId: string, managerId: string) {
+  static async assignManager(branchId: string, managerId: string | null) {
     return prisma.branch.update({
       where: { id: branchId },
       data: { managerId },

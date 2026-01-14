@@ -29,9 +29,8 @@ import { categories } from "@/lib/menu-data"
 
 const adminNavItems: NavItem[] = [
   { href: "/admin/dashboard", icon: LayoutDashboard, label: "Tổng quan" },
-  { href: "/admin/analytics", icon: BarChart, label: "Phân tích" },
-  { href: "/admin/stores", icon: Store, label: "Cửa hàng" },
-  { href: "/admin/users", icon: Users, label: "Người dùng" },
+  { href: "/admin/branches", icon: Store, label: "Quản lý chi nhánh" },
+  { href: "/admin/users", icon: Users, label: "Quản lý người dùng" },
   { href: "/admin/categories", icon: Users, label: "Danh mục" },
   { href: "/admin/products", icon: ShoppingBag, label: "Sản phẩm" },
   { href: "/admin/promotions", icon: Ticket, label: "Khuyến mãi" },
@@ -41,7 +40,7 @@ const adminNavItems: NavItem[] = [
   { href: "/admin/settings", icon: Settings, label: "Cài đặt" },
 ]
 
-export function AdminLayout({ children }: { children: React.ReactNode }) {
+export function AdminLayout({ children, title }: { children: React.ReactNode; title?: string }) {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
 
   return (
@@ -58,13 +57,13 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
       >
         {/* Header */}
         <header className="sticky top-0 z-40 bg-white border-b border-gray-200 h-20">
-          <div className="flex items-center justify-between h-full px-8">
-            <div className="flex items-center flex-1 max-w-xl">
-              <div className="relative w-full">
-              </div>
-            </div>
-            
-            <div className="flex items-center gap-2">
+          <div className="flex items-end pb-1 justify-center h-full px-8">
+            {title && (
+              <h1 className="text-3xl font-black text-slate-900" style={{ fontWeight: 700 }}>{title}</h1>
+            )}
+          </div>
+          
+          <div className="absolute right-8 top-1/2 -translate-y-1/2 flex items-center gap-2">
             {/*
               <Button variant="ghost" size="icon" className="relative hover:bg-gray-100">
                 <Bell className="h-5 w-5 text-gray-600" />
@@ -101,7 +100,6 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
                   <AvatarFallback>SA</AvatarFallback>
                 </Avatar>
               </div>
-            </div>
           </div>
         </header>
 
