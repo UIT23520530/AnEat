@@ -148,6 +148,7 @@ model Branch {
   address   String
   phone     String
   email     String?
+  isActive  Boolean @default(true)
   managerId String? @unique
   manager   User?   @relation("manager", fields: [managerId], references: [id], onDelete: SetNull)
   stockRequests     StockRequest[]

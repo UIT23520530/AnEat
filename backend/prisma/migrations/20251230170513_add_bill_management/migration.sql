@@ -2,19 +2,19 @@
 CREATE TYPE "BillStatus" AS ENUM ('DRAFT', 'ISSUED', 'PAID', 'CANCELLED', 'REFUNDED');
 
 -- DropIndex
-DROP INDEX "StockRequest_branchId_idx";
+DROP INDEX IF EXISTS "StockRequest_branchId_idx";
 
 -- DropIndex
-DROP INDEX "StockRequest_productId_idx";
+DROP INDEX IF EXISTS "StockRequest_productId_idx";
 
 -- DropIndex
-DROP INDEX "StockRequest_status_idx";
+DROP INDEX IF EXISTS "StockRequest_status_idx";
 
 -- DropIndex
-DROP INDEX "StockTransaction_branchId_idx";
+DROP INDEX IF EXISTS "StockTransaction_branchId_idx";
 
 -- DropIndex
-DROP INDEX "StockTransaction_productId_idx";
+DROP INDEX IF EXISTS "StockTransaction_productId_idx";
 
 -- CreateTable
 CREATE TABLE "Bill" (
