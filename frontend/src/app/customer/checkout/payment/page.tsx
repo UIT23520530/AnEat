@@ -84,7 +84,7 @@ export default function CheckoutPaymentPage() {
           {/* Left Column - Order Info Cards */}
           <div className="space-y-4">
             {/* Địa chỉ giao hàng */}
-            <Card className="border shadow-sm">
+            <Card>
               <CardContent className="p-4">
                 <h3 className="font-bold mb-3 flex items-center gap-2">
                   <div className="w-6 h-6 rounded-full bg-orange-500 text-white flex items-center justify-center text-xs">
@@ -105,7 +105,7 @@ export default function CheckoutPaymentPage() {
             </Card>
 
             {/* Danh sách món ăn */}
-            <Card className="border shadow-sm">
+            <Card>
               <CardContent className="p-4">
                 <h3 className="font-bold mb-3 flex items-center gap-2">
                   <div className="w-6 h-6 rounded-full bg-orange-500 text-white flex items-center justify-center text-xs">
@@ -137,7 +137,7 @@ export default function CheckoutPaymentPage() {
             </Card>
 
             {/* Tổng tiền */}
-            <Card className="border shadow-sm">
+            <Card>
               <CardContent className="p-4">
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm">
@@ -162,7 +162,7 @@ export default function CheckoutPaymentPage() {
           {/* Right Column - Payment Details */}
           <div className="space-y-4">
             {/* Phương thức thanh toán */}
-            <Card className="border shadow-sm">
+            <Card>
               <CardContent className="p-4">
                 <h3 className="font-bold mb-4">Phương thức thanh toán</h3>
                 <div className="space-y-3">
@@ -195,7 +195,7 @@ export default function CheckoutPaymentPage() {
             </Card>
 
             {/* Mã khuyến mãi */}
-            <Card className="border shadow-sm">
+            <Card>
               <CardContent className="p-4">
                 <h3 className="font-bold mb-4">Mã khuyến mãi</h3>
                 <div className="flex gap-2">

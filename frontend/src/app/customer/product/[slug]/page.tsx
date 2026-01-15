@@ -1,58 +1,9 @@
-"use client";
+import { Metadata } from "next"
+import { notFound } from "next/navigation"
+import { ProductDetailClient } from "./product-detail-client"
 
-import { useState } from "react";
-import { PublicLayout } from "@/components/layouts/public-layout";
-import { ProductCard } from "@/components/cart/product-card";
-import { CategoriesFilter } from "@/components/product/categories-filter";
-import { Product } from "@/types";
-import { useCart } from "@/contexts/cart-context";
-import { useToast } from "@/hooks/use-toast";
-import { createSlug } from "@/lib/utils";
-
-const categories = [
-  {
-    id: "all",
-    name: "Tất cả",
-    image: "🍽️",
-  },
-  {
-    id: "combo",
-    name: "Combo",
-    image: "🍱",
-  },
-  {
-    id: "ga-chien",
-    name: "Gà chiên",
-    image: "🍗",
-  },
-  {
-    id: "my-y",
-    name: "Mỳ ý",
-    image: "🍝",
-  },
-  {
-    id: "burger",
-    name: "Burger",
-    image: "🍔",
-  },
-  {
-    id: "khoai-tay",
-    name: "Khoai tây",
-    image: "🍟",
-  },
-  {
-    id: "kem",
-    name: "Kem",
-    image: "🍦",
-  },
-  {
-    id: "thuc-uong",
-    name: "Thức uống",
-    image: "🥤",
-  },
-];
-
-const mockProducts: Product[] = [
+// Mock products data - trong thực tế sẽ fetch từ API
+const mockProducts = [
   {
     id: "1",
     name: "Combo Gà Rán",
@@ -65,6 +16,7 @@ const mockProducts: Product[] = [
     image: `/assets/fried-chicken-combo.jpg`,
     isAvailable: true,
     isPromotion: true,
+    originalPrice: 99000,
   },
   {
     id: "2",
@@ -170,69 +122,64 @@ const mockProducts: Product[] = [
     isAvailable: true,
     isPromotion: false,
   },
-];
+]
 
-export default function MenuPage() {
-  const [selectedCategory, setSelectedCategory] = useState("all");
-  const [searchQuery, setSearchQuery] = useState("");
-  const { addToCart } = useCart();
-  const { toast } = useToast();
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>
+}): Promise<Metadata> {
+  const { slug } = await params
+  
+  // Tìm sản phẩm theo slug
+  const product = mockProducts.find((p) => p.slug === slug)
 
-  const handleAddToCart = (product: Product) => {
-    addToCart({
-      id: product.id,
-      name: product.name,
-      price: product.basePrice,
-      quantity: 1,
-      image: product.image || "/placeholder.svg",
-    });
-    
-    toast({
-      title: "Đã thêm vào giỏ hàng",
-      description: `${product.name} đã được thêm vào giỏ hàng của bạn`,
-      className: "bg-green-50 border-green-200",
-    });
-  };
+  if (!product) {
+    return {
+      title: "Không tìm thấy sản phẩm | AnEat",
+      description: "Sản phẩm bạn đang tìm kiếm không tồn tại.",
+    }
+  }
 
-  const filteredProducts = mockProducts.filter((product) => {
-    const matchesCategory =
-      selectedCategory === "all" || product.category === selectedCategory;
-    const matchesSearch = product.name
-      .toLowerCase()
-      .includes(searchQuery.toLowerCase());
-    return matchesCategory && matchesSearch;
-  });
+  const price = product.basePrice.toLocaleString("vi-VN")
+  const title = `${product.name} - ${price}đ | AnEat`
+  const description = `${product.description} Giá chỉ ${price}đ. Đặt hàng ngay tại AnEat - Giao hàng nhanh chóng, chất lượng đảm bảo.`
 
-  return (
-    <PublicLayout>
-      <div className="container mx-auto px-4 py-8">
-        
-        {/* Categories */}
-        <CategoriesFilter
-          categories={categories}
-          selectedCategory={selectedCategory}
-          onSelectCategory={setSelectedCategory}
-        />
+  return {
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      images: [
+        {
+          url: product.image,
+          alt: product.name,
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: [product.image],
+    },
+  }
+}
 
-        {/* Products Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {filteredProducts.map((product) => (
-            <ProductCard
-              key={product.id}
-              product={product}
-              onAddToCart={handleAddToCart}
-            />
-          ))}
-        </div>
+export default async function ProductDetailPage({
+  params,
+}: {
+  params: Promise<{ slug: string }>
+}) {
+  const { slug } = await params
 
-        {filteredProducts.length === 0 && (
-          <div className="text-center py-12">
-            <p className="text-muted-foreground text-lg">
-              Không tìm thấy sản phẩm nào
-            </p>
-          </div>
-        )}
-      </div>
-    </PublicLayout>
-  );
+  // Tìm sản phẩm theo slug
+  const product = mockProducts.find((p) => p.slug === slug)
+
+  if (!product) {
+    notFound()
+  }
+
+  return <ProductDetailClient product={product} />
 }

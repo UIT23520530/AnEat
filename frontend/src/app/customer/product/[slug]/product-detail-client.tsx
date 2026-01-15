@@ -1,28 +1,49 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { PublicLayout } from "@/components/layouts/public-layout"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Minus, Plus, ShoppingCart } from "lucide-react"
 import Link from "next/link"
+import { useCart } from "@/contexts/cart-context"
+import { useToast } from "@/hooks/use-toast"
 
-export default function ProductDetailPage({ params }: { params: { id: string } }) {
+interface Product {
+  id: string
+  name: string
+  slug: string
+  description: string
+  basePrice: number
+  priceAfterTax: number
+  taxPercentage: number
+  category: string
+  image: string
+  isAvailable: boolean
+  isPromotion: boolean
+  originalPrice?: number
+}
+
+interface ProductDetailClientProps {
+  product: Product
+}
+
+export function ProductDetailClient({ product }: ProductDetailClientProps) {
   const [quantity, setQuantity] = useState(1)
   const [selectedAddons, setSelectedAddons] = useState<string[]>([])
+  const { addToCart } = useCart()
+  const { toast } = useToast()
 
-  // Mock product data
-  const product = {
-    id: params.id,
-    name: "Fried Chicken Combo",
-    description:
-      "Crispy fried chicken served with french fries, coleslaw, and a soft drink. Our signature recipe with 11 herbs and spices.",
-    price: 50000,
-    image: "/fried-chicken-combo-meal.jpg",
-    category: "Chicken",
-    isPromotion: true,
-    originalPrice: 60000,
+  // Mapping category slug thành tên category đẹp
+  const categoryNames: { [key: string]: string } = {
+    combo: "Combo",
+    "ga-chien": "Gà Chiên",
+    burger: "Burger",
+    "my-y": "Mỳ Ý",
+    "khoai-tay": "Khoai Tây",
+    "thuc-uong": "Thức Uống",
+    kem: "Kem",
   }
 
   const addons = [
@@ -35,8 +56,24 @@ export default function ProductDetailPage({ params }: { params: { id: string } }
     setSelectedAddons((prev) => (prev.includes(addonId) ? prev.filter((id) => id !== addonId) : [...prev, addonId]))
   }
 
+  const handleAddToCart = () => {
+    addToCart({
+      id: product.id,
+      name: product.name,
+      price: product.basePrice,
+      quantity,
+      image: product.image || "/placeholder.svg",
+    })
+
+    toast({
+      title: "Đã thêm vào giỏ hàng",
+      description: `${product.name} đã được thêm vào giỏ hàng của bạn`,
+      className: "bg-green-50 border-green-200",
+    })
+  }
+
   const totalPrice =
-    product.price * quantity +
+    product.basePrice * quantity +
     selectedAddons.reduce((sum, id) => sum + (addons.find((a) => a.id === id)?.price || 0), 0)
 
   return (
@@ -53,7 +90,7 @@ export default function ProductDetailPage({ params }: { params: { id: string } }
           <div className="flex flex-col">
             <div className="mb-4">
               <Badge variant="outline" className="mb-2">
-                {product.category}
+                {categoryNames[product.category] || product.category}
               </Badge>
               <h1 className="text-3xl font-bold mb-2">{product.name}</h1>
               <p className="text-muted-foreground">{product.description}</p>
@@ -62,10 +99,10 @@ export default function ProductDetailPage({ params }: { params: { id: string } }
             {/* Price */}
             <div className="mb-6">
               <div className="flex items-center gap-3">
-                <span className="text-3xl font-bold text-primary">{product.price.toLocaleString()} VND</span>
-                {product.isPromotion && (
+                <span className="text-3xl font-bold text-primary">{product.basePrice.toLocaleString("vi-VN")}đ</span>
+                {product.isPromotion && product.originalPrice && (
                   <span className="text-lg text-muted-foreground line-through">
-                    {product.originalPrice.toLocaleString()} VND
+                    {product.originalPrice.toLocaleString("vi-VN")}đ
                   </span>
                 )}
               </div>
@@ -85,7 +122,7 @@ export default function ProductDetailPage({ params }: { params: { id: string } }
                   >
                     <CardContent className="p-3 flex items-center justify-between">
                       <span className="font-medium">{addon.name}</span>
-                      <span className="text-sm text-muted-foreground">+{addon.price.toLocaleString()} VND</span>
+                      <span className="text-sm text-muted-foreground">+{addon.price.toLocaleString("vi-VN")}đ</span>
                     </CardContent>
                   </Card>
                 ))}
@@ -115,10 +152,10 @@ export default function ProductDetailPage({ params }: { params: { id: string } }
             <div className="mt-auto space-y-4">
               <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
                 <span className="font-semibold">Total:</span>
-                <span className="text-2xl font-bold text-primary">{totalPrice.toLocaleString()} VND</span>
+                <span className="text-2xl font-bold text-primary">{totalPrice.toLocaleString("vi-VN")}đ</span>
               </div>
               <div className="flex gap-3">
-                <Button className="flex-1" size="lg">
+                <Button className="flex-1" size="lg" onClick={handleAddToCart}>
                   <ShoppingCart className="mr-2 h-5 w-5" />
                   Add to Cart
                 </Button>

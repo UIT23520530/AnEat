@@ -17,6 +17,7 @@ export interface User {
 export interface Product {
   id: string
   name: string
+  slug?: string // Slug cho SEO-friendly URL
   description: string
   basePrice: number
   discountedPrice?: number

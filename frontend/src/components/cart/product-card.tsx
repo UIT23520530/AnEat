@@ -7,6 +7,7 @@ import { Plus, Heart } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { Product } from "@/types";
+import { createSlug } from "@/lib/utils";
 
 interface ProductCardProps {
   product: Product;
@@ -20,9 +21,13 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
     onAddToCart(product);
   };
 
+  // Tạo slug từ tên sản phẩm nếu chưa có
+  const productSlug = product.slug || createSlug(product.name);
+  const productUrl = `/customer/product/${productSlug}`;
+
   return (
     <Card className="overflow-hidden group cursor-pointer hover:shadow-lg transition-all h-full flex flex-col bg-white rounded-3xl border-0">
-      <Link href={`/customer/product/${product.id}`} className="block">
+      <Link href={productUrl} className="block">
         <div className="aspect-video relative overflow-hidden rounded-t-3xl flex items-center justify-center">
           {product.isPromotion && (
             <Badge className="absolute top-3 right-3 z-10 bg-red-400">
@@ -38,7 +43,7 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
         </div>
       </Link>
       <CardContent className="p-4 flex flex-col flex-1">
-        <Link href={`/customer/product/${product.id}`} className="block">
+        <Link href={productUrl} className="block">
           <h3 className="font-bold text-lg mb-2 line-clamp-1 text-gray-700">
             {product.name}
           </h3>

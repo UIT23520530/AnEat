@@ -117,9 +117,9 @@ export default function PromotionsPage() {
                 .map((promotion) => (
                   <Card
                     key={promotion.id}
-                    className="overflow-hidden hover:shadow-xl transition-shadow duration-300"
+                    className="overflow-hidden hover:shadow-lg transition-shadow duration-300 h-full flex flex-col"
                   >
-                    <div className="relative h-56">
+                    <div className="relative h-56 flex-shrink-0">
                       <Image
                         src={promotion.image}
                         alt={promotion.title}
@@ -130,13 +130,13 @@ export default function PromotionsPage() {
                         {promotion.discount}
                       </Badge>
                     </div>
-                    <CardHeader>
+                    <CardHeader className="flex-shrink-0">
                       <CardTitle className="text-xl">{promotion.title}</CardTitle>
                       <CardDescription className="text-base">
                         {promotion.description}
                       </CardDescription>
                     </CardHeader>
-                    <CardContent className="space-y-2">
+                    <CardContent className="space-y-2 flex-grow">
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
                         <Calendar className="h-4 w-4" />
                         <span>
@@ -144,7 +144,7 @@ export default function PromotionsPage() {
                         </span>
                       </div>
                     </CardContent>
-                    <CardFooter>
+                    <CardFooter className="flex-shrink-0 pb-6">
                       <Button className="w-full bg-orange-500 hover:bg-orange-600">
                         Đặt Ngay
                       </Button>

@@ -57,10 +57,10 @@ export function PublicLayout({ children }: PublicLayoutProps) {
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`text-base font-medium uppercase transition-colors ${
+                  className={`text-base uppercase transition-colors ${
                   isActive(item.href)
                     ? "text-orange-500 font-bold border-b-2 border-orange-500 pb-1"
-                    : "text-muted-foreground hover:text-orange-500"
+                    : "text-muted-foreground font-medium hover:text-orange-500"
                   }`}
                 >
                   {item.label}
