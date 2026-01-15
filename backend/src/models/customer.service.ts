@@ -189,11 +189,26 @@ export class CustomerService {
   }
 
   /**
-   * Delete customer (soft delete if needed, otherwise hard delete)
+   * Delete customer (soft delete - sets deletedAt timestamp)
+   * Returns the deleted customer information
    */
   static async delete(id: string) {
-    return prisma.customer.delete({
+    return prisma.customer.update({
       where: { id },
+      data: {
+        deletedAt: new Date(),
+      },
+      select: {
+        id: true,
+        phone: true,
+        name: true,
+        email: true,
+        avatar: true,
+        tier: true,
+        points: true,
+        totalSpent: true,
+        deletedAt: true,
+      },
     });
   }
 

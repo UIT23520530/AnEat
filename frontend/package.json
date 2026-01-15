@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "build": "next build",
-    "dev": "npm run db:start && concurrently \"npm:dev:next\" \"npm:dev:backend\"",
+    "dev": "yarn db:start && concurrently \"yarn:dev:next\" \"yarn:dev:backend\"",
     "dev:next": "next dev",
     "dev:backend": "cd ../backend && npm run dev",
     "db:start": "cd .. && docker-compose up -d postgres && echo Database started! Waiting 3 seconds... && timeout /t 3 /nobreak > nul",
