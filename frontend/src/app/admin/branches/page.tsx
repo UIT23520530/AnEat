@@ -40,6 +40,7 @@ import {
   FileTextOutlined,
   EnvironmentOutlined,
   ArrowRightOutlined,
+  CheckCircleOutlined,
 } from "@ant-design/icons"
 import type { TableColumnsType } from "antd"
 import {
@@ -419,7 +420,7 @@ function BranchesContent() {
                         title="Số chi nhánh đang hoạt động"
                         value={statistics.activeBranches}
                         suffix={`/ ${statistics.totalBranches}`}
-                        prefix={<ShopOutlined />}
+                        prefix={<CheckCircleOutlined />}
                         valueStyle={{ color: "#52c41a" }}
                       />
                     </div>
@@ -439,6 +440,7 @@ function BranchesContent() {
                       <Statistic
                         title="Doanh thu trung bình"
                         value={statistics.averageRevenue}
+                        prefix={<DollarOutlined />}
                         suffix="₫"
                         valueStyle={{ color: "#9333ea" }}
                         formatter={(value) =>
@@ -513,7 +515,7 @@ function BranchesContent() {
         title={
           selectedBranch && (
             <span>
-              Chi tiết chi nhánh - <Tag className="ml-2">{selectedBranch.code}</Tag>
+              Chi tiết chi nhánh - <Tag className="ml-2 -translate-y-0.5">{selectedBranch.code}</Tag>
             </span>
           )
         }

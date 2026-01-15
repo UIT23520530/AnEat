@@ -35,9 +35,7 @@ import {
   TeamOutlined,
   ShopOutlined,
   CheckCircleOutlined,
-  LockOutlined,
   ArrowRightOutlined,
-  SyncOutlined,
   CopyOutlined,
 } from "@ant-design/icons"
 import type { TableColumnsType } from "antd"
@@ -416,7 +414,7 @@ function UsersContent() {
                       <Statistic
                         title="Tổng số người dùng"
                         value={statistics.totalUsers}
-                        prefix={<UserOutlined />}
+                        prefix={<TeamOutlined />}
                         valueStyle={{ color: "#1890ff" }}
                       />
                     </div>
@@ -437,7 +435,7 @@ function UsersContent() {
                       <Statistic
                         title="Tổng số quản lý"
                         value={statistics.totalManagers}
-                        prefix={<ShopOutlined />}
+                        prefix={<UserOutlined />}
                         valueStyle={{ color: "#722ed1" }}
                       />
                     </div>
@@ -447,7 +445,7 @@ function UsersContent() {
                       <Statistic
                         title="Tổng số nhân viên"
                         value={statistics.totalStaff}
-                        prefix={<TeamOutlined />}
+                        prefix={<UserOutlined />}
                         valueStyle={{ color: "#fa8c16" }}
                       />
                     </div>
@@ -549,7 +547,7 @@ function UsersContent() {
         title={
           selectedUser && (
             <span>
-              Chi tiết người dùng - <Tag color={roleColors[selectedUser.role]}>{roleLabels[selectedUser.role]}</Tag>
+              Chi tiết người dùng
             </span>
           )
         }

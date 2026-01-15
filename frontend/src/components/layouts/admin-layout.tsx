@@ -15,6 +15,7 @@ import {
   MessageSquare,
   Gift,
   Search,
+  FolderOpen,
 } from "lucide-react"
 import { Sidebar, NavItem } from "./sidebar"
 import { useState } from "react"
@@ -31,8 +32,8 @@ const adminNavItems: NavItem[] = [
   { href: "/admin/dashboard", icon: LayoutDashboard, label: "Tổng quan" },
   { href: "/admin/branches", icon: Store, label: "Quản lý chi nhánh" },
   { href: "/admin/users", icon: Users, label: "Quản lý người dùng" },
-  { href: "/admin/categories", icon: Users, label: "Danh mục" },
-  { href: "/admin/products", icon: ShoppingBag, label: "Sản phẩm" },
+  { href: "/admin/categories", icon: FolderOpen, label: "Quản lý danh mục" },
+  { href: "/admin/products", icon: ShoppingBag, label: "Quản lý sản phẩm" },
   { href: "/admin/promotions", icon: Ticket, label: "Khuyến mãi" },
   { href: "/admin/invoices", icon: FileText, label: "Hoá đơn" },
   { href: "/admin/templates", icon: FileCode, label: "Mẫu" },
