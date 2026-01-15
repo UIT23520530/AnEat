@@ -659,6 +659,10 @@ export class BillService {
       where.status = params.status;
     }
 
+    if (params.paymentStatus) {
+      where.paymentStatus = params.paymentStatus;
+    }
+
     if (params.search) {
       where.OR = [
         { billNumber: { contains: params.search, mode: 'insensitive' } },

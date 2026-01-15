@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { BillService } from '../../models/bill.service';
-import { BillStatus } from '@prisma/client';
+import { BillStatus, PaymentStatus } from '@prisma/client';
 
 /**
  * Get all bills with pagination, search, filtering
@@ -12,6 +12,7 @@ export const getAllBills = async (req: Request, res: Response): Promise<void> =>
     const limit = parseInt(req.query.limit as string) || 20;
     const search = (req.query.search as string) || '';
     const status = req.query.status as BillStatus | undefined;
+    const paymentStatus = req.query.paymentStatus as PaymentStatus | undefined;
     const sortField = (req.query.sort as string) || 'createdAt';
     const sortOrder = (req.query.order as string) === 'asc' ? 'asc' : 'desc';
     const branchId = req.user?.branchId;
@@ -32,6 +33,7 @@ export const getAllBills = async (req: Request, res: Response): Promise<void> =>
       limit,
       search,
       status,
+      paymentStatus,
       branchId,
       sort: sortField,
       order: sortOrder,

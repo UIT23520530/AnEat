@@ -1,209 +1,184 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { StaffLayout } from "@/components/layouts/staff-layout"
 import { StaffHeader } from "@/components/layouts/staff-header"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { WarehouseFormModal } from "@/components/forms/staff/warehouse-form-modal"
-import { Search, Plus, AlertTriangle, Edit, Package, Clock, CheckCircle, XCircle, Ban } from "lucide-react"
+import { Search, Plus, AlertTriangle, Edit, Package, Clock, CheckCircle, XCircle, Ban, Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { staffWarehouseService, InventoryItemDTO } from "@/services/staff-warehouse.service"
+import { staffStockRequestService, StockRequest, CreateStockRequestDto } from "@/services/staff-stock-request.service"
 
-interface WarehouseItem {
-  id: string
-  name: string
-  category: string
-  unit: string
-  quantity: number
-  minLevel: number
-  price: number
-  lastUpdate: string
-}
+// Using InventoryItemDTO from service
+// Using StockRequest from service
 
-interface StockRequest {
-  id: string
-  requestNumber: string
-  productName: string
-  type: "RESTOCK" | "ADJUSTMENT" | "RETURN"
-  requestedQuantity: number
-  status: "PENDING" | "APPROVED" | "REJECTED" | "COMPLETED" | "CANCELLED"
-  requestedDate: string
-  expectedDate?: string
-  notes?: string
-}
-
-interface Statistics {
-  totalRequests: number
-  pendingRequests: number
-  approvedRequests: number
-  completedRequests: number
-  rejectedRequests: number
-  cancelledRequests: number
+interface InventoryStats {
+  totalProducts: number
+  lowStockCount: number
+  outOfStockCount: number
+  totalQuantity: number
 }
 
 export default function WarehousePage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [isModalOpen, setIsModalOpen] = useState(false)
-  const [selectedProduct, setSelectedProduct] = useState<WarehouseItem | null>(null)
+  const [selectedProduct, setSelectedProduct] = useState<InventoryItemDTO | null>(null)
   const [activeTab, setActiveTab] = useState<"inventory" | "requests">("inventory")
-  const [warehouseItems, setWarehouseItems] = useState<WarehouseItem[]>([
-    {
-      id: "1",
-      name: "Thịt Gà",
-      category: "Nguyên liệu chính",
-      unit: "kg",
-      quantity: 45,
-      minLevel: 20,
-      price: 85000,
-      lastUpdate: "15:00 02-01",
-    },
-    {
-      id: "2",
-      name: "Khoai Tây",
-      category: "Nguyên liệu chính",
-      unit: "kg",
-      quantity: 15,
-      minLevel: 30,
-      price: 25000,
-      lastUpdate: "14:30 02-01",
-    },
-    {
-      id: "3",
-      name: "Bánh Mì Burger",
-      category: "Bánh",
-      unit: "cái",
-      quantity: 120,
-      minLevel: 50,
-      price: 3000,
-      lastUpdate: "16:00 02-01",
-    },
-    {
-      id: "4",
-      name: "Phở Mai",
-      category: "Phụ liệu",
-      unit: "lát",
-      quantity: 200,
-      minLevel: 100,
-      price: 2500,
-      lastUpdate: "15:30 02-01",
-    },
-    {
-      id: "5",
-      name: "Pepsi",
-      category: "Đồ uống",
-      unit: "chai",
-      quantity: 8,
-      minLevel: 50,
-      price: 8000,
-      lastUpdate: "23:00 01-01",
-    },
-  ])
-
-  const [stockRequests, setStockRequests] = useState<StockRequest[]>([
-    {
-      id: "1",
-      requestNumber: "REQ-001",
-      productName: "Thịt Gà",
-      type: "RESTOCK",
-      requestedQuantity: 50,
-      status: "PENDING",
-      requestedDate: "14/01/2026",
-      expectedDate: "20/01/2026",
-      notes: "Cần gấp cho tuần sau",
-    },
-    {
-      id: "2",
-      requestNumber: "REQ-002",
-      productName: "Khoai Tây",
-      type: "RESTOCK",
-      requestedQuantity: 30,
-      status: "APPROVED",
-      requestedDate: "13/01/2026",
-      expectedDate: "18/01/2026",
-    },
-  ])
-
-  const statistics: Statistics = {
-    totalRequests: stockRequests.length,
-    pendingRequests: stockRequests.filter((r) => r.status === "PENDING").length,
-    approvedRequests: stockRequests.filter((r) => r.status === "APPROVED").length,
-    completedRequests: stockRequests.filter((r) => r.status === "COMPLETED").length,
-    rejectedRequests: stockRequests.filter((r) => r.status === "REJECTED").length,
-    cancelledRequests: stockRequests.filter((r) => r.status === "CANCELLED").length,
-  }
-
-  const handleCreateRequest = (product: WarehouseItem) => {
-    setSelectedProduct(product)
-    setIsModalOpen(true)
-  }
-
-  const handleSubmitRequest = (requestData: any) => {
-    const newRequest: StockRequest = {
-      id: (stockRequests.length + 1).toString(),
-      requestNumber: `REQ-${(stockRequests.length + 1).toString().padStart(3, "0")}`,
-      productName: selectedProduct?.name || requestData.productName,
-      type: requestData.type,
-      requestedQuantity: requestData.requestedQuantity,
-      status: "PENDING",
-      requestedDate: new Date().toLocaleDateString("vi-VN"),
-      expectedDate: requestData.expectedDate
-        ? new Date(requestData.expectedDate).toLocaleDateString("vi-VN")
-        : undefined,
-      notes: requestData.notes,
+  const [editingItem, setEditingItem] = useState<InventoryItemDTO | null>(null)
+  const [modalMode, setModalMode] = useState<"request" | "edit">("request")
+  
+  // Inventory state
+  const [inventoryItems, setInventoryItems] = useState<InventoryItemDTO[]>([])
+  const [inventoryLoading, setInventoryLoading] = useState(true)
+  const [inventoryError, setInventoryError] = useState<string | null>(null)
+  const [inventoryPage, setInventoryPage] = useState(1)
+  const [inventoryTotalPages, setInventoryTotalPages] = useState(1)
+  const [stats, setStats] = useState<InventoryStats | null>(null)
+  
+  // Stock requests state
+  const [stockRequests, setStockRequests] = useState<StockRequest[]>([])
+  const [requestsLoading, setRequestsLoading] = useState(true)
+  const [requestsError, setRequestsError] = useState<string | null>(null)
+  const [requestsPage, setRequestsPage] = useState(1)
+  const [requestsTotalPages, setRequestsTotalPages] = useState(1)
+  
+  // Load inventory data
+  useEffect(() => {
+    if (activeTab === 'inventory') {
+      loadInventory()
+      loadStats()
     }
-    setStockRequests((prev) => [...prev, newRequest])
-  }
+  }, [activeTab, inventoryPage, searchQuery])
 
-  const handleCancelRequest = (id: string) => {
-    if (confirm("Bạn có chắc muốn hủy yêu cầu này?")) {
-      setStockRequests((prev) =>
-        prev.map((req) => (req.id === id ? { ...req, status: "CANCELLED" as const } : req))
-      )
+  // Load stock requests
+  useEffect(() => {
+    if (activeTab === 'requests') {
+      loadStockRequests()
+    }
+  }, [activeTab, requestsPage, searchQuery])
+
+  const loadInventory = async () => {
+    try {
+      setInventoryLoading(true)
+      setInventoryError(null)
+      const response = await staffWarehouseService.getInventoryList({
+        page: inventoryPage,
+        limit: 20,
+        search: searchQuery || undefined,
+        sort: 'name',
+        order: 'asc'
+      })
+      setInventoryItems(response.data)
+      setInventoryTotalPages(response.meta.total_pages)
+    } catch (err: any) {
+      console.error('Load inventory error:', err)
+      setInventoryError('Không thể tải danh sách kho')
+    } finally {
+      setInventoryLoading(false)
     }
   }
 
-  const handleEditItem = (item: WarehouseItem) => {
-    setEditingItem(item)
-    setModalMode("edit")
-    setIsModalOpen(true)
+  const loadStats = async () => {
+    try {
+      const response = await staffWarehouseService.getInventoryStats()
+      setStats(response.data)
+    } catch (err) {
+      console.error('Load stats error:', err)
+    }
   }
 
-  const handleSubmitItem = (itemData: Omit<WarehouseItem, "id" | "lastUpdate">) => {
-    const now = new Date()
-    const timeStr = `${now.getHours().toString().padStart(2, "0")}:${now.getMinutes().toString().padStart(2, "0")}`
-    const dateStr = `${now.getDate().toString().padStart(2, "0")}-${(now.getMonth() + 1).toString().padStart(2, "0")}`
-    const lastUpdate = `${timeStr} ${dateStr}`
+  const loadStockRequests = async () => {
+    try {
+      setRequestsLoading(true)
+      setRequestsError(null)
+      const response = await staffStockRequestService.getList({
+        page: requestsPage,
+        limit: 20,
+        search: searchQuery || undefined
+      })
+      setStockRequests(response.data)
+      setRequestsTotalPages(response.meta.totalPages)
+    } catch (err: any) {
+      console.error('Load stock requests error:', err)
+      setRequestsError('Không thể tải danh sách yêu cầu')
+    } finally {
+      setRequestsLoading(false)
+    }
+  }
 
-    if (editingItem) {
-      // Update existing item
-      setWarehouseItems((prev) =>
-        prev.map((item) =>
-          item.id === editingItem.id ? { ...item, ...itemData, lastUpdate } : item
-        )
-      )
-    } else {
-      // Add new item
-      const newItem: WarehouseItem = {
-        ...itemData,
-        id: (warehouseItems.length + 1).toString(),
-        lastUpdate,
+  // Debounce search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (activeTab === 'inventory') {
+        setInventoryPage(1)
+      } else {
+        setRequestsPage(1)
       }
-      setWarehouseItems((prev) => [...prev, newItem])
+    }, 500)
+    return () => clearTimeout(timer)
+  }, [searchQuery])
+
+  const handleCreateRequest = (product: InventoryItemDTO) => {
+    setSelectedProduct(product)
+    setModalMode("request")
+    setIsModalOpen(true)
+  }
+
+  const handleSubmitRequest = async (requestData: any) => {
+    try {
+      if (!selectedProduct) return
+      
+      const createData: CreateStockRequestDto = {
+        productId: selectedProduct.id,
+        type: requestData.type || 'RESTOCK',
+        requestedQuantity: requestData.requestedQuantity,
+        notes: requestData.notes,
+        expectedDate: requestData.expectedDate
+      }
+      
+      await staffStockRequestService.create(createData)
+      
+      // Reload stock requests
+      if (activeTab === 'requests') {
+        await loadStockRequests()
+      }
+      
+      // Close modal
+      setIsModalOpen(false)
+      setSelectedProduct(null)
+    } catch (err: any) {
+      console.error('Create request error:', err)
+      alert('Không thể tạo yêu cầu nhập kho')
     }
   }
 
-  const lowStockItems = warehouseItems.filter((item) => item.quantity < item.minLevel)
+  const handleCancelRequest = async (id: string) => {
+    if (confirm("Bạn có chắc muốn hủy yêu cầu này?")) {
+      try {
+        await staffStockRequestService.cancel(id)
+        await loadStockRequests()
+      } catch (err: any) {
+        console.error('Cancel request error:', err)
+        alert('Không thể hủy yêu cầu')
+      }
+    }
+  }
 
-  const filteredItems = warehouseItems.filter(
-    (item) =>
-      item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.category.toLowerCase().includes(searchQuery.toLowerCase())
-  )
+  // Low stock items from inventory (hasAlert flag from backend)
+  const lowStockItems = inventoryItems.filter((item) => item.hasAlert)
 
-  const filteredRequests = stockRequests.filter((req) =>
-    req.requestNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    req.productName.toLowerCase().includes(searchQuery.toLowerCase())
-  )
+  // Format helpers
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString)
+    return date.toLocaleDateString('vi-VN')
+  }
+
+  const formatTime = (dateString: string) => {
+    const date = new Date(dateString)
+    return date.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
+  }
 
   const getRequestStatus = (status: string) => {
     const configs: Record<string, { color: string; text: string; icon: any }> = {
@@ -264,7 +239,7 @@ export default function WarehousePage() {
                     : "border-transparent text-gray-600 hover:text-gray-900"
                 )}
               >
-                Tồn kho ({filteredItems.length})
+                Tồn kho ({inventoryItems.length})
               </button>
               <button
                 onClick={() => setActiveTab("requests")}
@@ -275,91 +250,147 @@ export default function WarehousePage() {
                     : "border-transparent text-gray-600 hover:text-gray-900"
                 )}
               >
-                Yêu cầu nhập kho ({filteredRequests.length})
+                Yêu cầu nhập kho ({stockRequests.length})
               </button>
             </div>
           </div>
 
           {activeTab === "inventory" && (
             <>
-              
-
               {/* Search Bar */}
               <div className="mb-6 flex justify-between items-center">
                 <div className="relative flex-1 max-w-md">
                   <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
                   <Input
-                    placeholder="Tìm kiếm theo tên hoặc danh mục..."
+                    placeholder="Tìm kiếm theo tên hoặc mã sản phẩm..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="pl-12 h-12 border-gray-300"
                   />
                 </div>
-                <Button className="bg-orange-500 hover:bg-orange-600 text-white ml-4" onClick={() => setIsModalOpen(true)}>
+                <Button 
+                  className="bg-orange-500 hover:bg-orange-600 text-white ml-4" 
+                  onClick={() => {
+                    setSelectedProduct(null)
+                    setModalMode("request")
+                    setIsModalOpen(true)
+                  }}
+                >
                   <Plus className="h-4 w-4 mr-2" />
                   Tạo yêu cầu nhanh
                 </Button>
               </div>
 
-              {/* Warehouse Table */}
-              <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead className="bg-gray-50 border-b border-gray-200">
-                      <tr>
-                        <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Tên Hàng</th>
-                        <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Danh Mục</th>
-                        <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Đơn Vị</th>
-                        <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Số Lượng</th>
-                        <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Mức Tối Thiểu</th>
-                        <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Đơn Giá</th>
-                        <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Cập Nhật Lần Cuối</th>
-                        <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Thao Tác</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-200">
-                      {filteredItems.map((item) => {
-                        const isLowStock = item.quantity < item.minLevel
-                        return (
-                          <tr
-                            key={item.id}
-                            className={cn("hover:bg-gray-50 transition-colors", isLowStock && "bg-red-50")}
-                          >
-                            <td className="px-6 py-4 text-sm font-medium text-gray-900">
-                              <div className="flex items-center gap-2">
-                                {item.name}
-                                {isLowStock && <AlertTriangle className="h-4 w-4 text-red-600" />}
-                              </div>
-                            </td>
-                            <td className="px-6 py-4 text-sm text-gray-600">{item.category}</td>
-                            <td className="px-6 py-4 text-sm text-gray-600">{item.unit}</td>
-                            <td className="px-6 py-4 text-sm">
-                              <span className={cn("font-semibold", isLowStock ? "text-red-600" : "text-gray-900")}>
-                                {item.quantity}
-                              </span>
-                            </td>
-                            <td className="px-6 py-4 text-sm text-gray-600">{item.minLevel}</td>
-                            <td className="px-6 py-4 text-sm font-semibold text-gray-900">
-                              {item.price.toLocaleString()}đ
-                            </td>
-                            <td className="px-6 py-4 text-sm text-gray-600">{item.lastUpdate}</td>
-                            <td className="px-6 py-4">
-                              <Button
-                                size="sm"
-                                className="bg-orange-500 hover:bg-orange-600 text-white"
-                                onClick={() => handleCreateRequest(item)}
-                              >
-                                <Plus className="h-4 w-4 mr-1" />
-                                Yêu cầu nhập
-                              </Button>
-                            </td>
-                          </tr>
-                        )
-                      })}
-                    </tbody>
-                  </table>
+              {/* Loading & Error States */}
+              {inventoryLoading && (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="h-8 w-8 animate-spin text-orange-500" />
                 </div>
-              </div>
+              )}
+
+              {inventoryError && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+                  <p className="text-red-600 text-sm">{inventoryError}</p>
+                  <button onClick={loadInventory} className="mt-2 text-sm text-red-700 underline">
+                    Thử lại
+                  </button>
+                </div>
+              )}
+
+              {!inventoryLoading && !inventoryError && inventoryItems.length === 0 && (
+                <div className="text-center py-12 text-gray-500">
+                  <p>Không tìm thấy sản phẩm nào</p>
+                </div>
+              )}
+
+              {/* Warehouse Table */}
+              {!inventoryLoading && !inventoryError && inventoryItems.length > 0 && (
+                <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead className="bg-gray-50 border-b border-gray-200">
+                        <tr>
+                          <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Mã</th>
+                          <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Tên Hàng</th>
+                          <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Danh Mục</th>
+                          <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Số Lượng</th>
+                          <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Giá Vốn</th>
+                          <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Giá Bán</th>
+                          <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Trạng Thái</th>
+                          <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Cập Nhật</th>
+                          <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Thao Tác</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-200">
+                        {inventoryItems.map((item) => {
+                          const isLowStock = item.hasAlert
+                          return (
+                            <tr
+                              key={item.id}
+                              className={cn("hover:bg-gray-50 transition-colors", isLowStock && "bg-red-50")}
+                            >
+                              <td className="px-6 py-4 text-sm font-mono text-gray-600">{item.code}</td>
+                              <td className="px-6 py-4 text-sm font-medium text-gray-900">
+                                <div className="flex items-center gap-2">
+                                  {item.name}
+                                  {isLowStock && <AlertTriangle className="h-4 w-4 text-red-600" />}
+                                </div>
+                                {item.description && (
+                                  <div className="text-xs text-gray-500 mt-1">{item.description}</div>
+                                )}
+                              </td>
+                              <td className="px-6 py-4 text-sm text-gray-600">
+                                {item.category?.name || '-'}
+                              </td>
+                              <td className="px-6 py-4 text-sm">
+                                <span className={cn("font-semibold", isLowStock ? "text-red-600" : "text-gray-900")}>
+                                  {item.quantity}
+                                </span>
+                                {isLowStock && (
+                                  <div className="text-xs text-red-600 mt-1">Dưới 50</div>
+                                )}
+                              </td>
+                              <td className="px-6 py-4 text-sm text-gray-600">
+                                {item.costPrice.toLocaleString()}₫
+                              </td>
+                              <td className="px-6 py-4 text-sm font-semibold text-gray-900">
+                                {item.price.toLocaleString()}₫
+                              </td>
+                              <td className="px-6 py-4">
+                                <span
+                                  className={cn(
+                                    "inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium",
+                                    item.isAvailable
+                                      ? "bg-green-100 text-green-700"
+                                      : "bg-gray-100 text-gray-700"
+                                  )}
+                                >
+                                  {item.isAvailable ? "Có sẵn" : "Hết hàng"}
+                                </span>
+                              </td>
+                              <td className="px-6 py-4 text-sm text-gray-600">
+                                {formatTime(item.updatedAt)}
+                                <br />
+                                {formatDate(item.updatedAt)}
+                              </td>
+                              <td className="px-6 py-4">
+                                <Button
+                                  size="sm"
+                                  className="bg-orange-500 hover:bg-orange-600 text-white"
+                                  onClick={() => handleCreateRequest(item)}
+                                >
+                                  <Plus className="h-4 w-4 mr-1" />
+                                  Yêu cầu nhập
+                                </Button>
+                              </td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
             </>
           )}
 
@@ -378,62 +409,107 @@ export default function WarehousePage() {
                 </div>
               </div>
 
-              {/* Requests Table */}
-              <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead className="bg-gray-50 border-b border-gray-200">
-                      <tr>
-                        <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Mã YC</th>
-                        <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Sản phẩm</th>
-                        <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Loại</th>
-                        <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">SL yêu cầu</th>
-                        <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Trạng thái</th>
-                        <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Ngày yêu cầu</th>
-                        <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Ngày dự kiến</th>
-                        <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Thao tác</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-200">
-                      {filteredRequests.map((request) => {
-                        const statusConfig = getRequestStatus(request.status)
-                        const StatusIcon = statusConfig.icon
-                        return (
-                          <tr key={request.id} className="hover:bg-gray-50 transition-colors">
-                            <td className="px-6 py-4 text-sm">
-                              <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
-                                {request.requestNumber}
-                              </span>
-                            </td>
-                            <td className="px-6 py-4 text-sm font-medium text-gray-900">{request.productName}</td>
-                            <td className="px-6 py-4 text-sm text-gray-600">{getTypeText(request.type)}</td>
-                            <td className="px-6 py-4 text-sm text-center font-semibold">{request.requestedQuantity}</td>
-                            <td className="px-6 py-4 text-sm">
-                              <span className={cn("inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium", statusConfig.color)}>
-                                <StatusIcon className="h-3 w-3" />
-                                {statusConfig.text}
-                              </span>
-                            </td>
-                            <td className="px-6 py-4 text-sm text-gray-600">{request.requestedDate}</td>
-                            <td className="px-6 py-4 text-sm text-gray-600">{request.expectedDate || "-"}</td>
-                            <td className="px-6 py-4">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                                onClick={() => handleCancelRequest(request.id)}
-                                disabled={request.status !== "PENDING" && request.status !== "APPROVED"}
-                              >
-                                Hủy yêu cầu
-                              </Button>
-                            </td>
-                          </tr>
-                        )
-                      })}
-                    </tbody>
-                  </table>
+              {/* Loading & Error States */}
+              {requestsLoading && (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="h-8 w-8 animate-spin text-orange-500" />
                 </div>
-              </div>
+              )}
+
+              {requestsError && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+                  <p className="text-red-600 text-sm">{requestsError}</p>
+                  <button onClick={loadStockRequests} className="mt-2 text-sm text-red-700 underline">
+                    Thử lại
+                  </button>
+                </div>
+              )}
+
+              {!requestsLoading && !requestsError && stockRequests.length === 0 && (
+                <div className="text-center py-12 text-gray-500">
+                  <p>Không có yêu cầu nào</p>
+                </div>
+              )}
+
+              {/* Requests Table */}
+              {!requestsLoading && !requestsError && stockRequests.length > 0 && (
+                <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead className="bg-gray-50 border-b border-gray-200">
+                        <tr>
+                          <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Mã YC</th>
+                          <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Sản phẩm</th>
+                          <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Loại</th>
+                          <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">SL yêu cầu</th>
+                          <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">SL duyệt</th>
+                          <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Trạng thái</th>
+                          <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Ngày yêu cầu</th>
+                          <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Ngày dự kiến</th>
+                          <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Thao tác</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-200">
+                        {stockRequests.map((request) => {
+                          const statusConfig = getRequestStatus(request.status)
+                          const StatusIcon = statusConfig.icon
+                          return (
+                            <tr key={request.id} className="hover:bg-gray-50 transition-colors">
+                              <td className="px-6 py-4 text-sm">
+                                <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
+                                  {request.requestNumber}
+                                </span>
+                              </td>
+                              <td className="px-6 py-4">
+                                <div className="text-sm font-medium text-gray-900">
+                                  {request.product.name}
+                                </div>
+                                <div className="text-xs text-gray-500">
+                                  {request.product.code}
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 text-sm text-gray-600">{getTypeText(request.type)}</td>
+                              <td className="px-6 py-4 text-sm text-center font-semibold">{request.requestedQuantity}</td>
+                              <td className="px-6 py-4 text-sm text-center font-semibold text-green-600">
+                                {request.approvedQuantity || '-'}
+                              </td>
+                              <td className="px-6 py-4 text-sm">
+                                <span className={cn("inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium", statusConfig.color)}>
+                                  <StatusIcon className="h-3 w-3" />
+                                  {statusConfig.text}
+                                </span>
+                              </td>
+                              <td className="px-6 py-4 text-sm text-gray-600">
+                                {request.requestedDate ? formatDate(request.requestedDate) : formatDate(request.createdAt)}
+                              </td>
+                              <td className="px-6 py-4 text-sm text-gray-600">
+                                {request.expectedDate ? formatDate(request.expectedDate) : "-"}
+                              </td>
+                              <td className="px-6 py-4">
+                                {(request.status === "PENDING" || request.status === "APPROVED") && (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                    onClick={() => handleCancelRequest(request.id)}
+                                  >
+                                    Hủy yêu cầu
+                                  </Button>
+                                )}
+                                {request.status === "REJECTED" && request.rejectedReason && (
+                                  <div className="text-xs text-red-600">
+                                    {request.rejectedReason}
+                                  </div>
+                                )}
+                              </td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
             </>
           )}
 

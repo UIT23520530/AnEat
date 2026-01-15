@@ -1,101 +1,117 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { StaffLayout } from "@/components/layouts/staff-layout"
 import { StaffHeader } from "@/components/layouts/staff-header"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { CustomerFormModal } from "@/components/forms/staff/customer-form-modal"
-import { Search, Plus, Edit, Trash2 } from "lucide-react"
+import { Search, Plus, Edit, Trash2, Loader2 } from "lucide-react"
+import { staffCustomerService, CustomerDTO } from "@/services/staff-customer.service"
 
-interface Customer {
-  id: string
-  name: string
-  phone: string
-  email: string
-  loyaltyPoints: number
-  totalOrders: number
-  createdAt: string
+// Use DTO from service with _count field
+interface CustomerWithCount extends CustomerDTO {
+  _count?: {
+    orders: number
+    reviews: number
+  }
 }
 
 export default function CustomersPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [isModalOpen, setIsModalOpen] = useState(false)
-  const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null)
-  const [customers, setCustomers] = useState<Customer[]>([
-    {
-      id: "1",
-      name: "Nguyễn Văn A",
-      phone: "0901234567",
-      email: "nguyenvana@email.com",
-      loyaltyPoints: 150,
-      totalOrders: 12,
-      createdAt: "15/11/2025",
-    },
-    {
-      id: "2",
-      name: "Trần Thị B",
-      phone: "0912345678",
-      email: "tranthib@email.com",
-      loyaltyPoints: 320,
-      totalOrders: 28,
-      createdAt: "20/10/2025",
-    },
-    {
-      id: "3",
-      name: "Lê Văn C",
-      phone: "0923456789",
-      email: "-",
-      loyaltyPoints: 80,
-      totalOrders: 5,
-      createdAt: "1/12/2025",
-    },
-  ])
+  const [editingCustomer, setEditingCustomer] = useState<CustomerWithCount | null>(null)
+  const [customers, setCustomers] = useState<CustomerWithCount[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [page, setPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
+
+  // Load customers from API
+  useEffect(() => {
+    loadCustomers()
+  }, [page, searchQuery])
+
+  const loadCustomers = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+      const response = await staffCustomerService.getList({
+        page,
+        limit: 20,
+        search: searchQuery || undefined,
+        sort: 'createdAt',
+        order: 'desc'
+      })
+      setCustomers(response.data as CustomerWithCount[])
+      setTotalPages(response.meta.total_pages)
+    } catch (err: any) {
+      console.error('Load customers error:', err)
+      setError('Không thể tải danh sách khách hàng')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const handleAddCustomer = () => {
     setEditingCustomer(null)
     setIsModalOpen(true)
   }
 
-  const handleEditCustomer = (customer: Customer) => {
+  const handleEditCustomer = (customer: CustomerWithCount) => {
     setEditingCustomer(customer)
     setIsModalOpen(true)
   }
 
-  const handleDeleteCustomer = (customerId: string) => {
-    if (confirm("Bạn có chắc chắn muốn xóa khách hàng này?")) {
-      setCustomers((prev) => prev.filter((c) => c.id !== customerId))
+  const handleDeleteCustomer = async (customerId: string) => {
+    if (!confirm("Bạn có chắc chắn muốn xóa khách hàng này?")) return
+
+    try {
+      // Note: Delete endpoint not implemented in backend yet
+      // await staffCustomerService.delete(customerId)
+      alert('Chức năng xóa chưa được triển khai')
+      // loadCustomers()
+    } catch (err: any) {
+      alert('Lỗi khi xóa khách hàng')
     }
   }
 
-  const handleSubmitCustomer = (customerData: Omit<Customer, "id" | "totalOrders" | "createdAt">) => {
-    if (editingCustomer) {
-      // Update existing customer
-      setCustomers((prev) =>
-        prev.map((c) =>
-          c.id === editingCustomer.id
-            ? { ...c, ...customerData }
-            : c
-        )
-      )
-    } else {
-      // Add new customer
-      const newCustomer: Customer = {
-        ...customerData,
-        id: (customers.length + 1).toString(),
-        totalOrders: 0,
-        createdAt: new Date().toLocaleDateString("vi-VN"),
+  const handleSubmitCustomer = async (customerData: { name: string; phone: string; email: string }) => {
+    try {
+      if (editingCustomer) {
+        // Update existing customer
+        await staffCustomerService.update(editingCustomer.id, {
+          name: customerData.name,
+          email: customerData.email || undefined
+        })
+      } else {
+        // Create new customer
+        await staffCustomerService.create({
+          phone: customerData.phone,
+          name: customerData.name,
+          email: customerData.email || undefined
+        })
       }
-      setCustomers((prev) => [...prev, newCustomer])
+      setIsModalOpen(false)
+      setEditingCustomer(null)
+      loadCustomers()
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Lỗi khi lưu khách hàng')
     }
   }
 
-  const filteredCustomers = customers.filter(
-    (customer) =>
-      customer.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      customer.phone.includes(searchQuery) ||
-      customer.email.toLowerCase().includes(searchQuery.toLowerCase())
-  )
+  // Format date helper
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('vi-VN')
+  }
+
+  // Debounce search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setPage(1) // Reset to page 1 when searching
+    }, 500)
+    return () => clearTimeout(timer)
+  }, [searchQuery])
 
   return (
     <StaffLayout>
@@ -128,6 +144,28 @@ export default function CustomersPage() {
             </div>
           </div>
 
+          {/* Loading & Error States */}
+          {loading && (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-orange-500" />
+            </div>
+          )}
+
+          {error && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+              <p className="text-red-600 text-sm">{error}</p>
+              <Button onClick={loadCustomers} variant="outline" size="sm" className="mt-2">
+                Thử lại
+              </Button>
+            </div>
+          )}
+
+          {!loading && !error && customers.length === 0 && (
+            <div className="text-center py-12 text-gray-500">
+              <p>Không tìm thấy khách hàng nào</p>
+            </div>
+          )}
+
           {/* Table */}
           <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
             <table className="w-full">
@@ -143,18 +181,18 @@ export default function CustomersPage() {
                 </tr>
               </thead>
               <tbody>
-                {filteredCustomers.map((customer) => (
+                {!loading && customers.map((customer) => (
                   <tr key={customer.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
                     <td className="py-3 px-4 text-sm font-medium text-gray-900">{customer.name}</td>
                     <td className="py-3 px-4 text-sm text-gray-600">{customer.phone}</td>
-                    <td className="py-3 px-4 text-sm text-gray-600">{customer.email}</td>
+                    <td className="py-3 px-4 text-sm text-gray-600">{customer.email || '-'}</td>
                     <td className="py-3 px-4">
                       <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700">
-                        {customer.loyaltyPoints} điểm
+                        {customer.points} điểm
                       </span>
                     </td>
-                    <td className="py-3 px-4 text-sm text-gray-600">{customer.totalOrders}</td>
-                    <td className="py-3 px-4 text-sm text-gray-600">{customer.createdAt}</td>
+                    <td className="py-3 px-4 text-sm text-gray-600">{customer._count?.orders || 0}</td>
+                    <td className="py-3 px-4 text-sm text-gray-600">{formatDate(customer.createdAt)}</td>
                     <td className="py-3 px-4">
                       <div className="flex items-center gap-2">
                         <button

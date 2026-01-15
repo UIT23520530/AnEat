@@ -10,36 +10,38 @@ interface Customer {
   id?: string
   name: string
   phone: string
-  email: string
-  loyaltyPoints: number
+  email: string | null
+  points?: number
 }
 
 interface CustomerFormModalProps {
   isOpen: boolean
   onClose: () => void
-  onSubmit: (customer: Customer) => void
+  onSubmit: (customer: { name: string; phone: string; email: string }) => void
   customer?: Customer | null
 }
 
 export function CustomerFormModal({ isOpen, onClose, onSubmit, customer }: CustomerFormModalProps) {
-  const [formData, setFormData] = useState<Customer>({
+  const [formData, setFormData] = useState({
     name: "",
     phone: "",
     email: "",
-    loyaltyPoints: 0,
   })
 
   const [errors, setErrors] = useState<Record<string, string>>({})
 
   useEffect(() => {
     if (customer) {
-      setFormData(customer)
+      setFormData({
+        name: customer.name,
+        phone: customer.phone,
+        email: customer.email || "",
+      })
     } else {
       setFormData({
         name: "",
         phone: "",
         email: "",
-        loyaltyPoints: 0,
       })
     }
     setErrors({})
@@ -74,7 +76,7 @@ export function CustomerFormModal({ isOpen, onClose, onSubmit, customer }: Custo
     }
   }
 
-  const handleChange = (field: keyof Customer, value: string | number) => {
+  const handleChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
     // Clear error when user starts typing
     if (errors[field]) {
@@ -116,9 +118,11 @@ export function CustomerFormModal({ isOpen, onClose, onSubmit, customer }: Custo
               onChange={(e) => handleChange("phone", e.target.value)}
               placeholder="0901234567"
               maxLength={10}
+              disabled={!!customer}
               className={errors.phone ? "border-red-500" : ""}
             />
             {errors.phone && <p className="text-xs text-red-600 mt-1">{errors.phone}</p>}
+            {customer && <p className="text-xs text-gray-500 mt-1">Không thể thay đổi số điện thoại</p>}
           </div>
 
           {/* Email */}
@@ -134,17 +138,18 @@ export function CustomerFormModal({ isOpen, onClose, onSubmit, customer }: Custo
             {errors.email && <p className="text-xs text-red-600 mt-1">{errors.email}</p>}
           </div>
 
-          {/* Điểm tích lũy */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Điểm tích lũy</label>
-            <Input
-              value={formData.loyaltyPoints}
-              onChange={(e) => handleChange("loyaltyPoints", parseInt(e.target.value) || 0)}
-              placeholder="0"
-              type="number"
-              min="0"
-            />
-          </div>
+          {/* Điểm tích lũy - Read only for staff */}
+          {customer && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Điểm tích lũy</label>
+              <Input
+                value={customer.points || 0}
+                disabled
+                className="bg-gray-50 cursor-not-allowed"
+              />
+              <p className="text-xs text-gray-500 mt-1">Chỉ Manager mới có thể chỉnh sửa điểm</p>
+            </div>
+          )}
 
           {/* Action Buttons */}
           <div className="flex gap-3 pt-4">
