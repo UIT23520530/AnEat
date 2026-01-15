@@ -105,6 +105,11 @@ enum ShipmentStatus {
   CANCELLED    // Đã hủy
 }
 
+enum BannerStatus {
+  ACTIVE
+  INACTIVE
+}
+
 // ==================== MODELS ====================
 
 model User {
@@ -142,11 +147,12 @@ model User {
 }
 
 model Branch {
-  id        String  @id @default(cuid())
-  code      String  @unique
+  id        String   @id @default(cuid())
+  code      String   @unique
   name      String
   address   String
   phone     String
+  deletedAt DateTime? // Soft delete support
   email     String?
   managerId String? @unique
   manager   User?   @relation("manager", fields: [managerId], references: [id], onDelete: SetNull)
@@ -209,6 +215,7 @@ model Product {
   inventory  Inventory?
   createdAt  DateTime    @default(now())
   updatedAt  DateTime    @updatedAt
+  deletedAt  DateTime?   // Soft delete support
 
   @@map("Product")
 }
@@ -616,5 +623,38 @@ model Shipment {
   updatedAt      DateTime @updatedAt
 
   @@map("Shipment")
+}
+
+// ✨ NEW: Banner model for homepage
+model Banner {
+  id          String       @id @default(cuid())
+  title       String?
+  description String?
+  image       String       // URL to banner image
+  link        String?      // Optional link when clicked
+  order       Int          @default(0) // Display order
+  status      BannerStatus @default(ACTIVE)
+  
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@map("Banner")
+}
+
+// ✨ NEW: About Us model for company story
+model AboutUs {
+  id          String   @id @default(cuid())
+  title       String
+  content     String   // HTML content or markdown
+  image       String?  // Main image URL
+  mission     String?  // Mission statement
+  vision      String?  // Vision statement
+  values      String?  // Company values (JSON array or text)
+  isActive    Boolean  @default(true)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("AboutUs")
 }
 
