@@ -278,4 +278,181 @@ export class ProductService {
     });
     return count > 0;
   }
+
+  // ==================== STAFF ORDER PAGE METHODS ====================
+
+  /**
+   * Get available products for staff order page with pagination
+   * Only returns products that are available (isAvailable = true)
+   */
+  static async getAvailableProducts(params: ProductQueryParams) {
+    const { page, limit, sort, order, search, categoryId, branchId } = params;
+    const skip = (page - 1) * limit;
+
+    const where: Prisma.ProductWhereInput = {
+      isAvailable: true, // Chỉ lấy products available
+    };
+
+    // Filter by branch (required for staff)
+    if (branchId) {
+      where.branchId = branchId;
+    }
+
+    // Search filter
+    if (search) {
+      where.OR = [
+        { name: { contains: search, mode: 'insensitive' } },
+        { code: { contains: search, mode: 'insensitive' } },
+        { description: { contains: search, mode: 'insensitive' } },
+      ];
+    }
+
+    // Category filter
+    if (categoryId) {
+      where.categoryId = categoryId;
+    }
+
+    const orderBy: Prisma.ProductOrderByWithRelationInput = {
+      [sort]: order,
+    };
+
+    const [products, total] = await Promise.all([
+      prisma.product.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy,
+        select: {
+          id: true,
+          code: true,
+          name: true,
+          description: true,
+          price: true,
+          image: true,
+          prepTime: true,
+          quantity: true,
+          categoryId: true,
+          category: {
+            select: {
+              id: true,
+              code: true,
+              name: true,
+            },
+          },
+        },
+      }),
+      prisma.product.count({ where }),
+    ]);
+
+    // Return DTO format
+    return {
+      products: products.map(product => ({
+        id: product.id,
+        code: product.code,
+        name: product.name,
+        description: product.description,
+        price: product.price,
+        imageUrl: product.image,
+        prepTime: product.prepTime,
+        inStock: product.quantity > 0,
+        stockQuantity: product.quantity,
+        category: product.category ? {
+          id: product.category.id,
+          code: product.category.code,
+          name: product.category.name,
+        } : null,
+      })),
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
+  }
+
+  /**
+   * Get product detail with options for staff order page
+   * Returns full product info including potential options
+   */
+  static async getProductDetailForOrder(id: string, branchId?: string) {
+    const where: Prisma.ProductWhereInput = {
+      id,
+      isAvailable: true,
+    };
+
+    if (branchId) {
+      where.branchId = branchId;
+    }
+
+    const product = await prisma.product.findFirst({
+      where,
+      select: {
+        id: true,
+        code: true,
+        name: true,
+        description: true,
+        price: true,
+        image: true,
+        prepTime: true,
+        quantity: true,
+        categoryId: true,
+        category: {
+          select: {
+            id: true,
+            code: true,
+            name: true,
+          },
+        },
+        branchId: true,
+        branch: {
+          select: {
+            id: true,
+            code: true,
+            name: true,
+          },
+        },
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+
+    if (!product) {
+      return null;
+    }
+
+    // Return DTO with options structure
+    // TODO: When options field is added to schema, fetch from database
+    // For now, return with empty options array
+    return {
+      id: product.id,
+      code: product.code,
+      name: product.name,
+      description: product.description,
+      price: product.price,
+      imageUrl: product.image,
+      prepTime: product.prepTime,
+      inStock: product.quantity > 0,
+      stockQuantity: product.quantity,
+      category: product.category ? {
+        id: product.category.id,
+        code: product.category.code,
+        name: product.category.name,
+      } : null,
+      branch: {
+        id: product.branch.id,
+        code: product.branch.code,
+        name: product.branch.name,
+      },
+      // Options structure for frontend
+      // When schema is updated, populate from database
+      options: {
+        sizes: [], // e.g., [{ id: '1', name: 'Upsize', priceAdjustment: 5000 }]
+        types: [], // e.g., [{ id: '1', name: 'Gà giòn', priceAdjustment: 0 }]
+        sauces: [], // e.g., [{ id: '1', name: 'Sốt BBQ', priceAdjustment: 2000 }]
+      },
+      createdAt: product.createdAt,
+      updatedAt: product.updatedAt,
+    };
+  }
 }
