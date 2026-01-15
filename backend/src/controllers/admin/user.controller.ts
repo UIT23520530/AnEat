@@ -241,6 +241,27 @@ export const updateUser = async (req: Request, res: Response): Promise<void> => 
     
     // 1. If ADMIN_BRAND user is being assigned to a branch, update branch.managerId
     if (finalRole === UserRole.ADMIN_BRAND && branchId !== undefined) {
+      // Check if branch already has a different manager
+      if (branchId) {
+        const targetBranch = await prisma.branch.findUnique({
+          where: { id: branchId },
+          include: {
+            manager: {
+              select: { id: true, name: true, email: true }
+            }
+          }
+        });
+
+        if (targetBranch?.managerId && targetBranch.managerId !== id) {
+          console.log('❌ Branch already has a manager:', { branchId, currentManager: targetBranch.managerId });
+          res.status(400).json({
+            status: 'error',
+            message: `Chi nhánh "${targetBranch.name}" đã có quản lý: ${targetBranch.manager?.name} (${targetBranch.manager?.email})`,
+          });
+          return;
+        }
+      }
+
       // Clear old branch assignment if exists
       if (user.role === UserRole.ADMIN_BRAND) {
         const oldBranch = await prisma.branch.findFirst({
