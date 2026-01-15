@@ -10,6 +10,7 @@ import {
   getCustomerOrders,
   searchCustomers,
   createCustomer,
+  deleteCustomer,
 } from '../controllers/manager/manager-customer.controller';
 import { authenticate, authorize, validate } from '../middleware';
 import { UserRole } from '@prisma/client';
@@ -151,5 +152,12 @@ router.patch(
  * @access  Manager only
  */
 router.get('/:id/orders', getCustomerOrders);
+
+/**
+ * @route   DELETE /api/v1/manager/customers/:id
+ * @desc    Delete customer (soft delete)
+ * @access  Manager only
+ */
+router.delete('/:id', deleteCustomer);
 
 export default router;

@@ -197,14 +197,25 @@ export class CustomerService {
   }
 
   /**
-   * Soft delete customer (Level 3: No physical deletion)
-   * Updates deletedAt timestamp instead of removing record
+   * Delete customer (soft delete - sets deletedAt timestamp)
+   * Returns the deleted customer information
    */
   static async delete(id: string) {
     return prisma.customer.update({
       where: { id },
-      data: { 
-        deletedAt: new Date(), // Soft delete
+      data: {
+        deletedAt: new Date(),
+      },
+      select: {
+        id: true,
+        phone: true,
+        name: true,
+        email: true,
+        avatar: true,
+        tier: true,
+        points: true,
+        totalSpent: true,
+        deletedAt: true,
       },
     });
   }
