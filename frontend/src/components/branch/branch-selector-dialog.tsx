@@ -57,28 +57,30 @@ export function BranchSelectorDialog() {
     }
   }, [isBranchSelectorOpen]);
 
-  // Load branches when dialog opens
+  // Load branches when dialog opens (only once)
   useEffect(() => {
     if (isBranchSelectorOpen) {
-      loadBranches(search);
+      loadBranches("");
     } else {
       // Reset state when dialog closes
       setSearch("");
       setError(null);
       setBranches([]);
     }
-  }, [isBranchSelectorOpen, loadBranches]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isBranchSelectorOpen]);
 
-  // Debounce search
+  // Debounce search (only when search changes, not on initial load)
   useEffect(() => {
-    if (!isBranchSelectorOpen) return;
+    if (!isBranchSelectorOpen || search === "") return;
     
     const timer = setTimeout(() => {
       loadBranches(search);
     }, 300);
 
     return () => clearTimeout(timer);
-  }, [search, isBranchSelectorOpen, loadBranches]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search]);
 
   const handleSelectBranch = (branch: Branch) => {
     setSelectedBranch(branch);

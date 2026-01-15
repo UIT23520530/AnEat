@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import React, { createContext, useContext, useState, useMemo, useEffect, ReactNode } from "react";
 
 export interface Branch {
   id: string;
@@ -30,10 +30,11 @@ export const useBranch = () => {
 };
 
 export const BranchProvider = ({ children }: { children: ReactNode }) => {
+  // Always initialize as null to avoid hydration mismatch
   const [selectedBranch, setSelectedBranchState] = useState<Branch | null>(null);
   const [isBranchSelectorOpen, setIsBranchSelectorOpen] = useState(false);
 
-  // Load selected branch from localStorage on mount
+  // Load from localStorage after mount (client-side only)
   useEffect(() => {
     if (typeof window !== "undefined") {
       const savedBranch = localStorage.getItem("selectedBranch");
@@ -47,7 +48,7 @@ export const BranchProvider = ({ children }: { children: ReactNode }) => {
     }
   }, []);
 
-  const setSelectedBranch = (branch: Branch | null) => {
+  const setSelectedBranch = React.useCallback((branch: Branch | null) => {
     setSelectedBranchState(branch);
     if (typeof window !== "undefined") {
       if (branch) {
@@ -56,21 +57,24 @@ export const BranchProvider = ({ children }: { children: ReactNode }) => {
         localStorage.removeItem("selectedBranch");
       }
     }
-  };
+  }, []);
 
-  const openBranchSelector = () => setIsBranchSelectorOpen(true);
-  const closeBranchSelector = () => setIsBranchSelectorOpen(false);
+  const openBranchSelector = React.useCallback(() => setIsBranchSelectorOpen(true), []);
+  const closeBranchSelector = React.useCallback(() => setIsBranchSelectorOpen(false), []);
+
+  const value = useMemo(
+    () => ({
+      selectedBranch,
+      setSelectedBranch,
+      isBranchSelectorOpen,
+      openBranchSelector,
+      closeBranchSelector,
+    }),
+    [selectedBranch, setSelectedBranch, isBranchSelectorOpen, openBranchSelector, closeBranchSelector]
+  );
 
   return (
-    <BranchContext.Provider
-      value={{
-        selectedBranch,
-        setSelectedBranch,
-        isBranchSelectorOpen,
-        openBranchSelector,
-        closeBranchSelector,
-      }}
-    >
+    <BranchContext.Provider value={value}>
       {children}
     </BranchContext.Provider>
   );

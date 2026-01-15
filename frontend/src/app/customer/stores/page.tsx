@@ -49,15 +49,22 @@ export default function StoresPage() {
     }
   };
 
+  // Load branches on mount (only once)
   useEffect(() => {
-    loadBranches(search);
+    loadBranches("");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Debounce search (only when search changes, not on initial load)
   useEffect(() => {
+    if (search === "") return;
+    
     const timer = setTimeout(() => {
       loadBranches(search);
     }, 300);
+    
     return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search]);
 
   const handleSelectBranch = (branch: Branch) => {
