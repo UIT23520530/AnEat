@@ -55,7 +55,10 @@ export class ProductService {
     const skip = (page - 1) * limit;
     const take = limit;
 
-    const where: Prisma.ProductWhereInput = {};
+    const where: Prisma.ProductWhereInput = {
+      // Soft delete: Only get non-deleted products
+      deletedAt: null,
+    } as any;
 
     // Filter by branch if provided
     if (branchId) {

@@ -4,6 +4,7 @@ import { GeistMono } from 'geist/font/mono'
 import { Analytics } from '@vercel/analytics/next'
 import './globals.css'
 import { CartProvider } from '@/contexts/cart-context'
+import { BranchProvider } from '@/contexts/branch-context'
 import './fonts.css'
 
 // Import dev helper in development mode
@@ -36,7 +37,9 @@ export default function RootLayout({
       </head>
       <body className={`font-sans bg-slate-50 ${GeistSans.variable} ${GeistMono.variable}`}>
         <CartProvider>
-          {children}
+          <BranchProvider>
+            {children}
+          </BranchProvider>
         </CartProvider>
         <Analytics />
       </body>
