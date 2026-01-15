@@ -32,6 +32,7 @@ import {
   createCustomer,
   getCustomerById,
   updateCustomer,
+  deleteCustomer,
 } from '../controllers/staff/staff-customer.controller';
 import {
   getAllBills,
@@ -298,6 +299,20 @@ router.put(
   ],
   validate,
   updateCustomer
+);
+
+/**
+ * @route   DELETE /api/v1/staff/order/customers/:id
+ * @desc    Delete customer (only if no orders exist)
+ * @access  Staff only
+ */
+router.delete(
+  '/order/customers/:id',
+  [
+    param('id').isString().notEmpty().withMessage('Customer ID is required'),
+  ],
+  validate,
+  deleteCustomer
 );
 
 // ==================== BILLS HISTORY ROUTES ====================

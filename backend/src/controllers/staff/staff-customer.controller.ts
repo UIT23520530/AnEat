@@ -242,3 +242,54 @@ export const updateCustomer = async (req: Request, res: Response) => {
     });
   }
 };
+
+/**
+ * Delete customer (Level 3: Soft Delete)
+ * Updates deletedAt timestamp instead of physical deletion
+ * Validation: Prevents deletion if customer has existing orders
+ */
+export const deleteCustomer = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    // Check if customer exists (and not already deleted)
+    const existingCustomer = await CustomerService.findById(id);
+    if (!existingCustomer) {
+      return res.status(404).json({
+        success: false,
+        code: 404,
+        message: 'Không tìm thấy khách hàng',
+        data: null,
+      });
+    }
+
+    // Check if customer has orders (business rule validation)
+    if (existingCustomer._count.orders > 0) {
+      return res.status(400).json({
+        success: false,
+        code: 400,
+        message: `Không thể xóa khách hàng đã có ${existingCustomer._count.orders} đơn hàng`,
+        data: null,
+      });
+    }
+
+    // Soft delete via service layer
+    await CustomerService.delete(id);
+
+    // Standard success response
+    res.status(200).json({
+      success: true,
+      code: 200,
+      message: 'Xóa khách hàng thành công',
+      data: null,
+    });
+  } catch (error: any) {
+    res.status(500).json({
+      success: false,
+      code: 500,
+      message: 'Lỗi khi xóa khách hàng',
+      data: null,
+      errors: error.message,
+    });
+  }
+};

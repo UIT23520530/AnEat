@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { StaffLayout } from "@/components/layouts/staff-layout"
 import { StaffHeader } from "@/components/layouts/staff-header"
 import { Input } from "@/components/ui/input"
-import { Search, Filter, ChevronDown, X, Check, Eye, Loader2 } from "lucide-react"
+import { Search, Filter, ChevronDown, X, Check, Eye, Loader2, ChevronLeft, ChevronRight } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { staffBillsHistoryService, BillDTO } from "@/services/staff-bills-history.service"
 
@@ -33,6 +33,7 @@ export default function StaffBillsHistoryPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
+  const [totalItems, setTotalItems] = useState(0)
   const [isFilterDropdownOpen, setIsFilterDropdownOpen] = useState(false)
   const [selectedFilters, setSelectedFilters] = useState<{
     status: string
@@ -62,6 +63,7 @@ export default function StaffBillsHistoryPage() {
       })
       setBills(response.data)
       setTotalPages(response.meta.total_pages)
+      setTotalItems(response.meta.total_items)
     } catch (err: any) {
       console.error('Load bills error:', err)
       setError('Không thể tải danh sách hóa đơn')
@@ -135,7 +137,11 @@ export default function StaffBillsHistoryPage() {
       'PAID': 'bg-green-100 text-green-700',
       'CANCELLED': 'bg-red-100 text-red-700',
       'REFUNDED': 'bg-yellow-100 text-yellow-700',
-      'DRAFT': 'bg-gray-100 text-gray-700'
+      'DRAFT': 'bg-gray-100 text-gray-700',
+      'CASH': 'bg-green-100 text-green-700',
+      'CARD': 'bg-blue-100 text-blue-700',
+      'BANK_TRANSFER': 'bg-red-100 text-red-700',
+      'E_WALLET': 'bg-pink-100 text-pink-700'
     }
     return colors[status] || 'bg-gray-100 text-gray-700'
   }
@@ -219,29 +225,6 @@ export default function StaffBillsHistoryPage() {
                               >
                                 <span className="text-sm text-gray-700">{option.label}</span>
                                 {selectedFilters.status === option.value && (
-                                  <Check className="h-4 w-4 text-orange-500" />
-                                )}
-                              </button>
-                            ))}
-                        </div>
-                      </div>
-
-                      <div className="border-t border-gray-200" />
-
-                      {/* Payment Filter */}
-                      <div>
-                        <h3 className="text-xs font-semibold text-gray-500 uppercase mb-2">Thanh Toán</h3>
-                        <div className="space-y-1">
-                          {filterOptions
-                            .filter((opt) => opt.category === "payment")
-                            .map((option) => (
-                              <button
-                                key={option.id}
-                                onClick={() => handleFilterChange("payment", option.value)}
-                                className="w-full flex items-center justify-between px-3 py-2 rounded-lg hover:bg-gray-50 transition-colors text-left"
-                              >
-                                <span className="text-sm text-gray-700">{option.label}</span>
-                                {selectedFilters.payment === option.value && (
                                   <Check className="h-4 w-4 text-orange-500" />
                                 )}
                               </button>
@@ -361,8 +344,19 @@ export default function StaffBillsHistoryPage() {
                             </div>
                           )}
                         </td>
-                        <td className="px-6 py-4 text-sm text-gray-600">
-                          {formatPaymentMethod(bill.paymentMethod)}
+                        <td className="px-6 py-4">
+                          {bill.paymentMethod ? (
+                            <span
+                              className={cn(
+                                "inline-flex items-center px-3 py-1 rounded-full text-xs font-medium",
+                                getStatusColor(bill.paymentMethod)
+                              )}
+                            >
+                              {formatPaymentMethod(bill.paymentMethod)}
+                            </span>
+                          ) : (
+                            <span className="text-sm text-gray-400">-</span>
+                          )}
                         </td>
                         <td className="px-6 py-4">
                           <span
@@ -383,6 +377,80 @@ export default function StaffBillsHistoryPage() {
                     ))}
                   </tbody>
                 </table>
+              </div>
+              
+              {/* Pagination */}
+              <div className="flex items-center justify-between border-t border-gray-200 px-6 py-4">
+                <div className="flex items-center gap-4">
+                  <div className="text-sm text-gray-700">
+                    Hiển thị <span className="font-medium">{bills.length}</span> / <span className="font-medium">{totalItems}</span> kết quả
+                  </div>
+                  {totalPages > 1 && (
+                    <div className="text-sm text-gray-500">
+                      Trang <span className="font-medium">{page}</span> / <span className="font-medium">{totalPages}</span>
+                    </div>
+                  )}
+                </div>
+                  
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setPage(page - 1)}
+                      disabled={page === 1}
+                      className={cn(
+                        "inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors",
+                        page === 1
+                          ? "text-gray-400 cursor-not-allowed"
+                          : "text-gray-700 hover:bg-gray-100"
+                      )}
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                      Trước
+                    </button>
+                    
+                    <div className="flex items-center gap-1">
+                      {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                        let pageNum: number;
+                        if (totalPages <= 5) {
+                          pageNum = i + 1;
+                        } else if (page <= 3) {
+                          pageNum = i + 1;
+                        } else if (page >= totalPages - 2) {
+                          pageNum = totalPages - 4 + i;
+                        } else {
+                          pageNum = page - 2 + i;
+                        }
+                        
+                        return (
+                          <button
+                            key={i}
+                            onClick={() => setPage(pageNum)}
+                            className={cn(
+                              "min-w-[40px] h-10 flex items-center justify-center text-sm font-medium rounded-lg transition-colors",
+                              pageNum === page
+                                ? "bg-orange-500 text-white"
+                                : "text-gray-700 hover:bg-gray-100"
+                            )}
+                          >
+                            {pageNum}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    
+                    <button
+                      onClick={() => setPage(page + 1)}
+                      disabled={page === totalPages}
+                      className={cn(
+                        "inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors",
+                        page === totalPages
+                          ? "text-gray-400 cursor-not-allowed"
+                          : "text-gray-700 hover:bg-gray-100"
+                      )}
+                    >
+                      Sau
+                      <ChevronRight className="h-4 w-4" />
+                    </button>
+                  </div>
               </div>
             </div>
           )}

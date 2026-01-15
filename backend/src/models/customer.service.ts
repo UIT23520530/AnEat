@@ -42,7 +42,9 @@ export class CustomerService {
     const { page, limit, sort, order, search, tier } = params;
     const skip = (page - 1) * limit;
 
-    const where: Prisma.CustomerWhereInput = {};
+    const where: Prisma.CustomerWhereInput = {
+      deletedAt: null, // Level 3: Filter soft-deleted records
+    };
 
     if (search) {
       where.OR = [
@@ -96,8 +98,11 @@ export class CustomerService {
    * Find customer by ID with detailed information
    */
   static async findById(id: string) {
-    return prisma.customer.findUnique({
-      where: { id },
+    return prisma.customer.findFirst({
+      where: { 
+        id,
+        deletedAt: null, // Level 3: Filter soft-deleted records
+      },
       select: {
         id: true,
         phone: true,
@@ -141,8 +146,11 @@ export class CustomerService {
    * Find customer by phone
    */
   static async findByPhone(phone: string) {
-    return prisma.customer.findUnique({
-      where: { phone },
+    return prisma.customer.findFirst({
+      where: { 
+        phone,
+        deletedAt: null, // Level 3: Filter soft-deleted records
+      },
     });
   }
 
