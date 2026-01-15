@@ -129,6 +129,7 @@ export interface BillQueryParams {
   page?: number;
   limit?: number;
   sort?: string;
+  order?: 'asc' | 'desc';
   status?: BillStatus;
   paymentStatus?: PaymentStatus;
   search?: string;
@@ -639,4 +640,219 @@ export class BillService {
       averageBillAmount: Math.round(averageBillAmount._avg.total || 0),
     };
   }
+
+  /**
+   * Find all bills with pagination (for staff bills-history page)
+   */
+  static async findAll(params: BillQueryParams) {
+    const page = params.page || 1;
+    const limit = params.limit || 20;
+    const skip = (page - 1) * limit;
+
+    const where: Prisma.BillWhereInput = {};
+
+    if (params.branchId) {
+      where.branchId = params.branchId;
+    }
+
+    if (params.status) {
+      where.status = params.status;
+    }
+
+    if (params.paymentStatus) {
+      where.paymentStatus = params.paymentStatus;
+    }
+
+    if (params.search) {
+      where.OR = [
+        { billNumber: { contains: params.search, mode: 'insensitive' } },
+        { customerName: { contains: params.search, mode: 'insensitive' } },
+        { customerPhone: { contains: params.search, mode: 'insensitive' } },
+      ];
+    }
+
+    const orderBy: Prisma.BillOrderByWithRelationInput = {
+      [params.sort || 'createdAt']: params.order || 'desc',
+    };
+
+    const [bills, total] = await Promise.all([
+      prisma.bill.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy,
+        include: {
+          order: {
+            select: {
+              id: true,
+              orderNumber: true,
+              status: true,
+              total: true,
+            },
+          },
+          branch: {
+            select: {
+              id: true,
+              code: true,
+              name: true,
+            },
+          },
+          issuedBy: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+            },
+          },
+        },
+      }),
+      prisma.bill.count({ where }),
+    ]);
+
+    return { bills: bills.map(mapBillToDTO), total };
+  }
+
+  /**
+   * Find bill by ID with branch check
+   */
+  static async findById(id: string, branchId?: string) {
+    const where: Prisma.BillWhereUniqueInput = { id };
+    
+    const bill = await prisma.bill.findUnique({
+      where,
+      include: {
+        order: {
+          include: {
+            items: {
+              include: {
+                product: true,
+              },
+            },
+          },
+        },
+        branch: true,
+        issuedBy: true,
+        histories: {
+          orderBy: { version: 'desc' },
+          include: {
+            editedBy: true,
+          },
+        },
+      },
+    });
+
+    if (!bill) {
+      return null;
+    }
+
+    // Branch check
+    if (branchId && bill.branchId !== branchId) {
+      return null;
+    }
+
+    return mapBillToDTO(bill);
+  }
+
+  /**
+   * Update bill with history tracking (for complaint handling)
+   * Level 3: Transaction + History Snapshot
+   */
+  static async updateWithHistory(billId: string, data: {
+    editReason: string;
+    subtotal?: number;
+    taxAmount?: number;
+    discountAmount?: number;
+    customerName?: string;
+    customerPhone?: string;
+    customerEmail?: string;
+    customerAddress?: string;
+    notes?: string;
+    internalNotes?: string;
+    editedById: string;
+  }) {
+    return await prisma.$transaction(async (tx) => {
+      // 1. Get current bill
+      const currentBill = await tx.bill.findUnique({
+        where: { id: billId },
+      });
+
+      if (!currentBill) {
+        throw new Error('Bill not found');
+      }
+
+      // 2. Detect changed fields
+      const changedFields: string[] = [];
+      if (data.subtotal !== undefined && data.subtotal !== currentBill.subtotal) changedFields.push('subtotal');
+      if (data.taxAmount !== undefined && data.taxAmount !== currentBill.taxAmount) changedFields.push('taxAmount');
+      if (data.discountAmount !== undefined && data.discountAmount !== currentBill.discountAmount) changedFields.push('discountAmount');
+      if (data.customerName !== undefined && data.customerName !== currentBill.customerName) changedFields.push('customerName');
+      if (data.customerPhone !== undefined && data.customerPhone !== currentBill.customerPhone) changedFields.push('customerPhone');
+      if (data.customerEmail !== undefined && data.customerEmail !== currentBill.customerEmail) changedFields.push('customerEmail');
+      if (data.customerAddress !== undefined && data.customerAddress !== currentBill.customerAddress) changedFields.push('customerAddress');
+      if (data.notes !== undefined && data.notes !== currentBill.notes) changedFields.push('notes');
+      if (data.internalNotes !== undefined && data.internalNotes !== currentBill.internalNotes) changedFields.push('internalNotes');
+
+      // 3. Create history snapshot (save old version)
+      const version = currentBill.editCount + 1;
+      await tx.billHistory.create({
+        data: {
+          billId: currentBill.id,
+          version,
+          billNumber: currentBill.billNumber,
+          status: currentBill.status,
+          subtotal: currentBill.subtotal,
+          taxAmount: currentBill.taxAmount,
+          discountAmount: currentBill.discountAmount,
+          total: currentBill.total,
+          customerName: currentBill.customerName,
+          customerPhone: currentBill.customerPhone,
+          customerEmail: currentBill.customerEmail,
+          customerAddress: currentBill.customerAddress,
+          paymentMethod: currentBill.paymentMethod,
+          paymentStatus: currentBill.paymentStatus,
+          paidAmount: currentBill.paidAmount,
+          changeAmount: currentBill.changeAmount,
+          notes: currentBill.notes,
+          internalNotes: currentBill.internalNotes,
+          editReason: data.editReason,
+          changedFields: JSON.stringify(changedFields),
+          editedById: data.editedById,
+        },
+      });
+
+      // 4. Calculate new total
+      const newSubtotal = data.subtotal ?? currentBill.subtotal;
+      const newTaxAmount = data.taxAmount ?? currentBill.taxAmount;
+      const newDiscountAmount = data.discountAmount ?? currentBill.discountAmount;
+      const newTotal = newSubtotal + newTaxAmount - newDiscountAmount;
+
+      // 5. Update bill
+      const updatedBill = await tx.bill.update({
+        where: { id: billId },
+        data: {
+          ...(data.subtotal !== undefined && { subtotal: data.subtotal }),
+          ...(data.taxAmount !== undefined && { taxAmount: data.taxAmount }),
+          ...(data.discountAmount !== undefined && { discountAmount: data.discountAmount }),
+          total: newTotal,
+          ...(data.customerName !== undefined && { customerName: data.customerName }),
+          ...(data.customerPhone !== undefined && { customerPhone: data.customerPhone }),
+          ...(data.customerEmail !== undefined && { customerEmail: data.customerEmail }),
+          ...(data.customerAddress !== undefined && { customerAddress: data.customerAddress }),
+          ...(data.notes !== undefined && { notes: data.notes }),
+          ...(data.internalNotes !== undefined && { internalNotes: data.internalNotes }),
+          isEdited: true,
+          editCount: version,
+          lastEditedAt: new Date(),
+        },
+        include: {
+          order: true,
+          branch: true,
+          issuedBy: true,
+        },
+      });
+
+      return mapBillToDTO(updatedBill);
+    });
+  }
 }
+
