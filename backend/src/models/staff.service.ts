@@ -27,6 +27,7 @@ export interface StaffCreateData {
 // Types for update data
 export interface StaffUpdateData {
   name?: string;
+  email?: string;
   phone?: string;
   role?: UserRole;
   isActive?: boolean;
@@ -184,9 +185,22 @@ export class StaffService {
    * Update staff
    */
   static async update(id: string, data: StaffUpdateData) {
+    // If email is being updated, check if it already exists
+    if (data.email) {
+      const existingUser = await prisma.user.findUnique({
+        where: { email: data.email },
+      });
+
+      // If email exists and belongs to a different user, throw error
+      if (existingUser && existingUser.id !== id) {
+        throw new Error('Email already exists');
+      }
+    }
+
     return await prisma.user.update({
       where: { id },
       data: {
+        ...(data.email && { email: data.email }),
         ...(data.name && { name: data.name }),
         ...(data.phone !== undefined && { phone: data.phone }),
         ...(data.role && { role: data.role }),
