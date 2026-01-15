@@ -6,7 +6,8 @@ import { StaffHeader } from "@/components/layouts/staff-header"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { CustomerFormModal } from "@/components/forms/staff/customer-form-modal"
-import { Search, Plus, Edit, Trash2, Loader2 } from "lucide-react"
+import { Search, Plus, Edit, Trash2, Loader2, ChevronLeft, ChevronRight } from "lucide-react"
+import { cn } from "@/lib/utils"
 import { staffCustomerService, CustomerDTO } from "@/services/staff-customer.service"
 
 // Use DTO from service with _count field
@@ -26,6 +27,7 @@ export default function CustomersPage() {
   const [error, setError] = useState<string | null>(null)
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
+  const [totalItems, setTotalItems] = useState(0)
 
   // Load customers from API
   useEffect(() => {
@@ -45,6 +47,7 @@ export default function CustomersPage() {
       })
       setCustomers(response.data as CustomerWithCount[])
       setTotalPages(response.meta.total_pages)
+      setTotalItems(response.meta.total_items)
     } catch (err: any) {
       console.error('Load customers error:', err)
       setError('Không thể tải danh sách khách hàng')
@@ -67,12 +70,12 @@ export default function CustomersPage() {
     if (!confirm("Bạn có chắc chắn muốn xóa khách hàng này?")) return
 
     try {
-      // Note: Delete endpoint not implemented in backend yet
-      // await staffCustomerService.delete(customerId)
-      alert('Chức năng xóa chưa được triển khai')
-      // loadCustomers()
+      await staffCustomerService.delete(customerId)
+      alert('Xóa khách hàng thành công')
+      loadCustomers()
     } catch (err: any) {
-      alert('Lỗi khi xóa khách hàng')
+      const errorMessage = err.response?.data?.message || 'Lỗi khi xóa khách hàng'
+      alert(errorMessage)
     }
   }
 
@@ -125,7 +128,7 @@ export default function CustomersPage() {
               <h1 className="text-2xl font-bold text-gray-900">Quản Lý Khách Hàng</h1>
               <p className="text-sm text-gray-500 mt-1">Danh sách khách hàng thân thiết</p>
             </div>
-            <Button className="bg-red-600 hover:bg-red-700 text-white" onClick={handleAddCustomer}>
+            <Button className="bg-red-500 hover:bg-red-500 !text-white" onClick={handleAddCustomer}>
               <Plus className="h-4 w-4 mr-2" />
               Thêm Khách Hàng
             </Button>
@@ -213,7 +216,81 @@ export default function CustomersPage() {
                 ))}
               </tbody>
             </table>
-          </div>
+            
+            {/* Pagination */}
+            <div className="flex items-center justify-between border-t border-gray-200 px-6 py-4">
+              <div className="flex items-center gap-4">
+                <div className="text-sm text-gray-700">
+                  Hiển thị <span className="font-medium">{customers.length}</span> / <span className="font-medium">{totalItems}</span> kết quả
+                </div>
+                {totalPages > 1 && (
+                  <div className="text-sm text-gray-500">
+                    Trang <span className="font-medium">{page}</span> / <span className="font-medium">{totalPages}</span>
+                  </div>
+                )}
+              </div>
+                
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setPage(page - 1)}
+                    disabled={page === 1}
+                    className={cn(
+                      "inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors",
+                      page === 1
+                        ? "text-gray-400 cursor-not-allowed"
+                        : "text-gray-700 hover:bg-gray-100"
+                    )}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                    Trước
+                  </button>
+                  
+                  <div className="flex items-center gap-1">
+                    {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                      let pageNum: number;
+                      if (totalPages <= 5) {
+                        pageNum = i + 1;
+                      } else if (page <= 3) {
+                        pageNum = i + 1;
+                      } else if (page >= totalPages - 2) {
+                        pageNum = totalPages - 4 + i;
+                      } else {
+                        pageNum = page - 2 + i;
+                      }
+                      
+                      return (
+                        <button
+                          key={i}
+                          onClick={() => setPage(pageNum)}
+                          className={cn(
+                            "min-w-[40px] h-10 flex items-center justify-center text-sm font-medium rounded-lg transition-colors",
+                            pageNum === page
+                              ? "bg-orange-500 text-white"
+                              : "text-gray-700 hover:bg-gray-100"
+                          )}
+                        >
+                          {pageNum}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  
+                  <button
+                    onClick={() => setPage(page + 1)}
+                    disabled={page === totalPages}
+                    className={cn(
+                      "inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors",
+                      page === totalPages
+                        ? "text-gray-400 cursor-not-allowed"
+                        : "text-gray-700 hover:bg-gray-100"
+                    )}
+                  >
+                    Sau
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+            </div>
 
           {/* Customer Form Modal */}
           <CustomerFormModal

@@ -122,6 +122,16 @@ export class StaffCustomerService {
     );
     return response.data;
   }
+
+  /**
+   * DELETE Customer
+   */
+  static async delete(id: string): Promise<{ success: boolean; message: string }> {
+    const response = await apiClient.delete<{ success: boolean; message: string }>(
+      `${STAFF_CUSTOMER_BASE_URL}/${id}`
+    );
+    return response.data;
+  }
 }
 
 export const staffCustomerService = StaffCustomerService;

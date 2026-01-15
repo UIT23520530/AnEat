@@ -161,7 +161,7 @@ export function CustomerFormModal({ isOpen, onClose, onSubmit, customer }: Custo
             >
               Hủy
             </Button>
-            <Button type="submit" className="flex-1 bg-red-600 hover:bg-red-700 text-white">
+            <Button type="submit" className="flex-1 bg-red-500 hover:bg-red-500 !text-white">
               {customer ? "Cập Nhật" : "Thêm Mới"}
             </Button>
           </div>
