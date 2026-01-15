@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import { StaffLayout } from "@/components/layouts/staff-layout"
 import { StaffHeader } from "@/components/layouts/staff-header"
 import { Card } from "@/components/ui/card"
-import { DollarSign, ShoppingBag, Package as PackageIcon, TrendingUp, Plus, Loader2 } from "lucide-react"
+import { DollarSign, ShoppingBag, Package as PackageIcon, TrendingUp, ShoppingCart, Loader2, CheckCircle, AlertCircle } from "lucide-react"
 import { cn } from "@/lib/utils"
 import Link from "next/link"
 import { dashboardService, DashboardStats } from "@/services/dashboard.service"
@@ -98,62 +98,48 @@ export default function DashboardPage() {
           {!loading && !error && stats && (
             <>
               {/* Stats Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-                {/* Revenue Card */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
+                {/* Total Products Card */}
                 <Card className="bg-white border border-gray-200 hover:shadow-lg transition-shadow">
-                  <div className="p-6">
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                        <DollarSign className="h-6 w-6 text-green-600" />
+                  <div className="p-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                        <PackageIcon className="h-6 w-6 text-blue-600" />
                       </div>
-                      <span className="text-xs font-semibold text-green-600 bg-green-50 px-2 py-1 rounded-full">
-                        Hôm nay
+                      <span className="text-xs font-semibold text-blue-600 bg-blue-50 px-2 py-1 rounded-full">
+                        Tổng cộng
                       </span>
                     </div>
-                    <p className="text-sm text-gray-600 mb-1">Doanh Thu Hôm Nay</p>
-                    <h3 className="text-2xl font-bold text-gray-900">{formatCurrency(stats.revenue.today)}</h3>
+                    <p className="text-sm text-gray-600 mb-0.5">Tổng Sản Phẩm</p>
+                    <h3 className="text-xl font-bold text-gray-900">{stats.products?.total || 0}</h3>
                   </div>
                 </Card>
 
-                {/* Orders Card */}
+                {/* Active Products Card */}
                 <Card className="bg-white border border-gray-200 hover:shadow-lg transition-shadow">
-                  <div className="p-6">
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                        <ShoppingBag className="h-6 w-6 text-blue-600" />
+                  <div className="p-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                        <CheckCircle className="h-6 w-6 text-green-600" />
                       </div>
-                      <span className="text-xs font-medium text-gray-500">{stats.orders.today} hôm nay</span>
+                      <span className="text-xs font-semibold text-green-600 bg-green-50 px-2 py-1 rounded-full">Hoạt động</span>
                     </div>
-                    <p className="text-sm text-gray-600 mb-1">Tổng Đơn Hàng</p>
-                    <h3 className="text-2xl font-bold text-gray-900">{stats.orders.total}</h3>
+                    <p className="text-sm text-gray-600 mb-0.5">Đang Bán</p>
+                    <h3 className="text-xl font-bold text-gray-900">{stats.products?.active || 0}</h3>
                   </div>
                 </Card>
 
-                {/* Customers Card */}
+                {/* Low Stock Products Card */}
                 <Card className="bg-white border border-gray-200 hover:shadow-lg transition-shadow">
-                  <div className="p-6">
-                    <div className="flex items-center justify-between mb-4">
+                  <div className="p-3">
+                    <div className="flex items-center justify-between mb-2">
                       <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
-                        <PackageIcon className="h-6 w-6 text-orange-600" />
+                        <AlertCircle className="h-6 w-6 text-orange-600" />
                       </div>
-                      <span className="text-xs font-medium text-gray-500">{stats.customers.new} mới</span>
+                      <span className="text-xs font-semibold text-orange-600 bg-orange-50 px-2 py-1 rounded-full">Cảnh báo</span>
                     </div>
-                    <p className="text-sm text-gray-600 mb-1">Khách Hàng</p>
-                    <h3 className="text-2xl font-bold text-gray-900">{stats.customers.total}</h3>
-                  </div>
-                </Card>
-
-                {/* Profit Card */}
-                <Card className="bg-white border border-gray-200 hover:shadow-lg transition-shadow">
-                  <div className="p-6">
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                        <TrendingUp className="h-6 w-6 text-purple-600" />
-                      </div>
-                      <span className="text-xs font-medium text-gray-500">Hôm nay</span>
-                    </div>
-                    <p className="text-sm text-gray-600 mb-1">Lợi Nhuận</p>
-                    <h3 className="text-2xl font-bold text-gray-900">{formatCurrency(stats.profit.today)}</h3>
+                    <p className="text-sm text-gray-600 mb-0.5">Sắp Hết Hàng</p>
+                    <h3 className="text-xl font-bold text-gray-900">{stats.products?.lowStock || 0}</h3>
                   </div>
                 </Card>
               </div>
@@ -220,7 +206,7 @@ export default function DashboardPage() {
                   <Link href="/staff/orders">
                     <div className="p-6 h-full flex flex-col items-center justify-center text-center cursor-pointer">
                       <div className="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center mb-4 backdrop-blur-sm">
-                        <Plus className="h-10 w-10 text-white" />
+                        <ShoppingCart className="h-10 w-10 text-white" />
                       </div>
                       <h3 className="text-xl font-bold text-white mb-2">Tạo đơn mới</h3>
                       <p className="text-orange-100 text-sm">Nhấn để bắt đầu đơn hàng mới</p>

@@ -24,6 +24,11 @@ export interface DashboardStats {
     total: number;
     new: number;
   };
+  products?: {
+    total: number;
+    active: number;
+    lowStock: number;
+  };
 }
 
 export interface RevenueData {
@@ -145,6 +150,34 @@ export class DashboardService {
       }),
     ]);
 
+    // Product stats
+    const [totalProducts, activeProducts] = await Promise.all([
+      prisma.product.count({
+        where: {
+          branchId,
+          deletedAt: null,
+        },
+      }),
+      prisma.product.count({
+        where: {
+          branchId,
+          deletedAt: null,
+          isAvailable: true,
+        },
+      }),
+    ]);
+
+    // Low stock products (quantity < 5)
+    const lowStockProducts = await prisma.product.count({
+      where: {
+        branchId,
+        deletedAt: null,
+        quantity: {
+          lt: 5,
+        },
+      },
+    });
+
     return {
       revenue: {
         today: todayRevenue._sum.total || 0,
@@ -166,6 +199,11 @@ export class DashboardService {
       customers: {
         total: totalCustomers,
         new: newCustomers,
+      },
+      products: {
+        total: totalProducts,
+        active: activeProducts,
+        lowStock: lowStockProducts,
       },
     };
   }

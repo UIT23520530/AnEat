@@ -7,10 +7,12 @@ import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Search, ShoppingCart, FileText, Ticket, X, Trash2, Wallet, CreditCard, Users, UserPlus, Loader2 } from "lucide-react"
+import { Search, ShoppingCart, FileText, Ticket, X, Trash2, DollarSign, Wallet, CreditCard, Users, UserPlus, Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import staffOrderService, { OrderCategory, OrderProduct } from "@/services/staff-order.service"
 import { staffCustomerService, CustomerDTO } from "@/services/staff-customer.service"
+import { NoteModal } from "@/components/forms/staff/note-modal"
+import { DiscountCodeModal } from "@/components/forms/staff/discount-code-modal"
 
 interface CartItem extends OrderProduct {
   quantity: number
@@ -390,13 +392,17 @@ export default function StaffOrdersPage() {
 
             {/* Payment Method */}
             <p className="text-xs font-medium text-gray-700 mb-2">Phương thức thanh toán</p>
-            <div className="grid grid-cols-2 gap-2 mb-3">
+            <div className="grid grid-cols-3 gap-2 mb-3">
               <button className="flex items-center justify-center gap-1.5 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg text-xs font-medium transition-colors">
-                <Wallet className="h-4 w-4" />
+                <DollarSign className="h-4 w-4" />
                 Tiền mặt
               </button>
               <button className="flex items-center justify-center gap-1.5 py-2 bg-white hover:bg-gray-50 border border-gray-300 text-gray-700 rounded-lg text-xs font-medium transition-colors">
                 <CreditCard className="h-4 w-4" />
+                Chuyển khoản
+              </button>
+              <button className="flex items-center justify-center gap-1.5 py-2 bg-white hover:bg-gray-50 border border-gray-300 text-gray-700 rounded-lg text-xs font-medium transition-colors">
+                <Wallet className="h-4 w-4" />
                 Ví điện tử
               </button>
             </div>
@@ -411,85 +417,22 @@ export default function StaffOrdersPage() {
           </div>
         </div>
 
-        {/* Note Modal */}
-        <Dialog open={isNoteModalOpen} onOpenChange={setIsNoteModalOpen}>
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle className="text-xl font-bold">Thêm Ghi Chú</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div>
-                <label className="text-sm font-medium text-gray-700 mb-2 block">Ghi chú đơn hàng</label>
-                <textarea
-                  value={orderNote}
-                  onChange={(e) => setOrderNote(e.target.value)}
-                  placeholder="Nhập ghi chú cho đơn hàng..."
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 min-h-[120px] resize-none"
-                />
-              </div>
-              <div className="flex gap-2">
-                <Button
-                  onClick={() => setIsNoteModalOpen(false)}
-                  variant="outline"
-                  className="flex-1"
-                >
-                  Hủy
-                </Button>
-                <Button
-                  onClick={() => setIsNoteModalOpen(false)}
-                  className="flex-1 bg-orange-500 hover:bg-orange-600 text-white"
-                >
-                  Lưu ghi chú
-                </Button>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
+        <NoteModal
+          isOpen={isNoteModalOpen}
+          onOpenChange={setIsNoteModalOpen}
+          value={orderNote}
+          onChange={setOrderNote}
+          onSave={() => {}}
+        />
 
-        {/* Discount Code Modal */}
-        <Dialog open={isDiscountModalOpen} onOpenChange={setIsDiscountModalOpen}>
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle className="text-xl font-bold">Nhập Mã Giảm Giá</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div>
-                <label className="text-sm font-medium text-gray-700 mb-2 block">Mã giảm giá</label>
-                <Input
-                  value={discountCode}
-                  onChange={(e) => setDiscountCode(e.target.value)}
-                  placeholder="Nhập mã giảm giá..."
-                  className="uppercase"
-                />
-                <p className="text-xs text-gray-500 mt-2">Mã mẫu: DISCOUNT10 (giảm 10%), DISCOUNT20 (giảm 20%)</p>
-              </div>
-              {appliedDiscount > 0 && (
-                <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
-                  <p className="text-sm text-green-700 font-medium">Đã áp dụng giảm giá: {appliedDiscount.toLocaleString()}₫</p>
-                </div>
-              )}
-              <div className="flex gap-2">
-                <Button
-                  onClick={() => {
-                    setIsDiscountModalOpen(false)
-                    setDiscountCode("")
-                  }}
-                  variant="outline"
-                  className="flex-1"
-                >
-                  Hủy
-                </Button>
-                <Button
-                  onClick={handleApplyDiscount}
-                  className="flex-1 bg-orange-500 hover:bg-orange-600 text-white"
-                  disabled={!discountCode}
-                >
-                  Áp dụng
-                </Button>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
+        <DiscountCodeModal
+          isOpen={isDiscountModalOpen}
+          onOpenChange={setIsDiscountModalOpen}
+          code={discountCode}
+          onCodeChange={setDiscountCode}
+          appliedDiscount={appliedDiscount}
+          onApply={handleApplyDiscount}
+        />
 
         {/* Customer Selection Dialog */}
         <Dialog open={isCustomerDialogOpen} onOpenChange={setIsCustomerDialogOpen}>

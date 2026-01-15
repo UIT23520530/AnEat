@@ -22,6 +22,11 @@ export interface DashboardStats {
     total: number;
     new: number;
   };
+  products?: {
+    total: number;
+    active: number;
+    lowStock: number;
+  };
 }
 
 export interface RevenueData {
