@@ -1,15 +1,26 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ShoppingCart, User, MenuIcon, MapPin, ShoppingBag, Store } from "lucide-react";
+import { ShoppingCart, User, MenuIcon, MapPin, ShoppingBag, Store, LogOut, User as UserIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/contexts/cart-context";
 import { useBranch } from "@/contexts/branch-context";
 import { CartSidebar } from "../cart/cart-sidebar";
 import { BranchSelectorDialog } from "../branch/branch-selector-dialog";
 import { Badge } from "../ui/badge";
+import { getCurrentUser, logout } from "@/lib/auth";
+import type { User as UserType } from "@/types";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 interface PublicLayoutProps {
   children: ReactNode;
@@ -19,6 +30,12 @@ export function PublicLayout({ children }: PublicLayoutProps) {
   const pathname = usePathname() || "/";
   const { openCart, cartItems } = useCart();
   const { openBranchSelector, selectedBranch } = useBranch();
+  const [user, setUser] = useState<UserType | null>(null);
+
+  useEffect(() => {
+    setUser(getCurrentUser());
+  }, []);
+
   const navItems = [
     { href: "/", label: "Trang chủ" },
     { href: "/customer/menu", label: "Thực đơn" },
@@ -94,23 +111,60 @@ export function PublicLayout({ children }: PublicLayoutProps) {
             </Button>
 
             {/* Button user */}
-            <Link href="/auth/login">
-              <Button
-                size="lg"
-                className="hidden sm:flex w-full sm:w-auto bg-orange-500 text-white rounded-full hover:bg-orange-600"
-              >
-                Đăng nhập
-              </Button>
-            </Link>
-            <Link href="/auth/register">
-                <Button
-                variant="outline"
-                size="lg"
-                className="hidden sm:flex w-full sm:w-auto border-orange-500 text-orange-500 rounded-full hover:bg-orange-100 hover:text-orange-600"
-                >
-                Đăng ký
-                </Button>
-            </Link>
+            {user ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="relative h-10 w-10 rounded-full">
+                    <Avatar className="h-10 w-10 border border-gray-200">
+                      <AvatarImage src={user.image || "/placeholder-user.jpg"} alt={user.name} />
+                      <AvatarFallback>{user.name ? user.name.charAt(0).toUpperCase() : "U"}</AvatarFallback>
+                    </Avatar>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-56" align="end" forceMount>
+                  <DropdownMenuLabel className="font-normal">
+                    <div className="flex flex-col space-y-1">
+                      <p className="text-sm font-medium leading-none">{user.name}</p>
+                      <p className="text-xs leading-none text-muted-foreground">
+                        {user.email}
+                      </p>
+                    </div>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild>
+                    <Link href="/profile" className="cursor-pointer">
+                      <UserIcon className="mr-2 h-4 w-4" />
+                      <span>Hồ sơ</span>
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={logout} className="cursor-pointer text-red-600 focus:text-red-600">
+                    <LogOut className="mr-2 h-4 w-4" />
+                    <span>Đăng xuất</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <>
+                <Link href="/auth/login">
+                  <Button
+                    size="lg"
+                    className="hidden sm:flex w-full sm:w-auto bg-orange-500 text-white rounded-full hover:bg-orange-600"
+                  >
+                    Đăng nhập
+                  </Button>
+                </Link>
+                <Link href="/auth/register">
+                  <Button
+                    variant="outline"
+                    size="lg"
+                    className="hidden sm:flex w-full sm:w-auto border-orange-500 text-orange-500 rounded-full hover:bg-orange-100 hover:text-orange-600"
+                  >
+                    Đăng ký
+                  </Button>
+                </Link>
+              </>
+            )}
             <Button variant="ghost" size="icon" className="md:hidden">
               <MenuIcon className="h-6 w-6" />
             </Button>
@@ -171,22 +225,6 @@ export function PublicLayout({ children }: PublicLayoutProps) {
                     className="text-muted-foreground hover:text-foreground"
                   >
                     Hồ sơ
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href="/customer/history"
-                    className="text-muted-foreground hover:text-foreground"
-                  >
-                    Lịch sử đặt hàng
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href="/customer/feedback"
-                    className="text-muted-foreground hover:text-foreground"
-                  >
-                    Phản hồi
                   </Link>
                 </li>
               </ul>

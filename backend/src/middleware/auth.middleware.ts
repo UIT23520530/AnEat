@@ -162,6 +162,66 @@ export const isStaff = authorize(
 export const isCustomer = authorize(UserRole.CUSTOMER);
 
 /**
+ * Optional authentication middleware - Verify JWT token if present, but don't fail if missing
+ */
+export const optionalAuthenticate = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    // Get token from header
+    const authHeader = req.headers.authorization;
+    
+    // If no token, just continue without setting req.user
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      next();
+      return;
+    }
+
+    const token = authHeader.substring(7);
+
+    try {
+      // Verify token
+      const decoded = jwt.verify(
+        token,
+        process.env.JWT_SECRET || 'default-secret'
+      ) as JwtPayload;
+
+      // Get user from database
+      const user = await prisma.user.findUnique({
+        where: { id: decoded.userId },
+        select: {
+          id: true,
+          email: true,
+          role: true,
+          branchId: true,
+          isActive: true,
+        },
+      });
+
+      // If user exists and is active, attach to request
+      if (user && user.isActive) {
+        req.user = {
+          id: user.id,
+          email: user.email,
+          role: user.role,
+          branchId: user.branchId,
+        };
+      }
+    } catch (tokenError) {
+      // If token is invalid/expired, just continue without setting req.user
+      // Don't throw error for optional auth
+    }
+
+    next();
+  } catch (error) {
+    // For optional auth, always continue even on error
+    next();
+  }
+};
+
+/**
  * Check if authenticated (any role)
  */
 export const isAuthenticated = authenticate;

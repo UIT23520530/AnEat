@@ -9,6 +9,12 @@ import {
   updateProduct,
   deleteProduct,
 } from '../controllers/shared/product.controller';
+import {
+  getProductOptions,
+  createProductOption,
+  updateProductOption,
+  deleteProductOption,
+} from '../controllers/shared/product-option.controller';
 
 const router = Router();
 
@@ -149,6 +155,111 @@ router.delete(
   '/:id',
   authorize(UserRole.ADMIN_SYSTEM, UserRole.ADMIN_BRAND),
   deleteProduct
+);
+
+// ==================== PRODUCT OPTIONS ROUTES ====================
+
+/**
+ * GET /api/v1/products/:productId/options
+ * Get all options for a product
+ */
+router.get(
+  '/:productId/options',
+  authorize(UserRole.ADMIN_SYSTEM, UserRole.ADMIN_BRAND, UserRole.CUSTOMER),
+  getProductOptions
+);
+
+/**
+ * POST /api/v1/products/:productId/options
+ * Create new option for a product
+ */
+router.post(
+  '/:productId/options',
+  authorize(UserRole.ADMIN_SYSTEM, UserRole.ADMIN_BRAND),
+  [
+    body('name')
+      .trim()
+      .isLength({ min: 1, max: 255 })
+      .withMessage('Name must be between 1-255 characters'),
+    body('description')
+      .optional()
+      .trim()
+      .isLength({ max: 500 })
+      .withMessage('Description must not exceed 500 characters'),
+    body('price')
+      .optional()
+      .isInt()
+      .withMessage('Price must be an integer (in cents)'),
+    body('type')
+      .optional()
+      .isIn(['SIZE', 'TOPPING', 'SAUCE', 'OTHER'])
+      .withMessage('Type must be one of: SIZE, TOPPING, SAUCE, OTHER'),
+    body('isRequired')
+      .optional()
+      .isBoolean()
+      .withMessage('isRequired must be a boolean'),
+    body('isAvailable')
+      .optional()
+      .isBoolean()
+      .withMessage('isAvailable must be a boolean'),
+    body('order')
+      .optional()
+      .isInt({ min: 0 })
+      .withMessage('Order must be a non-negative integer'),
+  ],
+  createProductOption
+);
+
+/**
+ * PUT /api/v1/products/:productId/options/:optionId
+ * Update product option
+ */
+router.put(
+  '/:productId/options/:optionId',
+  authorize(UserRole.ADMIN_SYSTEM, UserRole.ADMIN_BRAND),
+  [
+    body('name')
+      .optional()
+      .trim()
+      .isLength({ min: 1, max: 255 })
+      .withMessage('Name must be between 1-255 characters'),
+    body('description')
+      .optional()
+      .trim()
+      .isLength({ max: 500 })
+      .withMessage('Description must not exceed 500 characters'),
+    body('price')
+      .optional()
+      .isInt()
+      .withMessage('Price must be an integer (in cents)'),
+    body('type')
+      .optional()
+      .isIn(['SIZE', 'TOPPING', 'SAUCE', 'OTHER'])
+      .withMessage('Type must be one of: SIZE, TOPPING, SAUCE, OTHER'),
+    body('isRequired')
+      .optional()
+      .isBoolean()
+      .withMessage('isRequired must be a boolean'),
+    body('isAvailable')
+      .optional()
+      .isBoolean()
+      .withMessage('isAvailable must be a boolean'),
+    body('order')
+      .optional()
+      .isInt({ min: 0 })
+      .withMessage('Order must be a non-negative integer'),
+  ],
+  updateProductOption
+);
+
+/**
+ * DELETE /api/v1/products/:productId/options/:optionId
+ * Delete product option
+ */
+router.delete(
+  '/:productId/options/:optionId',
+  authorize(UserRole.ADMIN_SYSTEM, UserRole.ADMIN_BRAND),
+  deleteProductOption
 );
 
 export default router;

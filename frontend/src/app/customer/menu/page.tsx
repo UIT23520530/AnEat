@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { PublicLayout } from "@/components/layouts/public-layout";
 import { ProductCard } from "@/components/cart/product-card";
 import { CategoriesFilter } from "@/components/product/categories-filter";
@@ -8,11 +8,41 @@ import { Product } from "@/types";
 import { useCart } from "@/contexts/cart-context";
 import { useToast } from "@/hooks/use-toast";
 import { createSlug } from "@/lib/utils";
-import { Truck, MapPin, Search } from "lucide-react";
+import { Truck, MapPin, Search, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import apiClient from "@/lib/api-client";
+import { useBranch } from "@/contexts/branch-context";
 
-const categories = [
+interface CategoryResponse {
+  id: string;
+  code: string;
+  name: string;
+  description: string | null;
+  image: string | null;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+  _count?: {
+    products: number;
+  };
+}
+
+interface CategoriesResponse {
+  success: boolean;
+  code: number;
+  message: string;
+  data: CategoryResponse[];
+}
+
+interface Category {
+  id: string;
+  name: string;
+  image: string;
+}
+
+// Fallback categories nếu API fail
+const fallbackCategories: Category[] = [
   {
     id: "all",
     name: "Tất cả",
@@ -55,7 +85,74 @@ const categories = [
   },
 ];
 
-const mockProducts: Product[] = [
+// Map API response sang Category format
+const mapToCategory = (apiCategory: CategoryResponse): Category => {
+  return {
+    id: apiCategory.id,
+    name: apiCategory.name,
+    image: apiCategory.image || "🍽️", // Fallback emoji nếu không có image
+  };
+};
+
+interface ProductOptionResponse {
+  id: string;
+  name: string;
+  description: string | null;
+  price: number; // Price in cents
+  type: string; // SIZE, TOPPING, SAUCE, OTHER
+  isRequired: boolean;
+  isAvailable: boolean;
+  order: number;
+}
+
+interface ProductResponse {
+  id: string;
+  code: string;
+  name: string;
+  description: string | null;
+  price: number; // Price in cents
+  image: string | null;
+  quantity: number;
+  isAvailable: boolean;
+  categoryId: string | null;
+  category: {
+    id: string;
+    code: string;
+    name: string;
+  } | null;
+  branchId: string;
+  branch: {
+    id: string;
+    code: string;
+    name: string;
+  };
+  options?: ProductOptionResponse[]; // Options cho sản phẩm
+  createdAt: string;
+  updatedAt: string;
+  stockStatus?: string;
+  canOrder?: boolean;
+}
+
+interface ProductsResponse {
+  success: boolean;
+  code: number;
+  message: string;
+  data: ProductResponse[];
+  meta: {
+    currentPage: number;
+    totalPages: number;
+    limit: number;
+    totalItems: number;
+    branch: {
+      id: string;
+      name: string;
+      code: string;
+    };
+  };
+}
+
+// Fallback products nếu API fail
+const fallbackProducts: Product[] = [
   {
     id: "1",
     name: "Combo Gà Rán",
@@ -82,108 +179,237 @@ const mockProducts: Product[] = [
     isAvailable: true,
     isPromotion: false,
   },
-  {
-    id: "3",
-    name: "Burger Bò Cổ Điển",
-    slug: "burger-bo-co-dien",
-    description: "Burger với thịt bò, xà lách, cà chua và dưa chuột muối.",
-    basePrice: 59000,
-    priceAfterTax: 64900,
-    taxPercentage: 10,
-    category: "burger",
-    image: `/assets/classic-burger.png`,
-    isAvailable: true,
-    isPromotion: false,
-  },
-  {
-    id: "4",
-    name: "Burger Phô Mai",
-    slug: "burger-pho-mai",
-    description: "Burger bò với một lớp phô mai Cheddar tan chảy.",
-    basePrice: 69000,
-    priceAfterTax: 75900,
-    taxPercentage: 10,
-    category: "burger",
-    image: `/assets/cheese-burger.png`,
-    isAvailable: true,
-    isPromotion: true,
-  },
-  {
-    id: "5",
-    name: "Mỳ Ý Carbonara",
-    slug: "my-y-carbonara",
-    description: "Mỳ Ý với sốt kem, thịt xông khói và phô mai Parmesan.",
-    basePrice: 85000,
-    priceAfterTax: 93500,
-    taxPercentage: 10,
-    category: "my-y",
-    image: `/assets/classic-carbonara.png`,
-    isAvailable: true,
-    isPromotion: false,
-  },
-  {
-    id: "6",
-    name: "Mỳ Ý Bolognese",
-    slug: "my-y-bolognese",
-    description: "Mỳ Ý với sốt cà chua và thịt bò bằm.",
-    basePrice: 85000,
-    priceAfterTax: 93500,
-    taxPercentage: 10,
-    category: "my-y",
-    image: `/assets/bolognese-pasta.png`,
-    isAvailable: true,
-    isPromotion: false,
-  },
-  {
-    id: "7",
-    name: "Khoai Tây Chiên",
-    slug: "khoai-tay-chien",
-    description: "Khoai tây chiên giòn rụm.",
-    basePrice: 35000,
-    priceAfterTax: 38500,
-    taxPercentage: 10,
-    category: "khoai-tay",
-    image: `/assets/crispy-french-fries.png`,
-    isAvailable: true,
-    isPromotion: false,
-  },
-  {
-    id: "8",
-    name: "Nước Ngọt",
-    slug: "nuoc-ngot",
-    description: "Nước ngọt mát lạnh (Coca, Pepsi, 7Up).",
-    basePrice: 20000,
-    priceAfterTax: 22000,
-    taxPercentage: 10,
-    category: "thuc-uong",
-    image: `/assets/refreshing-soft-drink.png`,
-    isAvailable: true,
-    isPromotion: false,
-  },
-  {
-    id: "9",
-    name: "Kem Vani",
-    slug: "kem-vani",
-    description: "Kem vani mát lạnh.",
-    basePrice: 25000,
-    priceAfterTax: 27500,
-    taxPercentage: 10,
-    category: "kem",
-    image: `/assets/vanilla-ice-cream.png`,
-    isAvailable: true,
-    isPromotion: false,
-  },
 ];
+
+// Helper function để tạo slug từ name
+const createSlugFromName = (name: string): string => {
+  return name
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/g, "d")
+    .replace(/Đ/g, "D")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "");
+};
+
+// Map API response sang Product type
+const mapToProduct = (apiProduct: ProductResponse): Product => {
+  const basePrice = apiProduct.price / 100; // Convert từ cent sang VND
+  const taxPercentage = 10; // Mặc định 10%
+  const priceAfterTax = Math.round(basePrice * (1 + taxPercentage / 100));
+
+  return {
+    id: apiProduct.id,
+    name: apiProduct.name,
+    slug: createSlugFromName(apiProduct.name),
+    description: apiProduct.description || "",
+    basePrice: basePrice,
+    priceAfterTax: priceAfterTax,
+    taxPercentage: taxPercentage,
+    category: apiProduct.category?.id || "all", // Sử dụng categoryId để filter
+    image: apiProduct.image || "/placeholder.svg",
+    isAvailable: apiProduct.isAvailable && apiProduct.quantity > 0,
+    isPromotion: false, // Có thể thêm logic để xác định promotion
+  };
+};
 
 type SortOption = "newest" | "bestselling" | "low-price";
 
 export default function MenuPage() {
+  const { selectedBranch, openBranchSelector, setSelectedBranch } = useBranch();
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [deliveryAddress, setDeliveryAddress] = useState("");
   const [sortOption, setSortOption] = useState<SortOption>("newest");
+  const [categories, setCategories] = useState<Category[]>(fallbackCategories);
+  const [categoriesLoading, setCategoriesLoading] = useState(true);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [productsLoading, setProductsLoading] = useState(false);
+  const [productsError, setProductsError] = useState<string | null>(null);
   const { addToCart } = useCart();
   const { toast } = useToast();
+
+  // Auto-select first branch if none selected
+  useEffect(() => {
+    const autoSelectBranch = async () => {
+      if (selectedBranch) return; // Đã có branch rồi thì không cần làm gì
+
+      try {
+        // Lấy danh sách branches
+        const branchesResponse = await apiClient.get("/home/branches", {
+          params: {
+            page: 1,
+            limit: 20, // Lấy nhiều branches để tìm branch có products
+          },
+        });
+
+        if (branchesResponse.data?.success && branchesResponse.data.data?.length > 0) {
+          const branches = branchesResponse.data.data;
+          
+          // Tìm branch có products bằng cách thử fetch products
+          for (const branch of branches) {
+            try {
+              const productsResponse = await apiClient.get("/home/products", {
+                params: {
+                  branchId: branch.id,
+                  page: 1,
+                  limit: 1, // Chỉ cần kiểm tra có products hay không
+                },
+              });
+
+              if (productsResponse.data?.success && productsResponse.data.data?.length > 0) {
+                console.log("Auto-selecting branch with products:", branch.name);
+                setSelectedBranch({
+                  id: branch.id,
+                  code: branch.code,
+                  name: branch.name,
+                  address: branch.address,
+                  phone: branch.phone,
+                  email: branch.email,
+                });
+                return; // Đã tìm thấy branch có products, dừng lại
+              }
+            } catch (err) {
+              // Branch này không có products hoặc có lỗi, thử branch tiếp theo
+              continue;
+            }
+          }
+
+          // Nếu không tìm thấy branch nào có products, chọn branch đầu tiên
+          if (branches.length > 0) {
+            const firstBranch = branches[0];
+            console.log("No branch with products found, selecting first branch:", firstBranch.name);
+            setSelectedBranch({
+              id: firstBranch.id,
+              code: firstBranch.code,
+              name: firstBranch.name,
+              address: firstBranch.address,
+              phone: firstBranch.phone,
+              email: firstBranch.email,
+            });
+          }
+        }
+      } catch (err: any) {
+        console.error("Error auto-selecting branch:", err);
+        // Không hiển thị lỗi, để user tự chọn branch
+      }
+    };
+
+    autoSelectBranch();
+  }, [selectedBranch, setSelectedBranch]);
+
+  // Fetch categories from API
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        setCategoriesLoading(true);
+        const response = await apiClient.get<CategoriesResponse>("/home/categories");
+
+        if (response.data.success && response.data.data) {
+          const mappedCategories = response.data.data.map(mapToCategory);
+          // Thêm "Tất cả" ở đầu danh sách
+          setCategories([
+            {
+              id: "all",
+              name: "Tất cả",
+              image: "🍽️",
+            },
+            ...mappedCategories,
+          ]);
+        } else {
+          setCategories(fallbackCategories);
+        }
+      } catch (err: any) {
+        console.error("Error fetching categories:", err);
+        // Fallback to mock data
+        setCategories(fallbackCategories);
+      } finally {
+        setCategoriesLoading(false);
+      }
+    };
+
+    fetchCategories();
+  }, []);
+
+  // Fetch products from API
+  useEffect(() => {
+    const fetchProducts = async () => {
+      // Chỉ fetch khi đã có branchId
+      if (!selectedBranch?.id) {
+        console.log("No branch selected, skipping product fetch");
+        setProducts([]);
+        return;
+      }
+
+      console.log("Fetching products for branch:", selectedBranch.id);
+
+      try {
+        setProductsLoading(true);
+        setProductsError(null);
+
+        // Map sortOption sang API sort format
+        let sortParam = "name";
+        if (sortOption === "newest") {
+          sortParam = "-createdAt";
+        } else if (sortOption === "bestselling") {
+          // API không có soldCount, tạm dùng -createdAt
+          sortParam = "-createdAt";
+        } else if (sortOption === "low-price") {
+          sortParam = "price";
+        }
+
+        const params: any = {
+          branchId: selectedBranch.id,
+          page: 1,
+          limit: 100, // Lấy nhiều sản phẩm để filter client-side
+          sort: sortParam,
+        };
+
+        // Thêm categoryId nếu không phải "all"
+        if (selectedCategory !== "all") {
+          params.categoryId = selectedCategory;
+        }
+
+        // Thêm search nếu có
+        if (searchQuery.trim()) {
+          params.search = searchQuery.trim();
+        }
+
+        const response = await apiClient.get<ProductsResponse>("/home/products", {
+          params,
+        });
+
+        console.log("Products API response:", response.data);
+
+        if (response.data.success && response.data.data) {
+          const mappedProducts = response.data.data.map(mapToProduct);
+          console.log(`Loaded ${mappedProducts.length} products`);
+          setProducts(mappedProducts);
+        } else {
+          console.warn("API returned unsuccessful response:", response.data);
+          setProductsError("Không thể tải sản phẩm");
+          setProducts([]);
+        }
+      } catch (err: any) {
+        console.error("Error fetching products:", err);
+        console.error("Error details:", {
+          message: err.message,
+          response: err.response?.data,
+          status: err.response?.status,
+        });
+        setProductsError(
+          err.response?.data?.message || 
+          "Đã xảy ra lỗi khi tải sản phẩm. Vui lòng thử lại sau."
+        );
+        setProducts([]);
+      } finally {
+        setProductsLoading(false);
+      }
+    };
+
+    fetchProducts();
+  }, [selectedBranch?.id, selectedCategory, sortOption]); // Removed searchQuery from dependencies
 
   const handleConfirmAddress = () => {
     if (deliveryAddress.trim()) {
@@ -211,13 +437,15 @@ export default function MenuPage() {
     });
   };
 
-  const filteredProducts = mockProducts.filter((product) => {
-    const matchesCategory =
-      selectedCategory === "all" || product.category === selectedCategory;
-    const matchesSearch = product.name
-      .toLowerCase()
-      .includes(searchQuery.toLowerCase());
-    return matchesCategory && matchesSearch;
+  // Products đã được filter từ API, filter thêm search client-side
+  const filteredProducts = products.filter((product) => {
+    if (!searchQuery.trim()) return true;
+    
+    // Tạo slug từ input tìm kiếm (chữ thường, không dấu, có gạch nối)
+    const searchSlug = createSlugFromName(searchQuery.trim());
+    
+    // So sánh với slug của sản phẩm
+    return product.slug.includes(searchSlug);
   });
 
   return (
@@ -321,8 +549,47 @@ export default function MenuPage() {
             </div>
           </div>
 
+          {/* Branch Selection Required */}
+          {!selectedBranch && (
+            <div className="text-center py-16 bg-white rounded-xl shadow-sm mb-8">
+              <div className="flex flex-col items-center gap-4">
+                <div className="w-24 h-24 rounded-full bg-orange-100 flex items-center justify-center">
+                  <MapPin className="h-12 w-12 text-orange-500" />
+                </div>
+                <div>
+                  <p className="text-gray-700 text-lg font-semibold mb-2">
+                    Vui lòng chọn cửa hàng
+                  </p>
+                  <p className="text-gray-500 text-sm mb-4">
+                    Bạn cần chọn cửa hàng để xem thực đơn
+                  </p>
+                  <Button
+                    onClick={openBranchSelector}
+                    className="bg-orange-500 text-white hover:bg-orange-600"
+                  >
+                    Chọn cửa hàng
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Loading State */}
+          {productsLoading && selectedBranch && (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-orange-500" />
+            </div>
+          )}
+
+          {/* Error State */}
+          {productsError && selectedBranch && !productsLoading && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+              <p className="text-red-600 text-sm">{productsError}</p>
+            </div>
+          )}
+
           {/* Product Count */}
-          {filteredProducts.length > 0 && (
+          {!productsLoading && selectedBranch && filteredProducts.length > 0 && (
             <div className="mb-6">
               <p className="text-gray-600 text-sm">
                 Tìm thấy <span className="font-semibold text-orange-500">{filteredProducts.length}</span> sản phẩm
@@ -336,7 +603,7 @@ export default function MenuPage() {
           )}
 
           {/* Products Grid */}
-          {filteredProducts.length > 0 ? (
+          {!productsLoading && selectedBranch && filteredProducts.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {filteredProducts.map((product) => (
                 <ProductCard
@@ -346,7 +613,7 @@ export default function MenuPage() {
                 />
               ))}
             </div>
-          ) : (
+          ) : !productsLoading && selectedBranch && filteredProducts.length === 0 ? (
             <div className="text-center py-16 bg-white rounded-xl shadow-sm">
               <div className="flex flex-col items-center gap-4">
                 <div className="w-24 h-24 rounded-full bg-gray-100 flex items-center justify-center">
@@ -366,7 +633,7 @@ export default function MenuPage() {
                 </div>
               </div>
             </div>
-          )}
+          ) : null}
         </div>
       </div>
     </PublicLayout>

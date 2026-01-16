@@ -13,12 +13,27 @@ import { AdminLayout } from "@/components/layouts/admin-layout"
 import { ManagerLayout } from "@/components/layouts/manager-layout"
 import { StaffLayout } from "@/components/layouts/staff-layout"
 import { PublicLayout } from "@/components/layouts/public-layout"
-import { User, Mail, Phone, MapPin, Save } from "lucide-react"
+import { User, Mail, Phone, MapPin, Save, Loader2 } from "lucide-react"
 import type { User as UserType } from "@/types"
+import apiClient from "@/lib/api-client"
+import { useToast } from "@/hooks/use-toast"
+
+const getTierName = (tier?: string) => {
+  switch (tier) {
+    case "BRONZE": return "Thành viên Mới";
+    case "SILVER": return "Thành viên Bạc";
+    case "GOLD": return "Thành viên Vàng";
+    case "VIP": return "Thành viên VIP";
+    default: return "Thành viên Mới";
+  }
+}
 
 export default function ProfilePage() {
   const router = useRouter()
+  const { toast } = useToast()
   const [user, setUser] = useState<UserType | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -27,38 +42,50 @@ export default function ProfilePage() {
   })
 
   useEffect(() => {
-    // Mock data for preview - remove after testing
-    const mockUser: UserType = {
-      id: "1",
-      name: "Nguyễn Văn An",
-      email: "an.nguyen@example.com",
-      phone: "0901 234 567",
-      role: "CUSTOMER",
-      branchId: "",
-      branchName: "",
-    }
-    
-    setUser(mockUser)
-    setFormData({
-      name: mockUser.name,
-      email: mockUser.email,
-      phone: mockUser.phone,
-      address: "123 Đường Lê Lợi, Quận 1, TP. Hồ Chí Minh",
-    })
+    const fetchProfile = async () => {
+      try {
+        setLoading(true)
+        
+        // 1. Thử lấy từ local storage trước để hiển thị ngay
+        const localUser = getCurrentUser()
+        if (localUser) {
+          setUser(localUser)
+          setFormData({
+            name: localUser.name,
+            email: localUser.email,
+            phone: localUser.phone || "",
+            address: localUser.address || "",
+          })
+        }
 
-    // Uncomment below for real authentication
-    // const currentUser = getCurrentUser()
-    // if (!currentUser) {
-    //   router.push("/login")
-    //   return
-    // }
-    // setUser(currentUser)
-    // setFormData({
-    //   name: currentUser.name,
-    //   email: currentUser.email,
-    //   phone: currentUser.phone,
-    //   address: "",
-    // })
+        // 2. Gọi API để lấy thông tin mới nhất
+        const response = await apiClient.get<{ status: string; data: { user: UserType } }>("/auth/me")
+        
+        if (response.data.status === "success" && response.data.data.user) {
+          const userData = response.data.data.user
+          setUser(userData)
+          // Cập nhật lại local storage
+          setCurrentUser(userData)
+          
+          setFormData({
+            name: userData.name,
+            email: userData.email,
+            phone: userData.phone || "",
+            address: userData.address || "",
+          })
+        }
+      } catch (error) {
+        console.error("Failed to fetch profile:", error)
+        // Nếu không có local user và API lỗi -> redirect login
+        if (!getCurrentUser()) {
+          router.push("/auth/login")
+        }
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchProfile()
   }, [router])
 
   const handleSave = () => {
@@ -92,13 +119,15 @@ export default function ProfilePage() {
     }
   }
 
-  if (!user) {
+  if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        <Loader2 className="animate-spin h-12 w-12 text-primary" />
       </div>
     )
   }
+
+  if (!user) return null
 
   const content = (
     <div className="flex items-center justify-center py-12 px-4 min-h-screen">
@@ -119,16 +148,18 @@ export default function ProfilePage() {
               <p className="text-slate-600 mb-6">Cập nhật thông tin cá nhân của bạn để nhận những ưu đãi mới nhất.</p>
               
               {/* Member Status */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-center gap-2 text-orange-500">
-                  <span className="text-lg">⭐</span>
-                  <span className="font-semibold">Thành viên hạng Vàng</span>
+              {user.role === "CUSTOMER" && (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-center gap-2 text-orange-500">
+                    <span className="text-lg">⭐</span>
+                    <span className="font-semibold">{getTierName(user.tier)}</span>
+                  </div>
+                  <div className="flex items-center justify-center gap-2 text-slate-600">
+                    <span>📊</span>
+                    <span>{(user.points || 0).toLocaleString("vi-VN")} điểm tích lũy</span>
+                  </div>
                 </div>
-                <div className="flex items-center justify-center gap-2 text-slate-600">
-                  <span>📊</span>
-                  <span>2,450 điểm tích lũy</span>
-                </div>
-              </div>
+              )}
             </div>
           </div>
 

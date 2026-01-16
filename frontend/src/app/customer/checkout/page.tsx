@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { PublicLayout } from "@/components/layouts/public-layout";
 import { useCart } from "@/contexts/cart-context";
 import { useCheckout } from "@/contexts/checkout-context";
+import { useBranch } from "@/contexts/branch-context";
 import { CheckoutProgress } from "@/components/checkout/checkout-progress";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -13,6 +14,11 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Image as ImageIcon, Minus, Plus, Trash2, Edit2 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
+import {
+  saveTempOrderToCookie,
+  getTempOrderFromCookie,
+  clearTempOrderCookie,
+} from "@/lib/temp-order-cookie";
 
 const mockStores = [
   {
@@ -30,6 +36,7 @@ const mockStores = [
 export default function CheckoutInfoPage() {
   const router = useRouter();
   const { cartItems, closeCart } = useCart();
+  const { selectedBranch } = useBranch();
   const {
     items,
     setItems,
@@ -50,15 +57,75 @@ export default function CheckoutInfoPage() {
     closeCart();
   }, [closeCart]);
 
-  // Initialize items from cart
+  // Khôi phục temp order từ cookie khi load trang
+  useEffect(() => {
+    const tempOrder = getTempOrderFromCookie();
+    if (tempOrder) {
+      // Khôi phục branchId
+      if (tempOrder.branchId) {
+        setStore(tempOrder.branchId);
+      }
+      
+      // Khôi phục notes
+      if (tempOrder.notes) {
+        setNotes(tempOrder.notes);
+      }
+
+      // Khôi phục items từ temp order (cần map lại format)
+      // Note: Temp order items có format khác với cart items
+      // Nếu có items trong temp order, có thể khôi phục sau
+    }
+  }, [setStore, setNotes]);
+
+  // Initialize items from cart (nếu chưa có items)
   useEffect(() => {
     if (cartItems.length > 0 && items.length === 0) {
       setItems(cartItems as any[]);
     }
   }, [cartItems, items.length, setItems]);
 
+  // Lưu temp order vào cookie khi có thay đổi (debounce)
+  const saveTempOrder = useCallback(() => {
+    if (!selectedBranch?.id || items.length === 0) {
+      return;
+    }
+
+    // Map items từ checkout context (có thể có options từ cart)
+    const tempOrderData = {
+      branchId: selectedBranch.id,
+      items: items.map((item) => {
+        const cartItem = cartItems.find((ci) => ci.id === item.id);
+        return {
+          productId: item.id,
+          quantity: item.quantity,
+          price: Math.round(item.price * 100), // Convert VND to cent
+          options: cartItem?.options?.map((opt) => ({
+            optionId: opt.id,
+            optionName: opt.name,
+            optionPrice: Math.round(opt.price * 100), // Convert VND to cent
+          })) || [],
+        };
+      }),
+      notes: notes || undefined,
+      createdAt: new Date().toISOString(),
+    };
+
+    saveTempOrderToCookie(tempOrderData);
+  }, [selectedBranch?.id, items, cartItems, notes]);
+
+  // Debounce: Lưu temp order sau 1 giây không có thay đổi
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      saveTempOrder();
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, [saveTempOrder]);
+
   const handleContinue = () => {
     if (store && items.length > 0) {
+      // Lưu temp order trước khi chuyển trang
+      saveTempOrder();
       router.push("/customer/checkout/payment");
     }
   };
@@ -103,12 +170,19 @@ export default function CheckoutInfoPage() {
                     </div>
                     <div className="flex-1">
                       <p className="font-semibold text-gray-800">{item.name}</p>
-                      <p className="text-xs text-gray-500 my-1">
-                        - 2 x {item.name.split(" ")[0]} (1 miếng)
-                        <br />
-                        - 1 x Khoai tây chiên
-                        <br />- 1 x Pepsi (M)
-                      </p>
+                      {item.options && item.options.length > 0 ? (
+                        <p className="text-xs text-gray-500 my-1">
+                          {item.options.map((opt, idx) => (
+                            <span key={opt.id}>
+                              - {opt.name}
+                              {opt.price > 0 && ` (+${opt.price.toLocaleString("vi-VN")}đ)`}
+                              {idx < item.options!.length - 1 && <br />}
+                            </span>
+                          ))}
+                        </p>
+                      ) : (
+                        <p className="text-xs text-gray-400 my-1">Không có tùy chọn</p>
+                      )}
                       <p className="text-orange-500 font-bold">{item.price.toLocaleString("vi-VN")} đ</p>
                     </div>
                     <div className="flex flex-col items-end justify-between">

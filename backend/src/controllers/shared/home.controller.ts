@@ -100,6 +100,20 @@ export const getFeaturedProducts = async (req: Request, res: Response, next: Nex
             code: true,
           },
         },
+        options: {
+          where: { isAvailable: true },
+          orderBy: { order: 'asc' },
+          select: {
+            id: true,
+            name: true,
+            description: true,
+            price: true,
+            type: true,
+            isRequired: true,
+            isAvailable: true,
+            order: true,
+          },
+        },
       },
     });
 
@@ -117,6 +131,7 @@ export const getFeaturedProducts = async (req: Request, res: Response, next: Nex
         isAvailable: product.isAvailable && product.quantity > 0,
         category: product.category,
         branch: product.branch,
+        options: product.options || [],
         unitsSold: salesData?._sum.quantity || 0,
       };
     });
@@ -243,6 +258,111 @@ export const getPublicProducts = async (req: Request, res: Response, next: NextF
 };
 
 /**
+ * Get product by slug (public)
+ * GET /api/v1/home/products/slug/:slug?branchId=xxx
+ */
+export const getProductBySlug = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const { slug } = req.params;
+    const { branchId } = req.query;
+
+    // Validate branchId is required
+    if (!branchId) {
+      throw new ValidationError('Branch ID is required. Please select a branch first.');
+    }
+
+    // Verify branch exists
+    const branch = await prisma.branch.findFirst({
+      where: { 
+        id: branchId as string,
+        deletedAt: null,
+      } as any,
+    });
+
+    if (!branch) {
+      throw new NotFoundError('Branch not found');
+    }
+
+    // Get all products from this branch and find by matching slug
+    // Slug được tạo từ name: lowercase, remove dấu, replace spaces với hyphens
+    const allProducts = await prisma.product.findMany({
+      where: {
+        branchId: branchId as string,
+        deletedAt: null,
+        isAvailable: true,
+      } as any,
+      include: {
+        category: {
+          select: {
+            id: true,
+            code: true,
+            name: true,
+          },
+        },
+        branch: {
+          select: {
+            id: true,
+            code: true,
+            name: true,
+          },
+        },
+        options: {
+          where: { isAvailable: true },
+          orderBy: { order: 'asc' },
+          select: {
+            id: true,
+            name: true,
+            description: true,
+            price: true,
+            type: true,
+            isRequired: true,
+            isAvailable: true,
+            order: true,
+          },
+        },
+      },
+    });
+
+    // Helper function để tạo slug từ name (giống frontend)
+    const createSlugFromName = (name: string): string => {
+      return name
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/đ/g, 'd')
+        .replace(/Đ/g, 'D')
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/(^-|-$)/g, '');
+    };
+
+    // Tìm product có slug match
+    const product = allProducts.find((p) => {
+      const productSlug = createSlugFromName(p.name);
+      return productSlug === slug;
+    });
+
+    if (!product) {
+      throw new NotFoundError('Product not found');
+    }
+
+    const stockStatus = product.quantity > 0 ? 'IN_STOCK' : 'OUT_OF_STOCK';
+
+    res.status(200).json({
+      success: true,
+      code: 200,
+      message: 'Product retrieved successfully',
+      data: {
+        ...product,
+        stockStatus,
+        canOrder: product.isAvailable && product.quantity > 0,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
  * Get active promotions (public)
  * GET /api/v1/home/promotions
  */
@@ -299,9 +419,55 @@ export const getPublicOrders = async (req: Request, res: Response, next: NextFun
 
     const where: any = {};
 
-    // If user is authenticated, show their orders
+    // If user is authenticated, find their Customer ID and show their orders
     if (userId) {
-      where.customerId = userId;
+      // Get user to find their phone
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { phone: true },
+      });
+
+      if (user && user.phone) {
+        // Find customer by phone
+        const customer = await prisma.customer.findUnique({
+          where: { phone: user.phone },
+          select: { id: true },
+        });
+
+        if (customer) {
+          where.customerId = customer.id;
+        } else {
+          // Customer not found, return empty orders
+          res.status(200).json({
+            success: true,
+            code: 200,
+            message: 'Orders retrieved successfully',
+            data: [],
+            meta: {
+              currentPage: Number(page),
+              totalPages: 0,
+              limit: Number(limit),
+              totalItems: 0,
+            },
+          });
+          return;
+        }
+      } else {
+        // User has no phone, return empty orders
+        res.status(200).json({
+          success: true,
+          code: 200,
+          message: 'Orders retrieved successfully',
+          data: [],
+          meta: {
+            currentPage: Number(page),
+            totalPages: 0,
+            limit: Number(limit),
+            totalItems: 0,
+          },
+        });
+        return;
+      }
     } else if (orderNumber) {
       // If not authenticated but has orderNumber, allow tracking
       where.orderNumber = orderNumber as string;

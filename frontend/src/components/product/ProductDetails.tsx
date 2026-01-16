@@ -11,7 +11,7 @@ import {
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import Image from "next/image";
-import { useCart, CartItem } from "@/contexts/CartProvider";
+import { useCart, CartItem } from "@/contexts/cart-context";
 import { addItemToServerCart } from "@/lib/actions/cart.actions";
 import { useToast } from "@/components/ui/use-toast";
 

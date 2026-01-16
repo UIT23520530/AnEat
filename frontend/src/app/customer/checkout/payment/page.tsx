@@ -5,12 +5,17 @@ import { createMoMoPayment } from "@/services/payment.service";
 import { useRouter } from "next/navigation";
 import { PublicLayout } from "@/components/layouts/public-layout";
 import { useCheckout } from "@/contexts/checkout-context";
+import { useBranch } from "@/contexts/branch-context";
+import { useCart } from "@/contexts/cart-context";
 import { CheckoutProgress } from "@/components/checkout/checkout-progress";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DollarSign, Wallet, CreditCard, Image as ImageIcon } from "lucide-react";
 import Image from "next/image";
+import apiClient from "@/lib/api-client";
+import { getCurrentUser } from "@/lib/auth";
+import { clearTempOrderCookie } from "@/lib/temp-order-cookie";
 
 const mockStores = [
   {
@@ -40,6 +45,8 @@ export default function CheckoutPaymentPage() {
     total,
     handleApplyDiscount,
   } = useCheckout();
+  const { selectedBranch } = useBranch();
+  const { cartItems, removeFromCart } = useCart();
 
   const [isLoading, setIsLoading] = useState(false);
 
@@ -59,13 +66,66 @@ export default function CheckoutPaymentPage() {
   ];
 
   const handlePayment = async () => {
+    // Kiểm tra user đã đăng nhập chưa
+    const currentUser = getCurrentUser();
+    if (!currentUser) {
+      alert("Vui lòng đăng nhập để đặt hàng!");
+      router.push("/auth/login");
+      return;
+    }
+
+    // Kiểm tra branch đã chọn chưa
+    if (!selectedBranch?.id) {
+      alert("Vui lòng chọn cửa hàng!");
+      return;
+    }
+
+    // Kiểm tra có sản phẩm trong giỏ hàng không
+    if (cartItems.length === 0) {
+      alert("Giỏ hàng trống!");
+      return;
+    }
+
     setIsLoading(true);
     try {
+      // Tạo order trong database
+      const orderData = {
+        branchId: selectedBranch.id,
+        items: cartItems.map((item) => ({
+          productId: item.id, // id trong cart là productId
+          quantity: item.quantity,
+          price: item.price * 100, // Convert VND sang cent (đã bao gồm options)
+          options: item.options?.map((opt) => ({
+            optionId: opt.id,
+            optionName: opt.name,
+            optionPrice: opt.price * 100, // Convert VND sang cent
+          })) || [],
+        })),
+        notes: notes || undefined,
+      };
+
+      const orderResponse = await apiClient.post("/customer/orders", orderData);
+
+      if (!orderResponse.data?.success || !orderResponse.data?.data?.order) {
+        throw new Error(orderResponse.data?.message || "Không thể tạo đơn hàng");
+      }
+
+      const createdOrder = orderResponse.data.data.order;
+      const orderNumber = createdOrder.orderNumber;
+
+      // Xóa giỏ hàng sau khi tạo order thành công
+      cartItems.forEach((item) => {
+        removeFromCart(item.id);
+      });
+
+      // Xóa temp order cookie sau khi thanh toán thành công
+      clearTempOrderCookie();
+
       if (paymentMethod === "e-wallet") {
         // Gọi API backend để lấy link MoMo
         const data = await createMoMoPayment({
           amount: total,
-          orderInfo: `Thanh toán đơn hàng tại AnEat (${store})`,
+          orderInfo: `Thanh toán đơn hàng tại AnEat - ${orderNumber}`,
         });
         if (data?.data?.payUrl) {
           window.location.href = data.data.payUrl;
@@ -75,12 +135,12 @@ export default function CheckoutPaymentPage() {
         }
       } else {
         // Thanh toán tiền mặt/thẻ: chuyển sang trang thành công
-        const newOrderNumber = `ORD-${Date.now()}`;
-        router.push(`/customer/checkout/success?orderId=${newOrderNumber}&total=${total}`);
+        router.push(`/customer/checkout/success?orderId=${orderNumber}&total=${total}`);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Payment error:", error);
-      alert("Có lỗi khi thanh toán!");
+      const errorMessage = error.response?.data?.message || error.message || "Có lỗi khi thanh toán!";
+      alert(errorMessage);
     } finally {
       setIsLoading(false);
     }

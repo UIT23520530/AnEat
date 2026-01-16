@@ -1,8 +1,10 @@
 "use client";
 
-import { use } from "react";
+import { use, useEffect, useState } from "react";
 import { PublicLayout } from "@/components/layouts/public-layout";
 import { notFound } from "next/navigation";
+import apiClient from "@/lib/api-client";
+import { Loader2 } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -112,15 +114,164 @@ const getStatusColor = (status: string) => {
   }
 };
 
+interface OrderTrackingResponse {
+  success: boolean;
+  code: number;
+  message: string;
+  data: {
+    orderNumber: string;
+    status: "PENDING" | "PREPARING" | "READY" | "COMPLETED" | "CANCELLED";
+    total: number; // cent
+    items: Array<{
+      id: string;
+      quantity: number;
+      price: number; // cent
+      product: {
+        id: string;
+        name: string;
+        image: string | null;
+      };
+      options?: Array<{
+        id: string;
+        optionName: string;
+        optionPrice: number; // cent
+      }>;
+    }>;
+    branch: {
+      id: string;
+      name: string;
+      address: string;
+      phone: string;
+    };
+    createdAt: string;
+    updatedAt: string;
+    completedAt: string | null;
+    estimatedTime: string | null;
+    paymentStatus: string;
+    paymentMethod: string | null;
+  };
+}
+
 export default function OrderDetailPage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
-  const order = orderDetails[id as keyof typeof orderDetails];
+  const [order, setOrder] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  if (!order) {
+  useEffect(() => {
+    const fetchOrder = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        // id có thể là orderNumber hoặc order ID
+        const response = await apiClient.get<OrderTrackingResponse>(
+          `/home/orders/${id}/tracking`
+        );
+
+        if (response.data.success && response.data.data) {
+          const orderData = response.data.data;
+          
+          // Map API response sang format cho UI
+          const mappedOrder = {
+            id: orderData.orderNumber,
+            date: new Date(orderData.createdAt).toLocaleDateString("vi-VN", {
+              day: "2-digit",
+              month: "2-digit",
+              year: "numeric",
+            }),
+            time: new Date(orderData.createdAt).toLocaleTimeString("vi-VN", {
+              hour: "2-digit",
+              minute: "2-digit",
+              hour12: false,
+            }),
+            status: orderData.status.toLowerCase(),
+            statusText: mapStatusText(orderData.status),
+            currentStep: getStatusStep(orderData.status),
+            total: orderData.total / 100, // Convert cent to VND
+            subtotal: orderData.total / 100, // Simplified
+            tax: 0,
+            discount: 0,
+            items: orderData.items.map((item) => ({
+              name: item.product.name,
+              quantity: item.quantity,
+              price: item.price / 100, // Convert cent to VND
+              notes: "", // Có thể thêm notes nếu có
+            })),
+            customer: {
+              name: "Khách hàng", // Có thể lấy từ order nếu có
+              phone: orderData.branch.phone,
+              address: orderData.branch.address,
+            },
+            paymentMethod: orderData.paymentMethod || "COD",
+          };
+
+          setOrder(mappedOrder);
+        } else {
+          setError("Không tìm thấy đơn hàng");
+        }
+      } catch (err: any) {
+        console.error("Error fetching order:", err);
+        if (err.response?.status === 404) {
+          setError("Không tìm thấy đơn hàng");
+        } else {
+          setError("Đã xảy ra lỗi khi tải đơn hàng");
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchOrder();
+  }, [id]);
+
+  const mapStatusText = (status: string): string => {
+    switch (status) {
+      case "PENDING":
+        return "Chờ xác nhận";
+      case "PREPARING":
+        return "Đang chuẩn bị";
+      case "READY":
+        return "Sẵn sàng";
+      case "COMPLETED":
+        return "Hoàn thành";
+      case "CANCELLED":
+        return "Đã hủy";
+      default:
+        return "Chờ xác nhận";
+    }
+  };
+
+  const getStatusStep = (status: string): number => {
+    switch (status) {
+      case "PENDING":
+        return 0;
+      case "PREPARING":
+        return 1;
+      case "READY":
+        return 2;
+      case "COMPLETED":
+        return 3;
+      default:
+        return 0;
+    }
+  };
+
+  if (loading) {
+    return (
+      <PublicLayout>
+        <div className="bg-[#FFF9F2] min-h-screen flex items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-orange-500" />
+        </div>
+      </PublicLayout>
+    );
+  }
+
+  if (error || !order) {
     notFound();
   }
 

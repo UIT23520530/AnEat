@@ -31,8 +31,10 @@ export const setCurrentUser = (user: User | null) => {
 export const logout = () => {
   if (typeof window === "undefined") return
   localStorage.removeItem("currentUser")
+  localStorage.removeItem("token")
+  localStorage.removeItem("customerInfo")
   document.cookie = "user=; path=/; max-age=0"
-  window.location.href = "/login"
+  window.location.href = "/auth/login"
 }
 
 export const hasRole = (user: User | null, allowedRoles: string[]): boolean => {

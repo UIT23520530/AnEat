@@ -21,7 +21,7 @@ export function middleware(request: NextRequest) {
   if (protectedRoute) {
     if (!userCookie) {
       // Redirect to login if not authenticated
-      return NextResponse.redirect(new URL("/login", request.url))
+      return NextResponse.redirect(new URL("/auth/login", request.url))
     }
 
     try {
@@ -33,7 +33,7 @@ export function middleware(request: NextRequest) {
         return NextResponse.redirect(new URL("/unauthorized", request.url))
       }
     } catch {
-      return NextResponse.redirect(new URL("/login", request.url))
+      return NextResponse.redirect(new URL("/auth/login", request.url))
     }
   }
 

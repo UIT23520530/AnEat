@@ -3,12 +3,19 @@
 import { createContext, useContext, useState, ReactNode, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
+interface CartItemOption {
+  id: string;
+  name: string;
+  price: number;
+}
+
 interface CartItem {
   id: string;
   name: string;
   price: number;
   quantity: number;
   image: string;
+  options?: CartItemOption[];
 }
 
 interface CheckoutContextType {
