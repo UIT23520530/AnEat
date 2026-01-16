@@ -146,7 +146,7 @@ export default function CheckoutInfoPage() {
             </div>
 
             {/* Ghi chú */}
-            <Card className="border shadow-sm">
+            <Card>
               <CardContent className="p-4">
                 <h3 className="font-bold mb-3">Ghi chú cho đơn hàng</h3>
                 <Textarea
@@ -178,7 +178,7 @@ export default function CheckoutInfoPage() {
           {/* Right Column - Delivery & Options */}
           <div className="space-y-4">
             {/* Giao hàng đến */}
-            <Card className="border shadow-sm">
+            <Card>
               <CardContent className="p-4">
                 <div className="flex justify-between items-start mb-3">
                   <div>
@@ -203,7 +203,7 @@ export default function CheckoutInfoPage() {
             </Card>
 
             {/* Tuỳ chọn */}
-            <Card className="border shadow-sm">
+            <Card>
               <CardContent className="p-4">
                 <h3 className="font-bold mb-4">Tuỳ chọn</h3>
                 <div className="space-y-3">
@@ -245,7 +245,7 @@ export default function CheckoutInfoPage() {
             </Card>
 
             {/* Thông tin tiền */}
-            <Card className="border shadow-sm">
+            <Card>
               <CardContent className="p-4">
                 <div className="space-y-2 mb-4">
                   <div className="flex justify-between text-sm">

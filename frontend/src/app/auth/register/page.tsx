@@ -11,18 +11,68 @@ import Link from "next/link"
 import { User, Mail, Phone, Lock } from "lucide-react"
 
 export default function RegisterPage() {
+  const router = useRouter()
+  const { toast } = useToast()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
 
-  const handleRegister = (e: React.FormEvent) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { id, value } = e.target
+    setFormData((prev) => ({ ...prev, [id]: value }))
+    // Clear error when user types
+    if (errors[id]) {
+      setErrors((prev) => ({ ...prev, [id]: "" }))
+    }
+  }
+
+  const validateForm = () => {
+    const newErrors: Record<string, string> = {}
+
+    if (!formData.name.trim()) {
+      newErrors.name = "Vui lòng nhập họ tên"
+    }
+
+    if (!formData.phone.trim()) {
+      newErrors.phone = "Vui lòng nhập số điện thoại"
+    } else if (!/^[0-9]{10,11}$/.test(formData.phone)) {
+      newErrors.phone = "Số điện thoại không hợp lệ"
+    }
+
+    if (!formData.email.trim()) {
+      newErrors.email = "Vui lòng nhập email"
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      newErrors.email = "Email không hợp lệ"
+    }
+
+    if (!formData.password) {
+      newErrors.password = "Vui lòng nhập mật khẩu"
+    } else if (formData.password.length < 6) {
+      newErrors.password = "Mật khẩu phải có ít nhất 6 ký tự"
+    }
+
+    if (!formData.confirmPassword) {
+      newErrors.confirmPassword = "Vui lòng xác nhận mật khẩu"
+    } else if (formData.password !== formData.confirmPassword) {
+      newErrors.confirmPassword = "Mật khẩu không khớp"
+    }
+
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
+  }
+
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    if (!validateForm()) {
+      return
+    }
+
     setLoading(true)
     setError("")
     // Mock registration
     setTimeout(() => {
       setLoading(false)
-      alert("Registration successful! Please login.")
-    }, 1000)
+    }
   }
 
   return (

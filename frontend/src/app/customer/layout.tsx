@@ -4,7 +4,7 @@ export default function CustomerLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div style={{ fontFamily: "Arial, sans-serif" }}>
+    <div style={{ fontFamily: "'Be Vietnam Pro', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" }}>
       {children}
     </div>
   );

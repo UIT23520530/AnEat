@@ -41,7 +41,7 @@ export function PublicLayout({ children }: PublicLayoutProps) {
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
           <div className="flex items-center gap-6">
-            <Link href="/" className="flex flex-col items-center gap-1">
+            <Link href="/" className="flex items-center gap-2">
               <img
                 src="/icons/AnEat.svg"
                 alt="AnEat"
@@ -57,10 +57,10 @@ export function PublicLayout({ children }: PublicLayoutProps) {
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`text-base font-medium uppercase transition-colors ${
+                  className={`text-base uppercase transition-colors ${
                   isActive(item.href)
                     ? "text-orange-500 font-bold border-b-2 border-orange-500 pb-1"
-                    : "text-muted-foreground hover:text-orange-500"
+                    : "text-muted-foreground font-medium hover:text-orange-500"
                   }`}
                 >
                   {item.label}

@@ -27,7 +27,7 @@ export default function CheckoutSuccessPage() {
       <CheckoutProgress currentStep={3} />
       <div className="container mx-auto px-4 py-8">
         <div className="flex items-center justify-center min-h-[500px]">
-          <Card className="border-0 shadow-lg max-w-md w-full">
+          <Card className="max-w-md w-full">
             <CardContent className="p-8 text-center">
               <div className="mb-6 flex justify-center">
                 <CheckCircle className="w-20 h-20 text-green-500" />
