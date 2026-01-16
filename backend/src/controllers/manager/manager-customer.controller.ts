@@ -399,6 +399,44 @@ export const searchCustomers = async (req: Request, res: Response): Promise<void
 };
 
 /**
+ * Delete customer (soft delete)
+ * DELETE /api/v1/manager/customers/:id
+ */
+export const deleteCustomer = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+
+    // Check if customer exists
+    const customer = await CustomerService.findById(id);
+    if (!customer) {
+      res.status(404).json({
+        success: false,
+        code: 404,
+        message: 'Customer not found',
+      });
+      return;
+    }
+
+    // Delete customer (soft delete)
+    const deletedCustomer = await CustomerService.delete(id);
+
+    res.status(200).json({
+      success: true,
+      code: 200,
+      message: 'Customer deleted successfully',
+      data: deletedCustomer,
+    });
+  } catch (error) {
+    console.error('Delete customer error:', error);
+    res.status(500).json({
+      success: false,
+      code: 500,
+      message: 'Failed to delete customer',
+    });
+  }
+};
+
+/**
  * Create new customer (manual registration by manager)
  * POST /api/v1/manager/customers
  */

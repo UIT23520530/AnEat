@@ -24,6 +24,11 @@ export interface DashboardStats {
     total: number;
     new: number;
   };
+  products?: {
+    total: number;
+    active: number;
+    lowStock: number;
+  };
 }
 
 export interface RevenueData {
@@ -145,6 +150,34 @@ export class DashboardService {
       }),
     ]);
 
+    // Product stats
+    const [totalProducts, activeProducts] = await Promise.all([
+      prisma.product.count({
+        where: {
+          branchId,
+          deletedAt: null,
+        },
+      }),
+      prisma.product.count({
+        where: {
+          branchId,
+          deletedAt: null,
+          isAvailable: true,
+        },
+      }),
+    ]);
+
+    // Low stock products (quantity < 5)
+    const lowStockProducts = await prisma.product.count({
+      where: {
+        branchId,
+        deletedAt: null,
+        quantity: {
+          lt: 5,
+        },
+      },
+    });
+
     return {
       revenue: {
         today: todayRevenue._sum.total || 0,
@@ -166,6 +199,11 @@ export class DashboardService {
       customers: {
         total: totalCustomers,
         new: newCustomers,
+      },
+      products: {
+        total: totalProducts,
+        active: activeProducts,
+        lowStock: lowStockProducts,
       },
     };
   }
@@ -400,6 +438,133 @@ export class DashboardService {
       staffName: activity.issuedBy?.name || 'Unknown',
       createdAt: activity.createdAt,
     }));
+  }
+
+  /**
+   * Get recent orders with pagination
+   */
+  static async getRecentOrders(
+    branchId: string,
+    page: number = 1,
+    limit: number = 10,
+    status?: string
+  ) {
+    const skip = (page - 1) * limit;
+
+    const whereClause: any = {
+      branchId,
+    };
+
+    if (status) {
+      whereClause.status = status;
+    }
+
+    const [orders, total] = await Promise.all([
+      prisma.order.findMany({
+        where: whereClause,
+        include: {
+          customer: {
+            select: {
+              id: true,
+              name: true,
+              phone: true,
+            },
+          },
+          staff: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+          items: {
+            include: {
+              product: {
+                select: {
+                  name: true,
+                  image: true,
+                },
+              },
+            },
+          },
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+        skip,
+        take: limit,
+      }),
+      prisma.order.count({
+        where: whereClause,
+      }),
+    ]);
+
+    return {
+      orders: orders.map((order) => ({
+        id: order.id,
+        orderNumber: order.orderNumber,
+        total: order.total,
+        status: order.status,
+        paymentStatus: order.paymentStatus,
+        createdAt: order.createdAt,
+        customer: order.customer
+          ? {
+              id: order.customer.id,
+              name: order.customer.name,
+              phone: order.customer.phone,
+            }
+          : null,
+        staff: order.staff
+          ? {
+              id: order.staff.id,
+              name: order.staff.name,
+            }
+          : null,
+        itemCount: order.items.length,
+        items: order.items.map((item) => ({
+          productName: item.product.name,
+          quantity: item.quantity,
+          price: item.price,
+        })),
+      })),
+      total,
+    };
+  }
+
+  /**
+   * Get order status statistics
+   */
+  static async getOrderStatusStats(branchId: string, dateFrom?: string, dateTo?: string) {
+    const whereClause: any = {
+      branchId,
+    };
+
+    if (dateFrom || dateTo) {
+      whereClause.createdAt = {};
+      if (dateFrom) whereClause.createdAt.gte = new Date(dateFrom);
+      if (dateTo) whereClause.createdAt.lte = new Date(dateTo);
+    }
+
+    const statusCounts = await prisma.order.groupBy({
+      by: ['status'],
+      where: whereClause,
+      _count: {
+        status: true,
+      },
+    });
+
+    const stats: Record<string, number> = {
+      PENDING: 0,
+      PREPARING: 0,
+      READY: 0,
+      COMPLETED: 0,
+      CANCELLED: 0,
+    };
+
+    statusCounts.forEach((item) => {
+      stats[item.status] = item._count.status;
+    });
+
+    return stats;
   }
 
   /**

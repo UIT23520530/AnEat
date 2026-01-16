@@ -30,9 +30,10 @@ import {
   TrophyOutlined,
   StarOutlined,
   EditOutlined,
+  GiftOutlined,
   EyeOutlined,
   PlusOutlined,
-  GiftOutlined,
+  DeleteOutlined,
 } from "@ant-design/icons"
 import type { TableColumnsType } from "antd"
 import {
@@ -42,7 +43,7 @@ import {
 } from "@/services/manager-customer.service"
 
 function CustomersContent() {
-  const { message } = App.useApp()
+  const { message, modal } = App.useApp()
   const [customers, setCustomers] = useState<Customer[]>([])
   const [loading, setLoading] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
@@ -244,6 +245,27 @@ function CustomersContent() {
     }
   }
 
+  // Handle delete customer
+  const handleDelete = (record: Customer) => {
+    modal.confirm({
+      title: "Xác nhận xóa khách hàng",
+      content: `Bạn có chắc chắn muốn xóa khách hàng "${record.name}" (${record.phone})? Thao tác này không thể hoàn tác.`,
+      okText: "Xóa",
+      okType: "danger",
+      cancelText: "Hủy",
+      onOk: async () => {
+        try {
+          await managerCustomerService.deleteCustomer(record.id)
+          message.success("Đã xóa khách hàng thành công")
+          loadCustomers()
+          loadStatistics()
+        } catch (error: any) {
+          message.error(error.response?.data?.message || "Không thể xóa khách hàng")
+        }
+      },
+    })
+  }
+
   // Table columns
   const columns: TableColumnsType<Customer> = [
     {
@@ -330,6 +352,14 @@ function CustomersContent() {
               type="text"
               icon={<CrownOutlined />}
               onClick={() => handleChangeTier(record)}
+            />
+          </Tooltip>
+          <Tooltip title="Xóa">
+            <Button
+              type="text"
+              danger
+              icon={<DeleteOutlined />}
+              onClick={() => handleDelete(record)}
             />
           </Tooltip>
         </Space>
