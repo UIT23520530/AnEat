@@ -177,6 +177,16 @@ const mockProducts: Product[] = [
 
 type SortOption = "newest" | "bestselling" | "low-price";
 
+// Normalize search text: remove accents, convert to lowercase, replace spaces with hyphens
+const normalizeSearchText = (text: string): string => {
+  return text
+    .toLowerCase()
+    .normalize("NFD") // Decompose Vietnamese characters
+    .replace(/[\u0300-\u036f]/g, "") // Remove diacritical marks
+    .replace(/\s+/g, "-") // Replace spaces with hyphens
+    .trim();
+};
+
 export default function MenuPage() {
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
@@ -214,9 +224,9 @@ export default function MenuPage() {
   const filteredProducts = mockProducts.filter((product) => {
     const matchesCategory =
       selectedCategory === "all" || product.category === selectedCategory;
-    const matchesSearch = product.name
-      .toLowerCase()
-      .includes(searchQuery.toLowerCase());
+    const normalizedProductName = normalizeSearchText(product.name);
+    const normalizedSearchQuery = normalizeSearchText(searchQuery);
+    const matchesSearch = normalizedProductName.includes(normalizedSearchQuery);
     return matchesCategory && matchesSearch;
   });
 
