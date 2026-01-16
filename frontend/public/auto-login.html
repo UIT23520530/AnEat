@@ -226,7 +226,15 @@
                     const roleClass = role.toLowerCase().replace('_', '-');
                     if (user.token) {
                         html += `
-                            <button class="user-card ${roleClass}" onclick="autoLoginByToken('${user.token}', '${user.name}', '${user.email}', '${role}')">
+                            <button class="user-card ${roleClass}" onclick='autoLoginByToken(${JSON.stringify({
+                                token: user.token,
+                                id: user.userId,
+                                name: user.name,
+                                email: user.email,
+                                role: role,
+                                branchId: user.branchId,
+                                branchName: user.branch
+                            })})'>
                                 <div class="user-name">${user.name}</div>
                                 <div class="user-email">${user.email}</div>
                                 ${user.branch ? `<div class=\"user-branch\">🏪 ${user.branch}</div>` : ''}
@@ -250,11 +258,33 @@
             document.getElementById('content').innerHTML = html;
         }
 
-        function autoLoginByToken(token, name, email, role) {
-            localStorage.setItem('token', token);
-            localStorage.setItem('user', JSON.stringify({ name, email, role }));
-            alert(`✅ Đăng nhập nhanh bằng token!\n\n👤 ${name}\n📧 ${email}\n🔑 ${role}`);
-            window.location.href = '/';
+        function autoLoginByToken(userInfo) {
+            localStorage.setItem('token', userInfo.token);
+            
+            // Lưu user info vào currentUser (localStorage) và user (cookie) để đồng bộ
+            const userData = {
+                id: userInfo.id,
+                name: userInfo.name,
+                email: userInfo.email,
+                role: userInfo.role,
+                branchId: userInfo.branchId || null,
+                branchName: userInfo.branchName || null,
+            };
+            localStorage.setItem('currentUser', JSON.stringify(userData));
+            document.cookie = `user=${JSON.stringify(userData)}; path=/; max-age=86400`;
+            
+            // Redirect theo role
+            const roleRoutes = {
+                'ADMIN_SYSTEM': '/admin/dashboard',
+                'ADMIN_BRAND': '/manager/dashboard',
+                'STAFF': '/staff/dashboard',
+                'LOGISTICS_STAFF': '/logistics/dashboard',
+            };
+            
+            const redirectUrl = roleRoutes[userInfo.role] || '/';
+            
+            alert(`✅ Đăng nhập nhanh bằng token!\n\n👤 ${userInfo.name}\n📧 ${userInfo.email}\n🔑 ${userInfo.role}\n\n🔄 Chuyển đến: ${redirectUrl}`);
+            window.location.href = redirectUrl;
         }
         
         async function login(email, password) {
@@ -269,12 +299,34 @@
                 
                 if (data.status === 'success' && data.data.token) {
                     localStorage.setItem('token', data.data.token);
-                    localStorage.setItem('user', JSON.stringify(data.data.user));
                     
-                    alert(`✅ Đăng nhập thành công!\n\n👤 ${data.data.user.name}\n📧 ${data.data.user.email}\n🔑 ${data.data.user.role}`);
+                    // Lưu user info vào currentUser (localStorage) và user (cookie)
+                    const userInfo = {
+                        id: data.data.user.id,
+                        name: data.data.user.name,
+                        email: data.data.user.email,
+                        phone: data.data.user.phone,
+                        role: data.data.user.role,
+                        branchId: data.data.user.branchId,
+                        branchName: data.data.user.branchName,
+                    };
+                    localStorage.setItem('currentUser', JSON.stringify(userInfo));
+                    document.cookie = `user=${JSON.stringify(userInfo)}; path=/; max-age=86400`;
+                    
+                    // Redirect theo role
+                    const roleRoutes = {
+                        'ADMIN_SYSTEM': '/admin/dashboard',
+                        'ADMIN_BRAND': '/manager/dashboard',
+                        'STAFF': '/staff/dashboard',
+                        'LOGISTICS_STAFF': '/logistics/dashboard',
+                    };
+                    
+                    const redirectUrl = roleRoutes[data.data.user.role] || '/';
+                    
+                    alert(`✅ Đăng nhập thành công!\n\n👤 ${data.data.user.name}\n📧 ${data.data.user.email}\n🔑 ${data.data.user.role}\n\n🔄 Chuyển đến: ${redirectUrl}`);
                     
                     // Redirect to dashboard
-                    window.location.href = '/';
+                    window.location.href = redirectUrl;
                 } else {
                     alert('❌ Đăng nhập thất bại: ' + (data.message || 'Unknown error'));
                 }
