@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Minus, Plus, ShoppingCart } from "lucide-react"
+import Image from "next/image"
 import Link from "next/link"
 import { useCart } from "@/contexts/cart-context"
 import { useToast } from "@/hooks/use-toast"
@@ -83,7 +84,15 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
           {/* Product Image */}
           <div className="relative aspect-square rounded-lg overflow-hidden bg-muted">
             {product.isPromotion && <Badge className="absolute top-4 right-4 z-10 bg-destructive">Sale</Badge>}
-            <img src={product.image || "/placeholder.svg"} alt={product.name} className="object-cover w-full h-full" />
+            <Image
+              src={product.image || "/placeholder.svg"}
+              alt={product.name}
+              fill
+              sizes="(max-width: 1024px) 100vw, 50vw"
+              className="object-cover w-full h-full"
+              quality={90}
+              priority
+            />
           </div>
 
           {/* Product Info */}

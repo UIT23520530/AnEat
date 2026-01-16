@@ -3,7 +3,7 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Plus, Heart } from "lucide-react";
+import { ShoppingCart, Heart } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { Product } from "@/types";
@@ -28,18 +28,23 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
   return (
     <Card className="overflow-hidden group cursor-pointer hover:shadow-lg transition-all h-full flex flex-col bg-white rounded-3xl border-0">
       <Link href={productUrl} className="block">
-        <div className="aspect-video relative overflow-hidden rounded-t-3xl flex items-center justify-center">
+        <div className="aspect-square relative overflow-visible rounded-t-3xl bg-gradient-to-br from-gray-50 via-gray-100 to-gray-50 p-3">
           {product.isPromotion && (
-            <Badge className="absolute top-3 right-3 z-10 bg-red-400">
+            <Badge className="absolute top-5 right-5 z-10 bg-red-400">
               Khuyến mãi
             </Badge>
           )}
-          <Image
-            src={product.image || "/placeholder.svg"}
-            alt={product.name}
-            fill
-            className="object-contain w-full h-full p-4 group-hover:scale-105 transition-transform"
-          />
+          <div className="relative w-full h-full rounded-2xl overflow-hidden">
+            <Image
+              src={product.image || "/placeholder.svg"}
+              alt={product.name}
+              fill
+              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 25vw"
+              className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-300"
+              quality={75}
+              loading="lazy"
+            />
+          </div>
         </div>
       </Link>
       <CardContent className="p-4 flex flex-col flex-1">
@@ -64,9 +69,9 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
           <Button
             size="lg"
             onClick={handleAddToCartClick}
-            className="bg-red-300 hover:bg-red-400 h-12 w-12 p-0 rounded-xl"
+            className="bg-red-300 hover:bg-red-400 h-12 w-12 p-0 rounded-xl flex items-center justify-center"
           >
-            <Plus className="h-6 w-6" />
+            <ShoppingCart className="h-8 w-8" />
           </Button>
         </div>
       </CardContent>

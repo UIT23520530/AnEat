@@ -14,6 +14,7 @@ import { ROLE_ROUTES } from "@/constants/roles"
 import type { User, UserRole } from "@/types"
 import Link from "next/link"
 import apiClient from "@/lib/api-client"
+import { Mail, Lock, LogIn } from "lucide-react"
 
 export default function LoginPage() {
   const router = useRouter()
@@ -65,62 +66,104 @@ export default function LoginPage() {
 
   return (
     <PublicLayout>
-      <div className="container mx-auto px-4 py-16 flex items-center justify-center min-h-[calc(100vh-16rem)]">
-        <Card className="w-full max-w-md">
-          <CardHeader>
-            <CardTitle className="text-2xl">Login</CardTitle>
-            <CardDescription>Enter your credentials to access your account</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleLogin} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="email@example.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                />
-              </div>
-              {error && (
-                <div className="text-sm text-red-600 bg-red-50 p-3 rounded">
-                  {error}
+      <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-orange-50 flex items-center justify-center py-12 px-4">
+        <div className="w-full max-w-md">
+          {/* Header */}
+          <div className="text-center mb-8">
+            <h1 className="text-4xl font-bold text-gray-800 mb-2">Chào mừng trở lại!</h1>
+            <p className="text-gray-600">Đăng nhập để tiếp tục đặt món ngon</p>
+          </div>
+
+          <Card className="shadow-xl border-0 bg-white/95 backdrop-blur-sm">
+            <CardContent className="p-8">
+              <form onSubmit={handleLogin} className="space-y-6">
+                {/* Email Input */}
+                <div className="space-y-2">
+                  <Label htmlFor="email" className="text-gray-700 font-semibold">
+                    Email
+                  </Label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                    <Input
+                      id="email"
+                      type="email"
+                      placeholder="Nhập email của bạn"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="pl-10 h-12 rounded-lg border-gray-300 focus:border-orange-500 focus:ring-orange-500"
+                      required
+                    />
+                  </div>
                 </div>
-              )}
-              <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? "Logging in..." : "Login"}
-              </Button>
-            </form>
 
-            <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
-              <p className="font-semibold text-sm mb-2">Test Accounts:</p>
-              <ul className="space-y-1 text-xs">
-                <li>• Manager: manager1@aneat.com / password123</li>
-                <li>• Staff: staff001@aneat.com / staff123</li>
-              </ul>
-            </div>
+                {/* Password Input */}
+                <div className="space-y-2">
+                  <Label htmlFor="password" className="text-gray-700 font-semibold">
+                    Mật khẩu
+                  </Label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                    <Input
+                      id="password"
+                      type="password"
+                      placeholder="Nhập mật khẩu"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="pl-10 h-12 rounded-lg border-gray-300 focus:border-orange-500 focus:ring-orange-500"
+                      required
+                    />
+                  </div>
+                </div>
 
-            <div className="mt-4 text-center text-sm">
-              Don't have an account?{" "}
-              <Link href="/register" className="text-primary hover:underline">
-                Register
-              </Link>
-            </div>
-          </CardContent>
-        </Card>
+                {/* Error Message */}
+                {error && (
+                  <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm flex items-center gap-2">
+                    <span className="font-semibold">⚠️</span>
+                    <span>{error}</span>
+                  </div>
+                )}
+
+                {/* Submit Button */}
+                <Button
+                  type="submit"
+                  className="w-full h-12 bg-orange-500 hover:bg-orange-600 text-white font-semibold text-base rounded-lg shadow-md hover:shadow-lg transition-all duration-200 flex items-center justify-center gap-2"
+                  disabled={loading}
+                >
+                  {loading ? (
+                    <>
+                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      <span>Đang đăng nhập...</span>
+                    </>
+                  ) : (
+                    <>
+                      <LogIn className="h-5 w-5" />
+                      <span>Đăng nhập</span>
+                    </>
+                  )}
+                </Button>
+              </form>
+
+              {/* Test Accounts */}
+              <div className="mt-6 p-4 bg-orange-50 rounded-lg border border-orange-200">
+                <p className="font-semibold text-sm mb-2 text-orange-800">Tài khoản thử nghiệm:</p>
+                <ul className="space-y-1 text-xs text-gray-700">
+                  <li>• Manager: manager1@aneat.com / password123</li>
+                  <li>• Staff: staff001@aneat.com / staff123</li>
+                </ul>
+              </div>
+
+              {/* Register Link */}
+              <div className="mt-6 text-center">
+                <p className="text-gray-600 text-sm">
+                  Chưa có tài khoản?{" "}
+                  <Link href="/auth/register" className="text-orange-500 font-semibold hover:text-orange-600 hover:underline transition-colors">
+                    Đăng ký ngay
+                  </Link>
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </PublicLayout>
   )

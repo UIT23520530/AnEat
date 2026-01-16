@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Package, Truck } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const banners = [
@@ -54,10 +54,10 @@ export function HeroSection() {
   };
 
   return (
-    <section className="w-full bg-gradient-to-b from-orange-50 to-white py-8 md:py-12">
+    <section className="w-full bg-gradient-to-b from-orange-50 to-orange-50 py-12 md:py-16">
       <div className="container mx-auto px-4 max-w-7xl">
         {/* Banner Carousel */}
-        <div className="relative mb-6 overflow-visible">
+        <div className="relative mb-10 overflow-visible">
           <div className="relative h-[350px] md:h-[600px] w-full rounded-3xl overflow-hidden shadow-2xl">
             {banners.map((banner, index) => (
               <div
@@ -116,14 +116,16 @@ export function HeroSection() {
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
           <Button
             size="lg"
-            className="w-full sm:w-auto bg-orange-500 text-white rounded-full hover:bg-orange-600 px-12 py-6 text-lg font-bold shadow-lg hover:shadow-xl transition-all"
+            className="w-full sm:w-auto bg-orange-500 text-white rounded-full hover:bg-white hover:text-orange-500 hover:border-orange-500 border border-orange-500 px-[52.8px] py-[26.4px] text-[19.8px] font-bold shadow-lg hover:shadow-xl transition-colors duration-200"
           >
+            <Package className="mr-2 h-5 w-5" />
             Đặt đến lấy
           </Button>
           <Button
             size="lg"
-            className="w-full sm:w-auto bg-orange-500 text-white rounded-full hover:bg-orange-600 px-12 py-6 text-lg font-bold shadow-lg hover:shadow-xl transition-all"
+            className="w-full sm:w-auto bg-orange-500 text-white rounded-full hover:bg-white hover:text-orange-500 hover:border-orange-500 border border-orange-500 px-[52.8px] py-[26.4px] text-[19.8px] font-bold shadow-lg hover:shadow-xl transition-colors duration-200"
           >
+            <Truck className="mr-2 h-5 w-5" />
             Giao tận nơi
           </Button>
         </div>

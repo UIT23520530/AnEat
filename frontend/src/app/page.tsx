@@ -30,8 +30,10 @@ export default function Home() {
 
   return (
     <PublicLayout>
-      <HeroSection />
-      <HotDealsSection onAddToCart={handleAddToCart} />
+      <div className="min-h-screen bg-orange-50">
+        <HeroSection />
+        <HotDealsSection onAddToCart={handleAddToCart} />
+      </div>
     </PublicLayout>
   );
 }

@@ -4,6 +4,7 @@ import { ProductCard } from "@/components/cart/product-card";
 import { Button } from "@/components/ui/button";
 import { Product } from "@/types";
 import Link from "next/link";
+import { UtensilsCrossed } from "lucide-react";
 
 const hotProducts: Product[] = [
   {
@@ -67,11 +68,19 @@ interface HotDealsSectionProps {
 export function HotDealsSection({ onAddToCart }: HotDealsSectionProps) {
   return (
     <section className="py-12 md:py-20 bg-orange-50">
-      <div className="container mx-auto px-4">
-        <h2 className="text-3xl font-bold text-center mb-8">
-          Món ăn được yêu thích
-        </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="container mx-auto px-4 max-w-7xl">
+        {/* Section Header */}
+        <div className="text-center mb-12">
+          <h2 className="text-3xl md:text-4xl font-bold text-gray-800 mb-3">
+            Món ăn được yêu thích
+          </h2>
+          <p className="text-gray-600 text-sm md:text-base max-w-2xl mx-auto">
+            Khám phá những món ăn được yêu thích nhất tại AnEat
+          </p>
+        </div>
+
+        {/* Products Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-12">
           {hotProducts.map((product) => (
             <ProductCard
               key={product.id}
@@ -80,13 +89,19 @@ export function HotDealsSection({ onAddToCart }: HotDealsSectionProps) {
             />
           ))}
         </div>
-        <div className="text-center mt-12">
-          <Button
-            size="lg"
-            className="w-full sm:w-auto bg-orange-500 text-white rounded-full hover:bg-orange-600"
-          >
-            <Link href="/customer/menu">Xem tất cả thực đơn</Link>
-          </Button>
+
+        {/* View More Button */}
+        <div className="text-center">
+          <Link href="/customer/menu">
+            <Button
+              size="lg"
+              variant="outline"
+              className="w-full sm:w-auto bg-white border-orange-500 text-orange-500 rounded-full hover:bg-orange-500 hover:border-orange-500 hover:text-white transition-colors duration-200 px-8 py-6 text-base font-semibold shadow-md hover:shadow-lg"
+            >
+              Xem thêm thực đơn
+              <UtensilsCrossed className="ml-1 h-4 w-4" />
+            </Button>
+          </Link>
         </div>
       </div>
     </section>
