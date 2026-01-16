@@ -34,7 +34,7 @@ const adminNavItems: NavItem[] = [
   { href: "/admin/users", icon: Users, label: "Quản lý người dùng" },
   { href: "/admin/categories", icon: FolderOpen, label: "Quản lý danh mục" },
   { href: "/admin/products", icon: ShoppingBag, label: "Quản lý sản phẩm" },
-  { href: "/admin/promotions", icon: Ticket, label: "Khuyến mãi" },
+  { href: "/admin/promotions", icon: Ticket, label: "Quản lý khuyến mãi" },
   { href: "/admin/invoices", icon: FileText, label: "Hoá đơn" },
   { href: "/admin/templates", icon: FileCode, label: "Mẫu" },
   { href: "/admin/logs", icon: FileClock, label: "Log" },
