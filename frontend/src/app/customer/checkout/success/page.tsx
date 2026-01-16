@@ -17,7 +17,7 @@ export default function CheckoutSuccessPage() {
   useEffect(() => {
     const orderId = searchParams.get("orderId");
     const totalAmount = searchParams.get("total");
-    
+
     if (orderId) setOrderNumber(orderId);
     if (totalAmount) setTotal(Number(totalAmount));
   }, [searchParams]);
@@ -33,35 +33,43 @@ export default function CheckoutSuccessPage() {
                 <CheckCircle className="w-20 h-20 text-green-500" />
               </div>
 
-              <h2 className="text-2xl font-bold text-gray-800 mb-2">Đặt đơn thành công!</h2>
-              <p className="text-gray-600 mb-6">Cảm ơn bạn đã đặt hàng tại AnEat</p>
+              <h2 className="text-2xl font-bold text-gray-800 mb-2">
+                Đặt đơn thành công!
+              </h2>
+              <p className="text-gray-600 mb-6">
+                Cảm ơn bạn đã đặt hàng tại AnEat
+              </p>
 
               <div className="bg-orange-50 p-4 rounded-lg mb-6 border border-orange-200">
                 <p className="text-sm text-gray-600 mb-2">Mã đơn hàng</p>
-                <p className="text-2xl font-bold text-gray-800 mb-4">{orderNumber || "ORD-XXXXX"}</p>
+                <p className="text-2xl font-bold text-gray-800 mb-4">
+                  {orderNumber || "ORD-XXXXX"}
+                </p>
                 <p className="text-sm text-gray-600 mb-2">Tổng tiền</p>
-                <p className="text-2xl font-bold text-orange-500">{total.toLocaleString("vi-VN")}đ</p>
+                <p className="text-2xl font-bold text-orange-500">
+                  {total.toLocaleString("vi-VN")}đ
+                </p>
               </div>
 
               <p className="text-gray-600 mb-6">
-                Đơn hàng của bạn đã được xác nhận. Bạn sẽ nhận được thông báo cập nhật trạng thái.
+                Đơn hàng của bạn đã được xác nhận. Bạn sẽ nhận được thông báo
+                cập nhật trạng thái.
               </p>
 
-                <Link href="/customer/orders" className="block">
-                  <Button className="w-full bg-orange-500 hover:bg-orange-600 text-white py-6 rounded-lg text-lg font-bold">
-                    Xem đơn hàng
-                    <ArrowRight className="w-4 h-4 ml-2" />
-                  </Button>
-                </Link>
-                <Link href="/customer/menu" className="block">
-                  <Button
-                    variant="outline"
-                    className="w-full py-6 rounded-lg text-lg font-bold border-orange-500 text-orange-500 hover:bg-orange-50"
-                  >
-                    Tiếp tục mua sắm
-                  </Button>
-                </Link>
-              </div>
+              <Link href="/customer/orders" className="block">
+                <Button className="w-full bg-orange-500 hover:bg-orange-600 text-white py-6 rounded-lg text-lg font-bold">
+                  Xem đơn hàng
+                  <ArrowRight className="w-4 h-4 ml-2" />
+                </Button>
+              </Link>
+              <Link href="/customer/menu" className="block">
+                <Button
+                  variant="outline"
+                  className="w-full py-6 rounded-lg text-lg font-bold border-orange-500 text-orange-500 hover:bg-orange-50"
+                >
+                  Tiếp tục mua sắm
+                </Button>
+              </Link>
             </CardContent>
           </Card>
         </div>
