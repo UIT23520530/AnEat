@@ -386,7 +386,7 @@ function ProductsContent() {
       title: "Thời gian chuẩn bị",
       dataIndex: "prepTime",
       key: "prepTime",
-      width: 70,
+      width: 60,
       align: "center",
       sorter: (a, b) => a.prepTime - b.prepTime,
       showSorterTooltip: { title: 'Sắp xếp theo thời gian chuẩn bị' },
@@ -521,6 +521,7 @@ function ProductsContent() {
                     value={categoryFilter}
                     onChange={setCategoryFilter}
                     style={{ width: 200 }}
+                    className={categoryFilter !== "all" ? "[&>.ant-select-selector]:!bg-blue-50 [&>.ant-select-selector]:!border-blue-500" : ""}
                   >
                     <Select.Option value="all">Tất cả danh mục</Select.Option>
                     {categories.map((cat) => (
@@ -533,6 +534,7 @@ function ProductsContent() {
                       value={statusFilter}
                       onChange={setStatusFilter}
                       style={{ width: 180 }}
+                      className={statusFilter !== "all" ? "[&>.ant-select-selector]:!bg-blue-50 [&>.ant-select-selector]:!border-blue-500" : ""}
                     >
                       <Select.Option value="all">Tất cả trạng thái</Select.Option>
                       <Select.Option value="available">Đang bán</Select.Option>
@@ -547,6 +549,7 @@ function ProductsContent() {
                     onChange={(value) => setBranchFilter(value || null)}
                     placeholder="Lọc theo chi nhánh"
                     style={{ width: 200 }}
+                    className={branchFilter ? "[&>.ant-select-selector]:!bg-blue-50 [&>.ant-select-selector]:!border-blue-500" : ""}
                     optionFilterProp="children"
                     filterOption={(input, option) =>
                       (option?.label ?? "").toLowerCase().includes(input.toLowerCase())
@@ -575,6 +578,7 @@ function ProductsContent() {
             dataSource={products}
             rowKey="id"
             scroll={{ x: 1400 }}
+            className="ant-table-custom"
             pagination={{
               ...pagination,
               showTotal: (total) => `Hiển thị ${total} sản phẩm`,

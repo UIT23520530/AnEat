@@ -469,6 +469,7 @@ function BranchesContent() {
                     value={statusFilter}
                     onChange={setStatusFilter}
                     style={{ width: 180 }}
+                    className={statusFilter !== "all" ? "[&>.ant-select-selector]:!bg-blue-50 [&>.ant-select-selector]:!border-blue-500" : ""}
                     options={[
                       { label: "Tất cả trạng thái", value: "all" },
                       { label: "Hoạt động", value: "active" },

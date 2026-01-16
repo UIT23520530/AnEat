@@ -292,6 +292,8 @@ function CategoriesContent() {
       key: "createdAt",
       width: 150,
       align: "center",
+      sorter: (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+      showSorterTooltip: { title: 'Sắp xếp theo ngày tạo' },
       render: (date: string, record: Category) => (
         <span style={{ opacity: record.isActive ? 1 : 0.5 }}>
           {new Date(date).toLocaleDateString("vi-VN")}
@@ -397,6 +399,7 @@ function CategoriesContent() {
                     value={statusFilter}
                     onChange={setStatusFilter}
                     style={{ width: 180 }}
+                    className={statusFilter !== "all" ? "[&>.ant-select-selector]:!bg-blue-50 [&>.ant-select-selector]:!border-blue-500" : ""}
                   >
                     <Select.Option value="all">Tất cả trạng thái</Select.Option>
                     <Select.Option value="active">Đang hiển thị</Select.Option>
@@ -421,6 +424,7 @@ function CategoriesContent() {
             dataSource={categories}
             rowKey="id"
             scroll={{ x: 1400 }}
+            className="ant-table-custom"
             pagination={{
               ...pagination,
               showTotal: (total) => `Hiển thị ${total} danh mục`,

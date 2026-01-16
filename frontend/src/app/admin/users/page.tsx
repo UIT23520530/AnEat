@@ -470,6 +470,7 @@ function UsersContent() {
                     value={roleFilter}
                     onChange={setRoleFilter}
                     style={{ width: 180 }}
+                    className={roleFilter !== "all" ? "[&>.ant-select-selector]:!bg-blue-50 [&>.ant-select-selector]:!border-blue-500" : ""}
                     options={[
                       { label: "Tất cả vai trò", value: "all" },
                       { label: "Quản trị hệ thống", value: "ADMIN_SYSTEM" },
@@ -482,6 +483,7 @@ function UsersContent() {
                     value={statusFilter}
                     onChange={setStatusFilter}
                     style={{ width: 160 }}
+                    className={statusFilter !== "all" ? "[&>.ant-select-selector]:!bg-blue-50 [&>.ant-select-selector]:!border-blue-500" : ""}
                     options={[
                       { label: "Tất cả trạng thái", value: "all" },
                       { label: "Hoạt động", value: "active" },
@@ -495,6 +497,7 @@ function UsersContent() {
                     onChange={(value) => setBranchFilter(value || null)}
                     placeholder="Lọc theo chi nhánh"
                     style={{ width: 200 }}
+                    className={branchFilter ? "[&>.ant-select-selector]:!bg-blue-50 [&>.ant-select-selector]:!border-blue-500" : ""}
                     optionFilterProp="children"
                     filterOption={(input, option) =>
                       (option?.label ?? "").toLowerCase().includes(input.toLowerCase())
