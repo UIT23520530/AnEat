@@ -51,6 +51,14 @@ import {
   createStaffStockRequest,
   cancelStaffStockRequest,
 } from '../controllers/staff/staff-stock-request.controller';
+import {
+  createStaffOrder,
+  getStaffOrderById,
+  getStaffOrders,
+  updateStaffOrderPaymentStatus,
+  cancelStaffOrder,
+  validatePromotionCode,
+} from '../controllers/staff/staff-order-management.controller';
 import { authenticate, isStaff, validate } from '../middleware';
 
 const router = Router();
@@ -424,8 +432,109 @@ router.get('/warehouse/stats', getInventoryStats);
 // ==================== ORDER MANAGEMENT ROUTES ====================
 
 /**
+ * @route   POST /api/v1/staff/orders/create
+ * @desc    Create new order from Staff POS
+ * @body    { items, customerId?, promotionCode?, paymentMethod, notes?, orderType?, deliveryAddress? }
+ * @access  Staff only
+ */
+router.post(
+  '/orders/create',
+  [
+    body('items')
+      .isArray({ min: 1 })
+      .withMessage('Đơn hàng phải có ít nhất một sản phẩm'),
+    body('items.*.productId')
+      .isString()
+      .notEmpty()
+      .withMessage('Product ID là bắt buộc'),
+    body('items.*.quantity')
+      .isInt({ min: 1 })
+      .withMessage('Số lượng phải >= 1'),
+    body('items.*.price')
+      .isInt({ min: 0 })
+      .withMessage('Giá phải >= 0'),
+    body('paymentMethod')
+      .isIn(['CASH', 'CARD', 'BANK_TRANSFER', 'E_WALLET'])
+      .withMessage('Phương thức thanh toán không hợp lệ'),
+    body('customerId').optional().isString(),
+    body('promotionCode').optional().isString(),
+    body('notes').optional().isString(),
+    body('orderType').optional().isIn(['DINE_IN', 'TAKEAWAY', 'DELIVERY']),
+    body('deliveryAddress').optional().isString(),
+  ],
+  validate,
+  createStaffOrder
+);
+
+/**
+ * @route   POST /api/v1/staff/orders/validate-promotion
+ * @desc    Validate promotion code
+ * @body    { code, subtotal? }
+ * @access  Staff only
+ */
+router.post(
+  '/orders/validate-promotion',
+  [
+    body('code').isString().notEmpty().withMessage('Mã giảm giá là bắt buộc'),
+    body('subtotal').optional().isInt({ min: 0 }),
+  ],
+  validate,
+  validatePromotionCode
+);
+
+/**
+ * @route   GET /api/v1/staff/orders/list
+ * @desc    Get list of orders for staff's branch
+ * @query   page, limit, status, search, dateFrom, dateTo
+ * @access  Staff only
+ */
+router.get('/orders/list', getStaffOrders);
+
+/**
+ * @route   GET /api/v1/staff/orders/:orderId
+ * @desc    Get order detail by ID
+ * @access  Staff only
+ */
+router.get(
+  '/orders/:orderId',
+  [param('orderId').isString().notEmpty().withMessage('Order ID is required')],
+  validate,
+  getStaffOrderById
+);
+
+/**
+ * @route   PUT /api/v1/staff/orders/:orderId/payment-status
+ * @desc    Update payment status
+ * @body    { paymentStatus }
+ * @access  Staff only
+ */
+router.put(
+  '/orders/:orderId/payment-status',
+  [
+    param('orderId').isString().notEmpty().withMessage('Order ID is required'),
+    body('paymentStatus')
+      .isIn(['PENDING', 'PAID', 'FAILED', 'REFUNDED'])
+      .withMessage('Trạng thái thanh toán không hợp lệ'),
+  ],
+  validate,
+  updateStaffOrderPaymentStatus
+);
+
+/**
+ * @route   POST /api/v1/staff/orders/:orderId/cancel
+ * @desc    Cancel order (restore stock)
+ * @access  Staff only
+ */
+router.post(
+  '/orders/:orderId/cancel',
+  [param('orderId').isString().notEmpty().withMessage('Order ID is required')],
+  validate,
+  cancelStaffOrder
+);
+
+/**
  * @route   GET /api/v1/staff/orders
- * @desc    Get assigned orders
+ * @desc    Get assigned orders (legacy)
  * @access  Staff only
  */
 router.get('/orders', getAssignedOrders);

@@ -9,10 +9,19 @@ export interface OrderCategory {
   updatedAt: string
 }
 
+export interface ProductOption {
+  id: string
+  name: string
+  price: number
+  type: 'SIZE' | 'TOPPING' | 'SAUCE' | 'OTHER'
+}
+
 export interface OrderProduct {
   id: string
   name: string
+  code?: string
   description: string | null
+  image?: string | null
   price: number
   quantity: number
   costPrice: number
@@ -21,6 +30,8 @@ export interface OrderProduct {
   categoryId: string
   branchId: string
   category?: OrderCategory
+  options?: ProductOption[]
+  promotionPrice?: number | null
   createdAt: string
   updatedAt: string
 }
@@ -48,6 +59,58 @@ export interface OrderProductsResponse {
 export interface SearchResult {
   categories: OrderCategory[]
   products: OrderProduct[]
+}
+
+// Order creation types
+export interface CreateOrderItem {
+  productId: string
+  quantity: number
+  price: number
+  name?: string
+  options?: string
+}
+
+export interface CreateOrderRequest {
+  items: CreateOrderItem[]
+  customerId?: string
+  promotionCode?: string
+  paymentMethod: 'CASH' | 'CARD' | 'BANK_TRANSFER' | 'E_WALLET'
+  notes?: string
+  orderType?: 'DINE_IN' | 'TAKEAWAY' | 'DELIVERY'
+  deliveryAddress?: string
+}
+
+export interface OrderResponse {
+  success: boolean
+  code: number
+  message: string
+  data: {
+    id: string
+    orderNumber: string
+    status: string
+    paymentStatus: string
+    paymentMethod: string
+    subtotal: number
+    discountAmount: number
+    total: number
+    notes?: string
+    orderType?: string
+    createdAt: string
+  }
+}
+
+export interface ValidatePromotionResponse {
+  success: boolean
+  code: number
+  message: string
+  data?: {
+    id: string
+    code: string
+    type: 'PERCENTAGE' | 'FIXED'
+    value: number
+    discountAmount: number
+    minOrderAmount: number | null
+  }
 }
 
 const staffOrderService = {
@@ -118,6 +181,80 @@ const staffOrderService = {
     const response = await apiClient.get('/staff/order/search', {
       params: { q: query, ...params }
     })
+    return response.data
+  },
+
+  // ==================== ORDER MANAGEMENT ====================
+
+  // Create new order
+  createOrder: async (data: CreateOrderRequest): Promise<OrderResponse> => {
+    const response = await apiClient.post('/staff/orders/create', data)
+    return response.data
+  },
+
+  // Validate promotion code
+  validatePromotion: async (
+    code: string,
+    subtotal?: number
+  ): Promise<ValidatePromotionResponse> => {
+    const response = await apiClient.post('/staff/orders/validate-promotion', {
+      code,
+      subtotal
+    })
+    return response.data
+  },
+
+  // Get orders list
+  getOrders: async (params?: {
+    page?: number
+    limit?: number
+    status?: string
+    search?: string
+    dateFrom?: string
+    dateTo?: string
+  }): Promise<{
+    success: boolean
+    data: any[]
+    meta: {
+      current_page: number
+      total_pages: number
+      limit: number
+      total_items: number
+    }
+  }> => {
+    const response = await apiClient.get('/staff/orders/list', { params })
+    return response.data
+  },
+
+  // Get order by ID
+  getOrderById: async (orderId: string): Promise<{
+    success: boolean
+    data: any
+  }> => {
+    const response = await apiClient.get(`/staff/orders/${orderId}`)
+    return response.data
+  },
+
+  // Update payment status
+  updatePaymentStatus: async (
+    orderId: string,
+    paymentStatus: 'PENDING' | 'PAID' | 'FAILED' | 'REFUNDED'
+  ): Promise<{
+    success: boolean
+    data: any
+  }> => {
+    const response = await apiClient.put(`/staff/orders/${orderId}/payment-status`, {
+      paymentStatus
+    })
+    return response.data
+  },
+
+  // Cancel order
+  cancelOrder: async (orderId: string): Promise<{
+    success: boolean
+    message: string
+  }> => {
+    const response = await apiClient.post(`/staff/orders/${orderId}/cancel`)
     return response.data
   }
 }
