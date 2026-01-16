@@ -3,18 +3,27 @@
 import type React from "react"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { PublicLayout } from "@/components/layouts/public-layout"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import Link from "next/link"
 import { User, Mail, Phone, Lock } from "lucide-react"
+import apiClient from "@/lib/api-client"
 
 export default function RegisterPage() {
   const router = useRouter()
-  const { toast } = useToast()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    password: "",
+    confirmPassword: "",
+  })
+  const [errors, setErrors] = useState<Record<string, string>>({})
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { id, value } = e.target
@@ -69,8 +78,24 @@ export default function RegisterPage() {
 
     setLoading(true)
     setError("")
-    // Mock registration
-    setTimeout(() => {
+    
+    try {
+      // Call registration API
+      const response = await apiClient.post("/auth/register", {
+        name: formData.name,
+        email: formData.email,
+        phone: formData.phone,
+        password: formData.password,
+      })
+
+      if (response.data.status === "success") {
+        alert("Đăng ký thành công! Vui lòng đăng nhập.")
+        router.push("/login")
+      }
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.message || "Đăng ký thất bại. Vui lòng thử lại."
+      setError(errorMessage)
+    } finally {
       setLoading(false)
     }
   }
@@ -117,10 +142,12 @@ export default function RegisterPage() {
                       id="name"
                       type="text"
                       placeholder="Tên của bạn"
-                      required
-                      className="pl-10 py-6 bg-slate-50 border-0 rounded-lg focus:ring-2 focus:ring-orange-500 text-slate-900 placeholder:text-slate-400"
+                      value={formData.name}
+                      onChange={handleChange}
+                      className={`pl-10 py-6 bg-slate-50 border-0 rounded-lg focus:ring-2 focus:ring-orange-500 text-slate-900 placeholder:text-slate-400 ${errors.name ? "ring-2 ring-red-500" : ""}`}
                     />
                   </div>
+                  {errors.name && <p className="text-sm text-red-600">{errors.name}</p>}
                 </div>
 
                 {/* Email Field */}
@@ -134,10 +161,12 @@ export default function RegisterPage() {
                       id="email"
                       type="email"
                       placeholder="example@email.com"
-                      required
-                      className="pl-10 py-6 bg-slate-50 border-0 rounded-lg focus:ring-2 focus:ring-orange-500 text-slate-900 placeholder:text-slate-400"
+                      value={formData.email}
+                      onChange={handleChange}
+                      className={`pl-10 py-6 bg-slate-50 border-0 rounded-lg focus:ring-2 focus:ring-orange-500 text-slate-900 placeholder:text-slate-400 ${errors.email ? "ring-2 ring-red-500" : ""}`}
                     />
                   </div>
+                  {errors.email && <p className="text-sm text-red-600">{errors.email}</p>}
                 </div>
 
                 {/* Phone Field */}
@@ -150,11 +179,13 @@ export default function RegisterPage() {
                     <Input
                       id="phone"
                       type="tel"
-                      placeholder="+84 123 456 789"
-                      required
-                      className="pl-10 py-6 bg-slate-50 border-0 rounded-lg focus:ring-2 focus:ring-orange-500 text-slate-900 placeholder:text-slate-400"
+                      placeholder="0901 234 567"
+                      value={formData.phone}
+                      onChange={handleChange}
+                      className={`pl-10 py-6 bg-slate-50 border-0 rounded-lg focus:ring-2 focus:ring-orange-500 text-slate-900 placeholder:text-slate-400 ${errors.phone ? "ring-2 ring-red-500" : ""}`}
                     />
                   </div>
+                  {errors.phone && <p className="text-sm text-red-600">{errors.phone}</p>}
                 </div>
 
                 {/* Password Field */}
@@ -168,10 +199,31 @@ export default function RegisterPage() {
                       id="password"
                       type="password"
                       placeholder="Tạo mật khẩu"
-                      required
-                      className="pl-10 py-6 bg-slate-50 border-0 rounded-lg focus:ring-2 focus:ring-orange-500 text-slate-900 placeholder:text-slate-400"
+                      value={formData.password}
+                      onChange={handleChange}
+                      className={`pl-10 py-6 bg-slate-50 border-0 rounded-lg focus:ring-2 focus:ring-orange-500 text-slate-900 placeholder:text-slate-400 ${errors.password ? "ring-2 ring-red-500" : ""}`}
                     />
                   </div>
+                  {errors.password && <p className="text-sm text-red-600">{errors.password}</p>}
+                </div>
+
+                {/* Confirm Password Field */}
+                <div className="space-y-2">
+                  <Label htmlFor="confirmPassword" className="text-slate-700 font-semibold">
+                    Xác nhận mật khẩu
+                  </Label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-3.5 w-5 h-5 text-slate-400" />
+                    <Input
+                      id="confirmPassword"
+                      type="password"
+                      placeholder="Xác nhận mật khẩu"
+                      value={formData.confirmPassword}
+                      onChange={handleChange}
+                      className={`pl-10 py-6 bg-slate-50 border-0 rounded-lg focus:ring-2 focus:ring-orange-500 text-slate-900 placeholder:text-slate-400 ${errors.confirmPassword ? "ring-2 ring-red-500" : ""}`}
+                    />
+                  </div>
+                  {errors.confirmPassword && <p className="text-sm text-red-600">{errors.confirmPassword}</p>}
                 </div>
 
                 {/* Error Message */}
