@@ -1,629 +1,864 @@
-"use client";
+"use client"
 
-import { useState } from "react";
-import { AdminLayout } from "@/components/layouts/admin-layout";
-import { Table, Button, Input, Tag, Space, Modal, Popconfirm, App, Image, Badge} from "antd";
-import { SearchOutlined, PlusOutlined, EditOutlined, DeleteOutlined, StarOutlined, StarFilled } from "@ant-design/icons";
-import type { TableColumnsType } from "antd";
-import ProductsForm from "@/components/forms/admin/ProductsForm";
+import { useState, useEffect } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
+import { AdminLayout } from "@/components/layouts/admin-layout"
+import { Card, CardHeader } from "@/components/ui/card"
+import {
+  Table,
+  Button,
+  Input,
+  Tag,
+  Space,
+  Modal,
+  App,
+  Statistic,
+  Select,
+  Form,
+  Row,
+  Col,
+  Spin,
+  Tooltip,
+  Image,
+  InputNumber,
+  Switch,
+} from "antd"
+import {
+  SearchOutlined,
+  PlusOutlined,
+  EditOutlined,
+  DeleteOutlined,
+  EyeInvisibleOutlined,
+  EyeOutlined,
+  AppstoreOutlined,
+  ShoppingOutlined,
+  WarningOutlined,
+  StopOutlined,
+  CheckCircleOutlined,
+  ArrowRightOutlined,
+} from "@ant-design/icons"
+import type { TableColumnsType } from "antd"
+import {
+  adminProductService,
+  type Product,
+  type ProductStats,
+} from "@/services/admin-product.service"
+import { adminCategoryService, type Category } from "@/services/admin-category.service"
+import { adminBranchService, type Branch } from "@/services/admin-branch.service"
 
-interface ProductData {
-  key: string;
-  id: string;
-  name: string;
-  category: string;
-  price: number;
-  stock: number;
-  status: "available" | "unavailable" | "out-of-stock";
-  image?: string;
-  description?: string;
-  sku?: string;
-  barcode?: string;
-  featured?: boolean;
-  tags?: string;
-  calories?: number;
-  prepTime?: number;
-  spiceLevel?: string;
+// Generate consistent color from string
+const stringToColor = (str: string) => {
+  let hash = 0
+  for (let i = 0; i < str.length; i++) {
+    hash = str.charCodeAt(i) + ((hash << 5) - hash)
+  }
+  const colors = ['blue', 'green', 'orange', 'purple', 'cyan', 'magenta', 'lime', 'gold']
+  return colors[Math.abs(hash) % colors.length]
 }
 
-const mockProducts: ProductData[] = [
-  {
-    key: "1",
-    id: "1",
-    name: "Gà Rán Giòn",
-    category: "Main Course",
-    price: 50000,
-    stock: 100,
-    status: "available",
-    sku: "PROD-001",
-    featured: true,
-    description: "Gà rán giòn tan, thơm ngon",
-    calories: 350,
-    prepTime: 15,
-    spiceLevel: "mild",
-  },
-  {
-    key: "2",
-    id: "2",
-    name: "Burger Bò Phô Mai",
-    category: "Main Course",
-    price: 45000,
-    stock: 80,
-    status: "available",
-    sku: "PROD-002",
-    description: "Burger bò tươi với phô mai cheddar",
-    calories: 420,
-    prepTime: 10,
-  },
-  {
-    key: "3",
-    id: "3",
-    name: "Pizza Hải Sản",
-    category: "Main Course",
-    price: 120000,
-    stock: 0,
-    status: "out-of-stock",
-    sku: "PROD-003",
-    featured: true,
-    description: "Pizza hải sản tươi ngon",
-    calories: 520,
-    prepTime: 20,
-  },
-  {
-    key: "4",
-    id: "4",
-    name: "Khoai Tây Chiên",
-    category: "Side Dish",
-    price: 25000,
-    stock: 150,
-    status: "available",
-    sku: "PROD-004",
-    description: "Khoai tây chiên giòn rụm",
-    calories: 180,
-    prepTime: 8,
-  },
-  {
-    key: "5",
-    id: "5",
-    name: "Coca Cola",
-    category: "Beverage",
-    price: 15000,
-    stock: 200,
-    status: "available",
-    sku: "PROD-005",
-    description: "Nước ngọt có ga",
-    calories: 140,
-  },
-  {
-    key: "6",
-    id: "6",
-    name: "Gà Cay Hàn Quốc",
-    category: "Main Course",
-    price: 65000,
-    stock: 45,
-    status: "available",
-    sku: "PROD-006",
-    featured: true,
-    description: "Gà chiên sốt cay Hàn Quốc",
-    calories: 480,
-    prepTime: 18,
-    spiceLevel: "hot",
-  },
-  {
-    key: "7",
-    id: "7",
-    name: "Kem Sundae",
-    category: "Dessert",
-    price: 20000,
-    stock: 60,
-    status: "available",
-    sku: "PROD-007",
-    description: "Kem vani với sốt caramel",
-    calories: 220,
-  },
-  {
-    key: "8",
-    id: "8",
-    name: "Salad Rau Củ",
-    category: "Appetizer",
-    price: 30000,
-    stock: 0,
-    status: "unavailable",
-    sku: "PROD-008",
-    description: "Salad rau củ tươi ngon",
-    calories: 85,
-    prepTime: 5,
-  },
-  {
-    key: "9",
-    id: "9",
-    name: "Combo Gia Đình",
-    category: "Combo",
-    price: 250000,
-    stock: 30,
-    status: "available",
-    sku: "PROD-009",
-    featured: true,
-    description: "Combo cho 4 người: 8 miếng gà, 4 burger, khoai tây, nước",
-    calories: 1800,
-    prepTime: 25,
-  },
-  {
-    key: "10",
-    id: "10",
-    name: "Bánh Táo",
-    category: "Dessert",
-    price: 18000,
-    stock: 75,
-    status: "available",
-    sku: "PROD-010",
-    description: "Bánh táo nướng thơm lừng",
-    calories: 240,
-    prepTime: 12,
-  },
-];export default function AdminProductsPage() {
-  const { message } = App.useApp();
-  const [products, setProducts] = useState<ProductData[]>(mockProducts);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [selectedProduct, setSelectedProduct] = useState<ProductData | null>(null);
+// Stock status badge colors
+const getStockStatus = (quantity: number, isAvailable: boolean) => {
+  if (!isAvailable) return { text: "Đã ẩn", color: "volcano" }
+  if (quantity === 0) return { text: "Hết hàng", color: "error" }
+  if (quantity <= 10) return { text: "Sắp hết", color: "warning" }
+  return { text: "Đang bán", color: "success" }
+}
 
-  const filteredProducts = products.filter(
-    (product) =>
-      product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      product.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      product.sku?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+function ProductsContent() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const { message, modal } = App.useApp()
+  const [products, setProducts] = useState<Product[]>([])
+  const [categories, setCategories] = useState<Category[]>([])
+  const [branches, setBranches] = useState<Branch[]>([])
+  const [statistics, setStatistics] = useState<ProductStats | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [searchQuery, setSearchQuery] = useState("")
+  const [categoryFilter, setCategoryFilter] = useState<string | "all">("all")
+  const [branchFilter, setBranchFilter] = useState<string | null>(null)
+  const [statusFilter, setStatusFilter] = useState<"all" | "available" | "low-stock" | "hidden" | "out-of-stock">("all")
+  const [pagination, setPagination] = useState({
+    current: 1,
+    pageSize: 10,
+    total: 0,
+  })
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "available":
-        return "success";
-      case "unavailable":
-        return "warning";
-      case "out-of-stock":
-        return "error";
-      default:
-        return "default";
+  // Modals
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false)
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false)
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
+
+  // Forms
+  const [editForm] = Form.useForm()
+  const [addForm] = Form.useForm()
+
+  // Handle query params on mount (for navigation from categories/branches page)
+  useEffect(() => {
+    const categoryId = searchParams.get('categoryId')
+    const branchId = searchParams.get('branchId')
+    if (categoryId) {
+      setCategoryFilter(categoryId)
     }
-  };
-
-  const getCategoryColor = (category: string) => {
-    switch (category) {
-      case "Main Course":
-        return "blue";
-      case "Side Dish":
-        return "green";
-      case "Appetizer":
-        return "cyan";
-      case "Dessert":
-        return "pink";
-      case "Beverage":
-        return "orange";
-      case "Combo":
-        return "purple";
-      case "Snack":
-        return "gold";
-      default:
-        return "default";
+    if (branchId) {
+      setBranchFilter(branchId)
     }
-  };
+  }, [searchParams])
 
-  const handleAddProduct = (values: any) => {
-    const newProduct: ProductData = {
-      key: String(products.length + 1),
-      id: String(products.length + 1),
-      ...values,
-    };
-    setProducts([...products, newProduct]);
-    setIsAddModalOpen(false);
-    message.success("Product added successfully!");
-  };
+  // Load data on mount
+  useEffect(() => {
+    loadProducts()
+    loadStatistics()
+    loadCategories()
+    loadBranches()
+  }, [searchQuery, categoryFilter, branchFilter, statusFilter])
 
-  const handleEditProduct = (values: any) => {
-    const updatedProducts = products.map((product) =>
-      product.id === selectedProduct?.id ? { ...product, ...values } : product
-    );
-    setProducts(updatedProducts);
-    setIsEditModalOpen(false);
-    setSelectedProduct(null);
-    message.success("Product updated successfully!");
-  };
+  // Load products
+  const loadProducts = async () => {
+    setLoading(true)
+    try {
+      // Fetch ALL products to properly filter client-side
+      const response = await adminProductService.getProducts({
+        page: 1,
+        limit: 999,
+        search: searchQuery || undefined,
+      })
 
-  const handleEdit = (record: ProductData) => {
-    setSelectedProduct(record);
-    setIsEditModalOpen(true);
-  };
+      console.log("📋 Products fetched from API:", response.data.length)
 
-  const handleDelete = (id: string) => {
-    setProducts(products.filter((product) => product.id !== id));
-    message.success("Product deleted successfully!");
-  };
+      // Client-side filter by category, branch, and status
+      let filteredData = response.data
+      if (categoryFilter !== "all") {
+        filteredData = filteredData.filter((p: Product) => p.categoryId === categoryFilter)
+      }
+      if (branchFilter) {
+        filteredData = filteredData.filter((p: Product) => p.branchId === branchFilter)
+      }
+      if (statusFilter === "available") {
+        filteredData = filteredData.filter((p: Product) => p.isAvailable && p.quantity > 10)
+      } else if (statusFilter === "low-stock") {
+        filteredData = filteredData.filter((p: Product) => p.isAvailable && p.quantity > 0 && p.quantity <= 10)
+      } else if (statusFilter === "hidden") {
+        filteredData = filteredData.filter((p: Product) => !p.isAvailable)
+      } else if (statusFilter === "out-of-stock") {
+        filteredData = filteredData.filter((p: Product) => p.quantity === 0)
+      }
 
-  const columns: TableColumnsType<ProductData> = [
+      console.log("✅ Filtered products:", filteredData.length)
+
+      setProducts(filteredData)
+      setPagination({
+        ...pagination,
+        total: filteredData.length,
+      })
+    } catch (error: any) {
+      console.error("❌ Load products error:", error)
+      message.error(error.response?.data?.message || "Không thể tải danh sách sản phẩm")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Load statistics
+  const loadStatistics = async () => {
+    try {
+      const response = await adminProductService.getProductStats()
+      setStatistics(response.data)
+    } catch (error: any) {
+      console.error("❌ Load statistics error:", error)
+    }
+  }
+
+  // Load categories
+  const loadCategories = async () => {
+    try {
+      const response = await adminCategoryService.getCategories({
+        page: 1,
+        limit: 999,
+      })
+      setCategories(response.data)
+    } catch (error: any) {
+      console.error("❌ Load categories error:", error)
+    }
+  }
+
+  // Load branches
+  const loadBranches = async () => {
+    try {
+      const response = await adminBranchService.getBranches({
+        page: 1,
+        limit: 999,
+      })
+      setBranches(response.data)
+    } catch (error: any) {
+      console.error("❌ Load branches error:", error)
+    }
+  }
+
+  // Handle edit click
+  const handleEditClick = (record: Product) => {
+    setSelectedProduct(record)
+    editForm.setFieldsValue({
+      code: record.code,
+      name: record.name,
+      description: record.description,
+      price: record.price / 100, // Convert cents to dollars
+      image: record.image,
+      categoryId: record.categoryId,
+      branchId: record.branchId || undefined,
+      quantity: record.quantity,
+      prepTime: record.prepTime || undefined,
+      isAvailable: record.isAvailable,
+    })
+    setIsEditModalOpen(true)
+  }
+
+  // Handle delete
+  const handleDelete = (record: Product) => {
+    modal.confirm({
+      title: "Xác nhận xóa sản phẩm",
+      content: (
+        <div>
+          <p>
+            Bạn có chắc chắn muốn xóa sản phẩm <strong>{record.name}</strong>?
+          </p>
+          <p className="text-red-600 text-sm mt-2">
+            ⚠️ Thao tác này không thể hoàn tác!
+          </p>
+        </div>
+      ),
+      okText: "Xác nhận xóa",
+      cancelText: "Hủy",
+      okButtonProps: { danger: true },
+      onOk: async () => {
+        try {
+          await adminProductService.deleteProduct(record.id)
+          message.success("Đã xóa sản phẩm thành công")
+          loadProducts()
+          loadStatistics()
+        } catch (error: any) {
+          const errorMessage = error.response?.data?.message || "Không thể xóa sản phẩm"
+          message.error(errorMessage)
+        }
+      },
+    })
+  }
+
+  // Handle hide/unhide
+  const handleToggleActive = async (record: Product) => {
+    const action = record.isAvailable ? "ẩn" : "hiện"
+    try {
+      await adminProductService.updateProduct(record.id, {
+        isAvailable: !record.isAvailable,
+      })
+      message.success(`Đã ${action} sản phẩm thành công`)
+      loadProducts()
+      loadStatistics()
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.message || `Không thể ${action} sản phẩm`
+      message.error(errorMessage)
+    }
+  }
+
+  // Submit edit
+  const handleSubmitEdit = async (values: any) => {
+    if (!selectedProduct) return
+
+    try {
+      await adminProductService.updateProduct(selectedProduct.id, {
+        ...values,
+        price: values.price, // Backend will convert to cents
+      })
+      message.success("Đã cập nhật sản phẩm thành công")
+      setIsEditModalOpen(false)
+      loadProducts()
+      loadStatistics()
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.message || "Không thể cập nhật sản phẩm"
+      message.error(errorMessage)
+    }
+  }
+
+  // Submit add product
+  const handleSubmitAdd = async (values: any) => {
+    try {
+      await adminProductService.createProduct({
+        ...values,
+        price: values.price, // Backend will convert to cents
+      })
+      message.success("Đã thêm sản phẩm mới thành công")
+      setIsAddModalOpen(false)
+      addForm.resetFields()
+      loadProducts()
+      loadStatistics()
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.message || "Không thể thêm sản phẩm"
+      message.error(errorMessage)
+    }
+  }
+
+  // Table columns
+  const columns: TableColumnsType<Product> = [
     {
-      title: "Product",
-      dataIndex: "name",
-      key: "name",
+      title: "Sản phẩm",
+      key: "product",
       fixed: "left",
-      width: 280,
-      sorter: (a, b) => a.name.localeCompare(b.name),
-      render: (name: string, record) => (
-        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+      width: 100,
+      render: (_, record: Product) => (
+        <div style={{ display: "flex", alignItems: "center", gap: "12px", opacity: record.isAvailable ? 1 : 0.5 }}>
           {record.image ? (
             <Image
               src={record.image}
-              alt={name}
-              width={48}
-              height={48}
+              alt={record.name}
+              width={60}
+              height={60}
               style={{ borderRadius: "8px", objectFit: "cover" }}
             />
           ) : (
             <div
               style={{
-                width: "48px",
-                height: "48px",
+                width: 60,
+                height: 60,
                 borderRadius: "8px",
-                backgroundColor: "#F3F4F6",
+                background: "#f0f0f0",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                fontSize: "20px",
+                fontSize: "24px",
               }}
             >
-              🍔
             </div>
           )}
-          <div>
-            <div style={{ fontWeight: 600, display: "flex", alignItems: "center", gap: "8px" }}>
-              {name}
-              {record.featured && (
-                <StarFilled style={{ color: "#FBBF24", fontSize: "14px" }} />
-              )}
+          <div style={{ flex: 1 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+              <span style={{ fontWeight: 600, fontSize: "14px" }}>
+                {record.name}
+              </span>
             </div>
-            {record.sku && (
-              <div style={{ fontSize: "12px", color: "#6B7280" }}>
-                SKU: {record.sku}
-              </div>
-            )}
+            <div style={{ fontSize: "12px", color: "#6B7280", marginTop: "2px" }}>
+              {record.code}
+            </div>
           </div>
         </div>
       ),
     },
     {
-      title: "Category",
-      dataIndex: "category",
+      title: "Danh mục",
+      dataIndex: ["category", "name"],
       key: "category",
-      width: 140,
-      filters: [
-        { text: "Main Course", value: "Main Course" },
-        { text: "Side Dish", value: "Side Dish" },
-        { text: "Appetizer", value: "Appetizer" },
-        { text: "Dessert", value: "Dessert" },
-        { text: "Beverage", value: "Beverage" },
-        { text: "Combo", value: "Combo" },
-        { text: "Snack", value: "Snack" },
-      ],
-      onFilter: (value, record) => record.category === value,
-      render: (category: string) => (
-        <Tag color={getCategoryColor(category)}>{category}</Tag>
-      ),
+      width: 40,
+      render: (categoryName: string, record: Product) => {
+        const categoryCode = record.category?.code || categoryName
+        const color = stringToColor(categoryCode)
+        return (
+          <span style={{ opacity: record.isAvailable ? 1 : 0.5 }}>
+            <Tag color={color}>{categoryName}</Tag>
+          </span>
+        )
+      },
     },
     {
-      title: "Price",
+      title: "Giá bán",
       dataIndex: "price",
       key: "price",
-      width: 130,
+      width: 40,
+      align: "right",
       sorter: (a, b) => a.price - b.price,
-      render: (price: number) => (
-        <span style={{ fontWeight: 600 }}>
-          {price.toLocaleString()} ₫
+      showSorterTooltip: { title: 'Sắp xếp theo giá bán' },
+      render: (price: number, record: Product) => (
+        <span style={{ opacity: record.isAvailable ? 1 : 0.5, fontWeight: 500 }}>
+          {(price / 100).toLocaleString("vi-VN")}đ
         </span>
       ),
     },
     {
-      title: "Stock",
-      dataIndex: "stock",
-      key: "stock",
-      width: 100,
-      sorter: (a, b) => a.stock - b.stock,
-      render: (stock: number) => (
-        <Badge
-          count={stock}
-          showZero
-          color={stock === 0 ? "#EF4444" : stock < 50 ? "#F59E0B" : "#10B981"}
-          style={{ fontWeight: 600 }}
-        />
+      title: "Tồn kho",
+      dataIndex: "quantity",
+      key: "quantity",
+      width: 50,
+      align: "center",
+      sorter: (a, b) => a.quantity - b.quantity,
+      showSorterTooltip: { title: 'Sắp xếp theo số lượng tồn kho' },
+      render: (quantity: number, record: Product) => (
+        <span style={{ opacity: record.isAvailable ? 1 : 0.5 }}>{quantity}</span>
       ),
     },
     {
-      title: "Status",
-      dataIndex: "status",
-      key: "status",
-      width: 140,
-      filters: [
-        { text: "Available", value: "available" },
-        { text: "Unavailable", value: "unavailable" },
-        { text: "Out of Stock", value: "out-of-stock" },
-      ],
-      onFilter: (value, record) => record.status === value,
-      render: (status: string) => (
-        <Tag color={getStatusColor(status)}>
-          {status === "out-of-stock" ? "OUT OF STOCK" : status.toUpperCase()}
-        </Tag>
+      title: "Thời gian chuẩn bị",
+      dataIndex: "prepTime",
+      key: "prepTime",
+      width: 70,
+      align: "center",
+      sorter: (a, b) => a.prepTime - b.prepTime,
+      showSorterTooltip: { title: 'Sắp xếp theo thời gian chuẩn bị' },
+      render: (prepTime: number, record: Product) => (
+        <span style={{ opacity: record.isAvailable ? 1 : 0.5 }}>
+          {prepTime} phút
+        </span>
       ),
     },
     {
-      title: "Info",
-      key: "info",
-      width: 120,
-      render: (_, record) => (
-        <div style={{ fontSize: "12px", color: "#6B7280" }}>
-          {record.calories && <div>🔥 {record.calories} kcal</div>}
-          {record.prepTime && <div>⏱️ {record.prepTime} min</div>}
-        </div>
-      ),
+      title: "Trạng thái",
+      dataIndex: "isAvailable",
+      key: "isAvailable",
+      width: 40,
+      align: "center",
+      render: (isAvailable: boolean, record: Product) => {
+        const status = getStockStatus(record.quantity, isAvailable)
+        return (
+          <Tag
+            icon={
+              status.text === "Sắp hết" ? <WarningOutlined /> :
+              status.text === "Hết hàng" ? <StopOutlined /> :
+              status.text === "Đã ẩn" ? <EyeInvisibleOutlined /> :
+              <CheckCircleOutlined />
+            }
+            color={status.color}
+          >
+            {status.text}
+          </Tag>
+        )
+      },
     },
     {
-      title: "Actions",
+      title: "Thao tác",
       key: "actions",
+      width: 60,
+      align: "center",
       fixed: "right",
-      width: 180,
-      render: (_, record) => (
-        <Space>
-          <Button
-            type="link"
-            icon={<EditOutlined />}
-            onClick={() => handleEdit(record)}
-          >
-            Edit
-          </Button>
-          <Popconfirm
-            title="Delete product"
-            description="Are you sure you want to delete this product?"
-            onConfirm={() => handleDelete(record.id)}
-            okText="Yes"
-            cancelText="No"
-          >
-            <Button type="link" danger icon={<DeleteOutlined />}>
-              Delete
-            </Button>
-          </Popconfirm>
+      render: (_, record: Product) => (
+        <Space size="small">
+          <Tooltip title="Sửa">
+            <Button
+              type="text"
+              icon={<EditOutlined />}
+              onClick={() => handleEditClick(record)}
+            />
+          </Tooltip>
+          <Tooltip title={record.isAvailable ? "Ẩn sản phẩm" : "Hiện sản phẩm"}>
+            <Button
+              type="text"
+              icon={record.isAvailable ? <EyeInvisibleOutlined /> : <EyeOutlined />}
+              onClick={() => handleToggleActive(record)}
+            />
+          </Tooltip>
+          {record.branchId && (
+            <Tooltip title="Xem chi tiết chi nhánh">
+              <Button
+                type="text"
+                icon={<ArrowRightOutlined />}
+                className="text-blue-600 hover:text-blue-700"
+                onClick={() => router.push(`/admin/branches?branchId=${record.branchId}`)}
+              />
+            </Tooltip>
+          )}
+          <Tooltip title="Xóa">
+            <Button
+              type="text"
+              danger
+              icon={<DeleteOutlined />}
+              onClick={() => handleDelete(record)}
+            />
+          </Tooltip>
         </Space>
       ),
     },
-  ];
+  ]
+
   return (
-    <AdminLayout>
-      <div style={{ padding: "24px" }}>
-        {/* Header */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            marginBottom: "24px",
-          }}
-        >
-          <div>
-            <h1 style={{ fontSize: "28px", fontWeight: "bold", margin: 0 }}>
-              Product Management
-            </h1>
-            <p style={{ color: "#6B7280", marginTop: "8px" }}>
-              Manage products across all stores
-            </p>
-          </div>
-          <Button
-            type="primary"
-            icon={<PlusOutlined />}
-            size="large"
-            onClick={() => setIsAddModalOpen(true)}
-          >
-            Add Product
-          </Button>
-        </div>
+    <div className="p-8">
+      <Spin spinning={loading}>
+        <Card className="border-0 shadow-sm">
+          <CardHeader>
+            <div className="flex flex-col gap-4">
+              {/* Stats Cards */}
+              {statistics && (
+                <Row gutter={[24, 16]} className="-mx-2">
+                  <Col span={8}>
+                    <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
+                      <Statistic
+                        title="Tổng số sản phẩm"
+                        value={statistics.totalProducts}
+                        prefix={<ShoppingOutlined />}
+                        valueStyle={{ color: "#1890ff" }}
+                      />
+                    </div>
+                  </Col>
+                  <Col span={8}>
+                    <div className="bg-green-50 p-4 rounded-lg border border-green-100">
+                      <Statistic
+                        title="Sản phẩm đang bán"
+                        value={statistics.availableProducts}
+                        prefix={<CheckCircleOutlined />}
+                        valueStyle={{ color: "#52c41a" }}
+                      />
+                    </div>
+                  </Col>
+                  <Col span={8}>
+                    <div className="bg-orange-50 p-4 rounded-lg border border-orange-100">
+                      <Statistic
+                        title="Sản phẩm đã ẩn"
+                        value={statistics.unavailableProducts}
+                        prefix={<StopOutlined />}
+                        valueStyle={{ color: "#ff7a45" }}
+                      />
+                    </div>
+                  </Col>
+                </Row>
+              )}
 
-        {/* Search */}
-        <div style={{ marginBottom: "24px" }}>
-          <Input
-            placeholder="Search products by name, category, or SKU..."
-            prefix={<SearchOutlined />}
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            style={{ maxWidth: "500px" }}
-            size="large"
+              {/* Filters */}
+              <div className="flex justify-between items-center">
+                <Space size="middle">
+                  <Input
+                    placeholder="Tìm kiếm sản phẩm..."
+                    prefix={<SearchOutlined />}
+                    style={{ width: 300 }}
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    allowClear
+                  />
+                  <Select
+                    value={categoryFilter}
+                    onChange={setCategoryFilter}
+                    style={{ width: 200 }}
+                  >
+                    <Select.Option value="all">Tất cả danh mục</Select.Option>
+                    {categories.map((cat) => (
+                      <Select.Option key={cat.id} value={cat.id}>
+                        {cat.name}
+                      </Select.Option>
+                    ))}
+                  </Select>
+                    <Select
+                      value={statusFilter}
+                      onChange={setStatusFilter}
+                      style={{ width: 180 }}
+                    >
+                      <Select.Option value="all">Tất cả trạng thái</Select.Option>
+                      <Select.Option value="available">Đang bán</Select.Option>
+                      <Select.Option value="low-stock">Sắp hết</Select.Option>
+                      <Select.Option value="out-of-stock">Hết hàng</Select.Option>
+                      <Select.Option value="hidden">Đã ẩn</Select.Option>
+                    </Select>
+                  <Select
+                    showSearch
+                    allowClear
+                    value={branchFilter}
+                    onChange={(value) => setBranchFilter(value || null)}
+                    placeholder="Lọc theo chi nhánh"
+                    style={{ width: 200 }}
+                    optionFilterProp="children"
+                    filterOption={(input, option) =>
+                      (option?.label ?? "").toLowerCase().includes(input.toLowerCase())
+                    }
+                    options={branches.map((b) => ({
+                      value: b.id,
+                      label: `${b.code} # ${b.name}`,
+                    }))}
+                  />
+                </Space>
+
+                <Button
+                  type="primary"
+                  icon={<PlusOutlined />}
+                  onClick={() => setIsAddModalOpen(true)}
+                >
+                  Thêm sản phẩm
+                </Button>
+              </div>
+            </div>
+          </CardHeader>
+
+          {/* Table */}
+          <Table
+            columns={columns}
+            dataSource={products}
+            rowKey="id"
+            scroll={{ x: 1400 }}
+            pagination={{
+              ...pagination,
+              showTotal: (total) => `Hiển thị ${total} sản phẩm`,
+              showSizeChanger: true,
+            }}
+            onChange={(newPagination) => {
+              setPagination({
+                current: newPagination.current || 1,
+                pageSize: newPagination.pageSize || 10,
+                total: pagination.total,
+              })
+            }}
           />
-        </div>
+        </Card>
+      </Spin>
 
-        {/* Statistics Cards */}
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(4, 1fr)",
-            gap: "16px",
-            marginBottom: "24px",
-          }}
-        >
-          <div
-            style={{
-              padding: "20px",
-              backgroundColor: "#FFF",
-              borderRadius: "8px",
-              border: "1px solid #E5E7EB",
-            }}
-          >
-            <div style={{ color: "#6B7280", fontSize: "14px" }}>Total Products</div>
-            <div style={{ fontSize: "28px", fontWeight: "bold", marginTop: "8px" }}>
-              {products.length}
-            </div>
-          </div>
-          <div
-            style={{
-              padding: "20px",
-              backgroundColor: "#FFF",
-              borderRadius: "8px",
-              border: "1px solid #E5E7EB",
-            }}
-          >
-            <div style={{ color: "#6B7280", fontSize: "14px" }}>Available</div>
-            <div
-              style={{
-                fontSize: "28px",
-                fontWeight: "bold",
-                marginTop: "8px",
-                color: "#10B981",
-              }}
-            >
-              {products.filter((p) => p.status === "available").length}
-            </div>
-          </div>
-          <div
-            style={{
-              padding: "20px",
-              backgroundColor: "#FFF",
-              borderRadius: "8px",
-              border: "1px solid #E5E7EB",
-            }}
-          >
-            <div style={{ color: "#6B7280", fontSize: "14px" }}>Out of Stock</div>
-            <div
-              style={{
-                fontSize: "28px",
-                fontWeight: "bold",
-                marginTop: "8px",
-                color: "#EF4444",
-              }}
-            >
-              {products.filter((p) => p.status === "out-of-stock").length}
-            </div>
-          </div>
-          <div
-            style={{
-              padding: "20px",
-              backgroundColor: "#FFF",
-              borderRadius: "8px",
-              border: "1px solid #E5E7EB",
-            }}
-          >
-            <div style={{ color: "#6B7280", fontSize: "14px" }}>Featured</div>
-            <div
-              style={{
-                fontSize: "28px",
-                fontWeight: "bold",
-                marginTop: "8px",
-                color: "#FBBF24",
-              }}
-            >
-              {products.filter((p) => p.featured).length}
-            </div>
-          </div>
-        </div>
+      {/* Add Modal */}
+      <Modal
+        title="Thêm sản phẩm mới"
+        open={isAddModalOpen}
+        onCancel={() => {
+          setIsAddModalOpen(false)
+          addForm.resetFields()
+        }}
+        onOk={() => addForm.submit()}
+        okText="Thêm"
+        cancelText="Hủy"
+        width={700}
+      >
+        <Form form={addForm} layout="vertical" onFinish={handleSubmitAdd}>
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item
+                label="Mã sản phẩm"
+                name="code"
+                rules={[
+                  { required: true, message: "Vui lòng nhập mã sản phẩm" },
+                  { max: 20, message: "Mã không quá 20 ký tự" },
+                  { pattern: /^[A-Z0-9_]+$/, message: "Mã chỉ chứa chữ hoa, số và _" },
+                ]}
+              >
+                <Input placeholder="VD: PHO_BO" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
+                label="Tên sản phẩm"
+                name="name"
+                rules={[
+                  { required: true, message: "Vui lòng nhập tên sản phẩm" },
+                  { max: 200, message: "Tên không quá 200 ký tự" },
+                ]}
+              >
+                <Input placeholder="VD: Phở bò" />
+              </Form.Item>
+            </Col>
+          </Row>
 
-        {/* Table */}
-        <Table
-          columns={columns}
-          dataSource={filteredProducts}
-          pagination={{
-            pageSize: 10,
-            showSizeChanger: true,
-            showTotal: (total) => `Total ${total} products`,
-            pageSizeOptions: ["5", "10", "20", "50"],
-          }}
-          scroll={{ x: 1400 }}
-        />
+          <Form.Item label="Mô tả" name="description">
+            <Input.TextArea rows={3} placeholder="Mô tả về sản phẩm..." />
+          </Form.Item>
 
-        {/* Add Product Modal */}
-        <Modal
-          title="Add New Product"
-          open={isAddModalOpen}
-          onCancel={() => setIsAddModalOpen(false)}
-          footer={null}
-          width={900}
-          destroyOnHidden
-        >
-          <ProductsForm onSubmit={handleAddProduct} isEdit={false} />
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "flex-end",
-              gap: "12px",
-              marginTop: "24px",
-            }}
-          >
-            <Button onClick={() => setIsAddModalOpen(false)} size="large">
-              Cancel
-            </Button>
-            <Button
-              type="primary"
-              size="large"
-              onClick={() => {
-                const form = document.querySelector("form");
-                if (form) {
-                  const submitButton = form.querySelector(
-                    'button[type="submit"]'
-                  ) as HTMLButtonElement;
-                  if (submitButton) submitButton.click();
-                }
-              }}
-            >
-              Add Product
-            </Button>
-          </div>
-        </Modal>
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item
+                label="Giá (VNĐ)"
+                name="price"
+                rules={[
+                  { required: true, message: "Vui lòng nhập giá" },
+                  { type: "number", min: 0, message: "Giá phải >= 0" },
+                ]}
+              >
+                <InputNumber
+                  style={{ width: "100%" }}
+                  placeholder="50000"
+                  formatter={(value) => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ",")}
+                  parser={(value) => value!.replace(/\$\s?|(,*)/g, "")}
+                />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
+                label="Danh mục"
+                name="categoryId"
+                rules={[{ required: true, message: "Vui lòng chọn danh mục" }]}
+              >
+                <Select placeholder="Chọn danh mục">
+                  {categories.filter(c => c.isActive).map((cat) => (
+                    <Select.Option key={cat.id} value={cat.id}>
+                      {cat.name}
+                    </Select.Option>
+                  ))}
+                </Select>
+              </Form.Item>
+            </Col>
+          </Row>
 
-        {/* Edit Product Modal */}
-        <Modal
-          title="Edit Product"
-          open={isEditModalOpen}
-          onCancel={() => {
-            setIsEditModalOpen(false);
-            setSelectedProduct(null);
-          }}
-          footer={null}
-          width={900}
-          destroyOnHidden
-        >
-          <ProductsForm
-            onSubmit={handleEditProduct}
-            initialValues={selectedProduct}
-            isEdit={true}
-          />
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "flex-end",
-              gap: "12px",
-              marginTop: "24px",
-            }}
-          >
-            <Button
-              onClick={() => {
-                setIsEditModalOpen(false);
-                setSelectedProduct(null);
-              }}
-              size="large"
-            >
-              Cancel
-            </Button>
-            <Button
-              type="primary"
-              size="large"
-              onClick={() => {
-                const form = document.querySelector("form");
-                if (form) {
-                  const submitButton = form.querySelector(
-                    'button[type="submit"]'
-                  ) as HTMLButtonElement;
-                  if (submitButton) submitButton.click();
-                }
-              }}
-            >
-              Save Changes
-            </Button>
-          </div>
-        </Modal>
-      </div>
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item
+                label="Chi nhánh"
+                name="branchId"
+              >
+                <Select placeholder="Chọn chi nhánh (tùy chọn)" allowClear>
+                  {branches.filter(b => b.isActive).map((branch) => (
+                    <Select.Option key={branch.id} value={branch.id}>
+                      {branch.name}
+                    </Select.Option>
+                  ))}
+                </Select>
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
+                label="Số lượng tồn kho"
+                name="quantity"
+                initialValue={0}
+                rules={[
+                  { required: true, message: "Vui lòng nhập số lượng" },
+                  { type: "number", min: 0, message: "Số lượng phải >= 0" },
+                ]}
+              >
+                <InputNumber style={{ width: "100%" }} placeholder="0" min={0} />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item label="Thời gian chuẩn bị (phút)" name="prepTime">
+                <InputNumber style={{ width: "100%" }} placeholder="15" min={0} />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item label="URL hình ảnh" name="image">
+                <Input placeholder="https://example.com/image.jpg" />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Form.Item label="Trạng thái" name="isAvailable" initialValue={true} valuePropName="checked">
+            <Switch checkedChildren="Đang bán" unCheckedChildren="Đã ẩn" />
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      {/* Edit Modal */}
+      <Modal
+        title="Chỉnh sửa sản phẩm"
+        open={isEditModalOpen}
+        onCancel={() => {
+          setIsEditModalOpen(false)
+          editForm.resetFields()
+        }}
+        onOk={() => editForm.submit()}
+        okText="Cập nhật"
+        cancelText="Hủy"
+        width={700}
+      >
+        <Form form={editForm} layout="vertical" onFinish={handleSubmitEdit}>
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item
+                label="Mã sản phẩm"
+                name="code"
+                rules={[
+                  { required: true, message: "Vui lòng nhập mã sản phẩm" },
+                  { max: 20, message: "Mã không quá 20 ký tự" },
+                  { pattern: /^[A-Z0-9_]+$/, message: "Mã chỉ chứa chữ hoa, số và _" },
+                ]}
+              >
+                <Input placeholder="VD: PHO_BO" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
+                label="Tên sản phẩm"
+                name="name"
+                rules={[
+                  { required: true, message: "Vui lòng nhập tên sản phẩm" },
+                  { max: 200, message: "Tên không quá 200 ký tự" },
+                ]}
+              >
+                <Input placeholder="VD: Phở bò" />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Form.Item label="Mô tả" name="description">
+            <Input.TextArea rows={3} placeholder="Mô tả về sản phẩm..." />
+          </Form.Item>
+
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item
+                label="Giá (VNĐ)"
+                name="price"
+                rules={[
+                  { required: true, message: "Vui lòng nhập giá" },
+                  { type: "number", min: 0, message: "Giá phải >= 0" },
+                ]}
+              >
+                <InputNumber
+                  style={{ width: "100%" }}
+                  placeholder="50000"
+                  formatter={(value) => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ",")}
+                  parser={(value) => value!.replace(/\$\s?|(,*)/g, "")}
+                />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
+                label="Số lượng tồn kho"
+                name="quantity"
+                rules={[
+                  { required: true, message: "Vui lòng nhập số lượng" },
+                  { type: "number", min: 0, message: "Số lượng phải >= 0" },
+                ]}
+              >
+                <InputNumber style={{ width: "100%" }} placeholder="100" min={0} />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item
+                label="Danh mục"
+                name="categoryId"
+                rules={[{ required: true, message: "Vui lòng chọn danh mục" }]}
+              >
+                <Select placeholder="Chọn danh mục">
+                  {categories.map((cat) => (
+                    <Select.Option key={cat.id} value={cat.id}>
+                      {cat.name}
+                    </Select.Option>
+                  ))}
+                </Select>
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
+                label="Chi nhánh"
+                name="branchId"
+              >
+                <Select placeholder="Chọn chi nhánh (tùy chọn)" allowClear>
+                  {branches.map((branch) => (
+                    <Select.Option key={branch.id} value={branch.id}>
+                      {branch.name}
+                    </Select.Option>
+                  ))}
+                </Select>
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item label="Thời gian chuẩn bị (phút)" name="prepTime">
+                <InputNumber style={{ width: "100%" }} placeholder="15" min={0} />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item label="URL hình ảnh" name="image">
+                <Input placeholder="https://example.com/image.jpg" />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Form.Item label="Trạng thái" name="isAvailable" valuePropName="checked">
+            <Switch checkedChildren="Đang bán" unCheckedChildren="Đã ẩn" />
+          </Form.Item>
+        </Form>
+      </Modal>
+    </div>
+  )
+}
+
+export default function ProductsPage() {
+  return (
+    <AdminLayout title="Quản lý Sản phẩm">
+      <App>
+        <ProductsContent />
+      </App>
     </AdminLayout>
-  );
+  )
 }

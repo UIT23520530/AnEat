@@ -302,6 +302,7 @@ function UsersContent() {
       dataIndex: "name",
       key: "name",
       width: 280,
+      fixed: "left",
       render: (text, record) => (
         <Space>
           <Avatar src={record.avatar} icon={<UserOutlined />} />
@@ -368,6 +369,7 @@ function UsersContent() {
       title: "Thao tác",
       key: "actions",
       width: 120,
+      fixed: "right",
       render: (_, record) => (
         <Space size="small">
           <Tooltip title="Xem chi tiết">

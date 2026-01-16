@@ -1,538 +1,568 @@
-"use client";
+"use client"
 
-import { useState } from "react";
-import { AdminLayout } from "@/components/layouts/admin-layout";
-import { Table, Button, Input, Tag, Space, Modal, Popconfirm, App, Image, Badge } from "antd";
-import { SearchOutlined, PlusOutlined, EditOutlined, DeleteOutlined, AppstoreOutlined } from "@ant-design/icons";
-import type { TableColumnsType } from "antd";
-import CategoriesForm from "@/components/forms/admin/CategoriesForm";
+import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
+import { AdminLayout } from "@/components/layouts/admin-layout"
+import { Card, CardHeader } from "@/components/ui/card"
+import {
+  Table,
+  Button,
+  Input,
+  Tag,
+  Space,
+  Modal,
+  App,
+  Statistic,
+  Select,
+  Form,
+  Row,
+  Col,
+  Spin,
+  Tooltip,
+  Switch,
+} from "antd"
+import {
+  SearchOutlined,
+  PlusOutlined,
+  EditOutlined,
+  DeleteOutlined,
+  EyeInvisibleOutlined,
+  EyeOutlined,
+  AppstoreOutlined,
+  CheckCircleOutlined,
+  StopOutlined,
+  ArrowRightOutlined,
+  FolderOpenOutlined,
+} from "@ant-design/icons"
+import type { TableColumnsType } from "antd"
+import {
+  adminCategoryService,
+  type Category,
+  type CategoryStats,
+} from "@/services/admin-category.service"
 
-interface CategoryData {
-  key: string;
-  id: string;
-  name: string;
-  description: string;
-  image?: string;
-  productCount?: number;
-  status?: "active" | "inactive";
-  createdAt?: string;
+// Generate consistent color from string
+const stringToColor = (str: string) => {
+  let hash = 0
+  for (let i = 0; i < str.length; i++) {
+    hash = str.charCodeAt(i) + ((hash << 5) - hash)
+  }
+  const colors = ['blue', 'green', 'orange', 'purple', 'cyan', 'magenta', 'lime', 'gold']
+  return colors[Math.abs(hash) % colors.length]
 }
 
-const mockCategories: CategoryData[] = [
-  {
-    key: "1",
-    id: "1",
-    name: "Main Course",
-    description: "Các món ăn chính như gà rán, burger, pizza",
-    image: "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=200",
-    productCount: 45,
-    status: "active",
-    createdAt: "2024-01-15",
-  },
-  {
-    key: "2",
-    id: "2",
-    name: "Side Dish",
-    description: "Các món ăn kèm như khoai tây chiên, salad",
-    image: "https://images.unsplash.com/photo-1573979174552-5dc3c2c1f938?w=200",
-    productCount: 28,
-    status: "active",
-    createdAt: "2024-01-16",
-  },
-  {
-    key: "3",
-    id: "3",
-    name: "Beverage",
-    description: "Các loại đồ uống như nước ngọt, trà, cà phê",
-    image: "https://images.unsplash.com/photo-1437418747212-8d9709afab22?w=200",
-    productCount: 32,
-    status: "active",
-    createdAt: "2024-01-17",
-  },
-  {
-    key: "4",
-    id: "4",
-    name: "Dessert",
-    description: "Các món tráng miệng như kem, bánh ngọt",
-    image: "https://images.unsplash.com/photo-1488477181946-6428a0291777?w=200",
-    productCount: 18,
-    status: "active",
-    createdAt: "2024-01-18",
-  },
-  {
-    key: "5",
-    id: "5",
-    name: "Appetizer",
-    description: "Các món khai vị như salad, súp",
-    image: "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=200",
-    productCount: 15,
-    status: "active",
-    createdAt: "2024-01-19",
-  },
-  {
-    key: "6",
-    id: "6",
-    name: "Combo",
-    description: "Các combo tiết kiệm cho gia đình",
-    image: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=200",
-    productCount: 12,
-    status: "active",
-    createdAt: "2024-01-20",
-  },
-  {
-    key: "7",
-    id: "7",
-    name: "Snack",
-    description: "Các món ăn vặt nhẹ",
-    image: "https://images.unsplash.com/photo-1599490659213-e2b9527bd087?w=200",
-    productCount: 8,
-    status: "inactive",
-    createdAt: "2024-01-21",
-  },
-];
+function CategoriesContent() {
+  const router = useRouter()
+  const { message, modal } = App.useApp()
+  const [categories, setCategories] = useState<Category[]>([])
+  const [statistics, setStatistics] = useState<CategoryStats | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [searchQuery, setSearchQuery] = useState("")
+  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all")
+  const [pagination, setPagination] = useState({
+    current: 1,
+    pageSize: 10,
+    total: 0,
+  })
 
-export default function AdminCategoriesPage() {
-  const { message } = App.useApp();
-  const [categories, setCategories] = useState<CategoryData[]>(mockCategories);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState<CategoryData | null>(null);
+  // Modals
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false)
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false)
+  const [selectedCategory, setSelectedCategory] = useState<Category | null>(null)
 
-  const filteredCategories = categories.filter(
-    (category) =>
-      category.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      category.description.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Forms
+  const [editForm] = Form.useForm()
+  const [addForm] = Form.useForm()
 
-  const getStatusColor = (status?: string) => {
-    switch (status) {
-      case "active":
-        return "success";
-      case "inactive":
-        return "default";
-      default:
-        return "default";
+  // Load data on mount
+  useEffect(() => {
+    loadCategories()
+    loadStatistics()
+  }, [searchQuery, statusFilter])
+
+  // Load categories
+  const loadCategories = async () => {
+    setLoading(true)
+    try {
+      const response = await adminCategoryService.getCategories({
+        page: 1,
+        limit: 999,
+        search: searchQuery || undefined,
+      })
+
+      let filteredData = response.data
+      if (statusFilter === "active") {
+        filteredData = filteredData.filter((c: Category) => c.isActive)
+      } else if (statusFilter === "inactive") {
+        filteredData = filteredData.filter((c: Category) => !c.isActive)
+      }
+
+      setCategories(filteredData)
+      setPagination({
+        ...pagination,
+        total: filteredData.length,
+      })
+    } catch (error: any) {
+      console.error("❌ Load categories error:", error)
+      message.error(error.response?.data?.message || "Không thể tải danh sách danh mục")
+    } finally {
+      setLoading(false)
     }
-  };
+  }
 
-  const handleAddCategory = (values: any) => {
-    const newCategory: CategoryData = {
-      key: String(categories.length + 1),
-      id: String(categories.length + 1),
-      name: values.name,
-      description: values.description,
-      image: values.image?.[0]?.thumbUrl || undefined,
-      productCount: 0,
-      status: "active",
-      createdAt: new Date().toISOString().split("T")[0],
-    };
-    setCategories([...categories, newCategory]);
-    setIsAddModalOpen(false);
-    message.success("Category added successfully!");
-  };
+  // Load statistics
+  const loadStatistics = async () => {
+    try {
+      const response = await adminCategoryService.getCategoryStats()
+      setStatistics(response.data)
+    } catch (error: any) {
+      console.error("❌ Load statistics error:", error)
+    }
+  }
 
-  const handleEditCategory = (values: any) => {
-    const updatedCategories = categories.map((category) =>
-      category.id === selectedCategory?.id
-        ? {
-            ...category,
-            name: values.name,
-            description: values.description,
-            image: values.image?.[0]?.thumbUrl || category.image,
-          }
-        : category
-    );
-    setCategories(updatedCategories);
-    setIsEditModalOpen(false);
-    setSelectedCategory(null);
-    message.success("Category updated successfully!");
-  };
+  // Handle edit click
+  const handleEditClick = (record: Category) => {
+    setSelectedCategory(record)
+    editForm.setFieldsValue({
+      code: record.code,
+      name: record.name,
+      description: record.description,
+      image: record.image,
+      isActive: record.isActive,
+    })
+    setIsEditModalOpen(true)
+  }
 
-  const handleEdit = (record: CategoryData) => {
-    setSelectedCategory(record);
-    setIsEditModalOpen(true);
-  };
-
-  const handleDelete = (id: string) => {
-    setCategories(categories.filter((category) => category.id !== id));
-    message.success("Category deleted successfully!");
-  };
-
-  const columns: TableColumnsType<CategoryData> = [
-    {
-      title: "Category",
-      dataIndex: "name",
-      key: "name",
-      fixed: "left",
-      width: 320,
-      sorter: (a, b) => a.name.localeCompare(b.name),
-      render: (name: string, record) => (
-        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-          {record.image ? (
-            <Image
-              src={record.image}
-              alt={name}
-              width={56}
-              height={56}
-              style={{ borderRadius: "8px", objectFit: "cover" }}
-              preview={false}
-            />
-          ) : (
-            <div
-              style={{
-                width: "56px",
-                height: "56px",
-                borderRadius: "8px",
-                backgroundColor: "#F3F4F6",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontSize: "24px",
-              }}
-            >
-              <AppstoreOutlined style={{ color: "#9CA3AF" }} />
-            </div>
+  // Handle delete
+  const handleDelete = (record: Category) => {
+    modal.confirm({
+      title: "Xác nhận xóa danh mục",
+      content: (
+        <div>
+          <p>
+            Bạn có chắc chắn muốn xóa danh mục <strong>{record.name}</strong>?
+          </p>
+          {record.productCount > 0 && (
+            <p className="text-red-600 text-sm mt-2">
+              ⚠️ Danh mục này có {record.productCount} sản phẩm. Vui lòng xóa hoặc chuyển sản phẩm sang danh mục khác trước.
+            </p>
           )}
-          <div>
-            <div style={{ fontWeight: 600, fontSize: "15px" }}>{name}</div>
-            <div style={{ fontSize: "12px", color: "#6B7280", marginTop: "2px" }}>
-              ID: {record.id}
-            </div>
-          </div>
         </div>
       ),
-    },
+      okText: "Xác nhận xóa",
+      cancelText: "Hủy",
+      okButtonProps: { danger: true },
+      onOk: async () => {
+        try {
+          await adminCategoryService.deleteCategory(record.id)
+          message.success("Đã xóa danh mục thành công")
+          loadCategories()
+          loadStatistics()
+        } catch (error: any) {
+          const errorMessage = error.response?.data?.message || "Không thể xóa danh mục"
+          message.error(errorMessage)
+        }
+      },
+    })
+  }
+
+  // Handle hide/unhide
+  const handleToggleActive = async (record: Category) => {
+    const action = record.isActive ? "ẩn" : "hiện"
+    try {
+      await adminCategoryService.updateCategory(record.id, {
+        isActive: !record.isActive,
+      })
+      message.success(`Đã ${action} danh mục thành công`)
+      loadCategories()
+      loadStatistics()
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.message || `Không thể ${action} danh mục`
+      message.error(errorMessage)
+    }
+  }
+
+  // Navigate to products filtered by category
+  const handleViewProducts = (categoryId: string) => {
+    router.push(`/admin/products?categoryId=${categoryId}`)
+  }
+
+  // Submit edit
+  const handleSubmitEdit = async (values: any) => {
+    if (!selectedCategory) return
+
+    try {
+      await adminCategoryService.updateCategory(selectedCategory.id, values)
+      message.success("Đã cập nhật danh mục thành công")
+      setIsEditModalOpen(false)
+      loadCategories()
+      loadStatistics()
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.message || "Không thể cập nhật danh mục"
+      message.error(errorMessage)
+    }
+  }
+
+  // Submit add category
+  const handleSubmitAdd = async (values: any) => {
+    try {
+      await adminCategoryService.createCategory(values)
+      message.success("Đã thêm danh mục mới thành công")
+      setIsAddModalOpen(false)
+      addForm.resetFields()
+      loadCategories()
+      loadStatistics()
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.message || "Không thể thêm danh mục"
+      message.error(errorMessage)
+    }
+  }
+
+  // Table columns
+  const columns: TableColumnsType<Category> = [
     {
-      title: "Description",
-      dataIndex: "description",
-      key: "description",
-      width: 350,
-      ellipsis: true,
-      render: (description: string) => (
-        <span style={{ color: "#6B7280" }}>{description}</span>
-      ),
-    },
-    {
-      title: "Products",
-      dataIndex: "productCount",
-      key: "productCount",
-      width: 120,
-      align: "center",
-      sorter: (a, b) => (a.productCount || 0) - (b.productCount || 0),
-      render: (count: number) => (
-        <Badge
-          count={count || 0}
-          showZero
-          color="#3B82F6"
-          style={{ fontWeight: 600 }}
-        />
-      ),
-    },
-    {
-      title: "Status",
-      dataIndex: "status",
-      key: "status",
-      width: 120,
-      filters: [
-        { text: "Active", value: "active" },
-        { text: "Inactive", value: "inactive" },
-      ],
-      onFilter: (value, record) => record.status === value,
-      render: (status: string) => (
-        <Tag color={getStatusColor(status)}>
-          {status?.toUpperCase() || "ACTIVE"}
+      title: "Mã danh mục",
+      dataIndex: "code",
+      key: "code",
+      width: 130,      
+      fixed: 'left',      
+      render: (code: string, record: Category) => (
+        <Tag 
+          color={stringToColor(code)} 
+          style={{ opacity: record.isActive ? 1 : 0.5 }}
+        >
+          {code}
         </Tag>
       ),
     },
     {
-      title: "Created Date",
-      dataIndex: "createdAt",
-      key: "createdAt",
-      width: 140,
-      sorter: (a, b) => (a.createdAt || "").localeCompare(b.createdAt || ""),
-      render: (date: string) => (
-        <span style={{ color: "#6B7280", fontSize: "13px" }}>
-          {date || "-"}
+      title: "Tên danh mục",
+      dataIndex: "name",
+      key: "name",
+      width: 150,      
+      fixed: 'left',      
+      render: (name: string, record: Category) => (
+        <span style={{ opacity: record.isActive ? 1 : 0.5, fontWeight: 500 }}>{name}</span>
+      ),
+    },
+    {
+      title: "Mô tả",
+      dataIndex: "description",
+      key: "description",
+      width: 180,
+      ellipsis: true,
+      render: (description: string | null, record: Category) => (
+        <span style={{ opacity: record.isActive ? 1 : 0.5 }}>
+          {description || <span className="text-gray-400">Chưa có mô tả</span>}
         </span>
       ),
     },
     {
-      title: "Actions",
+      title: "Số sản phẩm",
+      dataIndex: "productCount",
+      key: "productCount",
+      width: 200,
+      align: "center",
+      sorter: (a, b) => a.productCount - b.productCount,
+      showSorterTooltip: { title: 'Sắp xếp theo số lượng sản phẩm' },
+      render: (count: number, record: Category) => (
+        <span style={{ opacity: record.isActive ? 1 : 0.5 }}>
+          <Tag color={count > 0 ? "blue" : "default"}>{count}</Tag>
+        </span>
+      ),
+    },
+    {
+      title: "Trạng thái",
+      dataIndex: "isActive",
+      key: "isActive",
+      width: 150,
+      align: "center",
+      render: (isActive: boolean) => (
+        <Tag
+          icon={isActive ? <CheckCircleOutlined /> : <StopOutlined />}
+          color={isActive ? "success" : "error"}
+        >
+          {isActive ? "Đang hiển thị" : "Đã ẩn"}
+        </Tag>
+      ),
+    },
+    {
+      title: "Ngày tạo",
+      dataIndex: "createdAt",
+      key: "createdAt",
+      width: 150,
+      align: "center",
+      render: (date: string, record: Category) => (
+        <span style={{ opacity: record.isActive ? 1 : 0.5 }}>
+          {new Date(date).toLocaleDateString("vi-VN")}
+        </span>
+      ),
+    },
+    {
+      title: "Thao tác",
       key: "actions",
+      width: 170,
+      align: "center",
       fixed: "right",
-      width: 180,
-      render: (_, record) => (
-        <Space>
-          <Button
-            type="link"
-            icon={<EditOutlined />}
-            onClick={() => handleEdit(record)}
-          >
-            Edit
-          </Button>
-          <Popconfirm
-            title="Delete category"
-            description="Are you sure you want to delete this category?"
-            onConfirm={() => handleDelete(record.id)}
-            okText="Yes"
-            cancelText="No"
-          >
-            <Button type="link" danger icon={<DeleteOutlined />}>
-              Delete
-            </Button>
-          </Popconfirm>
+      render: (_, record: Category) => (
+        <Space size="small">
+          <Tooltip title="Chỉnh sửa">
+            <Button
+              type="text"
+              icon={<EditOutlined />}
+              onClick={() => handleEditClick(record)}
+            />
+          </Tooltip>
+          <Tooltip title={record.isActive ? "Ẩn danh mục" : "Hiện danh mục"}>
+            <Button
+              type="text"
+              icon={record.isActive ? <EyeInvisibleOutlined /> : <EyeOutlined />}
+              onClick={() => handleToggleActive(record)}
+            />
+          </Tooltip>
+          <Tooltip title="Xem sản phẩm">
+            <Button
+              type="text"
+              icon={<ArrowRightOutlined />}
+              onClick={() => handleViewProducts(record.id)}
+            />
+          </Tooltip>
+          <Tooltip title="Xóa">
+            <Button
+              type="text"
+              danger
+              icon={<DeleteOutlined />}
+              onClick={() => handleDelete(record)}
+            />
+          </Tooltip>
         </Space>
       ),
     },
-  ];
+  ]
 
   return (
-    <AdminLayout>
-      <div style={{ padding: "24px" }}>
-        {/* Header */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            marginBottom: "24px",
-          }}
-        >
-          <div>
-            <h1 style={{ fontSize: "28px", fontWeight: "bold", margin: 0 }}>
-              Quản lý danh mục menu
-            </h1>
-            {/* <p style={{ color: "#6B7280", marginTop: "8px" }}>
-              Manage product categories and classifications
-            </p> */}
-          </div>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "12px",
-            }}
-          >
-            <Input
-              placeholder="Tìm kiếm danh mục theo tên hoặc mô tả..."
-              prefix={<SearchOutlined />}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              style={{ width: "300px" }}
-              size="large"
-              allowClear
-            />
-            <Button
-              type="primary"
-              icon={<PlusOutlined />}
-              size="large"
-              onClick={() => setIsAddModalOpen(true)}
-            >
-              Thêm danh mục
-            </Button>
-          </div>
-        </div>
-
-        {/* Statistics Cards */}
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(4, 1fr)",
-            gap: "16px",
-            marginBottom: "24px",
-          }}
-        >
-          <div
-            style={{
-              padding: "20px",
-              backgroundColor: "#FFF",
-              borderRadius: "8px",
-              border: "1px solid #E5E7EB",
-            }}
-          >
-            <div style={{ color: "#6B7280", fontSize: "14px" }}>
-              Total Categories
-            </div>
-            <div
-              style={{ fontSize: "28px", fontWeight: "bold", marginTop: "8px" }}
-            >
-              {categories.length}
-            </div>
-          </div>
-          <div
-            style={{
-              padding: "20px",
-              backgroundColor: "#FFF",
-              borderRadius: "8px",
-              border: "1px solid #E5E7EB",
-            }}
-          >
-            <div style={{ color: "#6B7280", fontSize: "14px" }}>Active</div>
-            <div
-              style={{
-                fontSize: "28px",
-                fontWeight: "bold",
-                marginTop: "8px",
-                color: "#10B981",
-              }}
-            >
-              {categories.filter((c) => c.status === "active").length}
-            </div>
-          </div>
-          <div
-            style={{
-              padding: "20px",
-              backgroundColor: "#FFF",
-              borderRadius: "8px",
-              border: "1px solid #E5E7EB",
-            }}
-          >
-            <div style={{ color: "#6B7280", fontSize: "14px" }}>
-              Total Products
-            </div>
-            <div
-              style={{
-                fontSize: "28px",
-                fontWeight: "bold",
-                marginTop: "8px",
-                color: "#3B82F6",
-              }}
-            >
-              {categories.reduce((sum, c) => sum + (c.productCount || 0), 0)}
-            </div>
-          </div>
-          <div
-            style={{
-              padding: "20px",
-              backgroundColor: "#FFF",
-              borderRadius: "8px",
-              border: "1px solid #E5E7EB",
-            }}
-          >
-            <div style={{ color: "#6B7280", fontSize: "14px" }}>
-              Avg Products/Category
-            </div>
-            <div
-              style={{
-                fontSize: "28px",
-                fontWeight: "bold",
-                marginTop: "8px",
-                color: "#8B5CF6",
-              }}
-            >
-              {Math.round(
-                categories.reduce((sum, c) => sum + (c.productCount || 0), 0) /
-                  categories.length
+    <div className="p-8">
+      <Spin spinning={loading}>
+        <Card className="border-0 shadow-sm">
+          <CardHeader>
+            <div className="flex flex-col gap-4">
+              {/* Stats Cards */}
+              {statistics && (
+                <Row gutter={[24, 16]} className="-mx-2">
+                  <Col span={8}>
+                    <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
+                      <Statistic
+                        title="Tổng số danh mục"
+                        value={statistics.totalCategories}
+                        prefix={<FolderOpenOutlined />}
+                        valueStyle={{ color: "#1890ff" }}
+                      />
+                    </div>
+                  </Col>
+                  <Col span={8}>
+                    <div className="bg-green-50 p-4 rounded-lg border border-green-100">
+                      <Statistic
+                        title="Danh mục đang hiển thị"
+                        value={statistics.activeCategories}
+                        prefix={<CheckCircleOutlined />}
+                        valueStyle={{ color: "#52c41a" }}
+                      />
+                    </div>
+                  </Col>
+                  <Col span={8}>
+                    <div className="bg-red-50 p-4 rounded-lg border border-red-100">
+                      <Statistic
+                        title="Danh mục đã ẩn"
+                        value={statistics.inactiveCategories}
+                        prefix={<StopOutlined />}
+                        valueStyle={{ color: "#ff4d4f" }}
+                      />
+                    </div>
+                  </Col>
+                </Row>
               )}
+
+              {/* Filters */}
+              <div className="flex justify-between items-center">
+                <Space size="middle">
+                  <Input
+                    placeholder="Tìm kiếm danh mục..."
+                    prefix={<SearchOutlined />}
+                    style={{ width: 300 }}
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    allowClear
+                  />
+                  <Select
+                    value={statusFilter}
+                    onChange={setStatusFilter}
+                    style={{ width: 180 }}
+                  >
+                    <Select.Option value="all">Tất cả trạng thái</Select.Option>
+                    <Select.Option value="active">Đang hiển thị</Select.Option>
+                    <Select.Option value="inactive">Đã ẩn</Select.Option>
+                  </Select>
+                </Space>
+
+                <Button
+                  type="primary"
+                  icon={<PlusOutlined />}
+                  onClick={() => setIsAddModalOpen(true)}
+                >
+                  Thêm danh mục
+                </Button>
+              </div>
             </div>
-          </div>
-        </div>
+          </CardHeader>
 
-        {/* Table */}
-        <Table
-          columns={columns}
-          dataSource={filteredCategories}
-          pagination={{
-            pageSize: 10,
-            showSizeChanger: true,
-            showTotal: (total) => `Total ${total} categories`,
-            pageSizeOptions: ["5", "10", "20", "50"],
-          }}
-          scroll={{ x: 1300 }}
-        />
-
-        {/* Add Category Modal */}
-        <Modal
-          title="Add New Category"
-          open={isAddModalOpen}
-          onCancel={() => setIsAddModalOpen(false)}
-          footer={null}
-          width={800}
-          destroyOnHidden
-        >
-          <CategoriesForm onSubmit={handleAddCategory} isEdit={false} />
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "flex-end",
-              gap: "12px",
-              marginTop: "24px",
+          {/* Table */}
+          <Table
+            columns={columns}
+            dataSource={categories}
+            rowKey="id"
+            scroll={{ x: 1400 }}
+            pagination={{
+              ...pagination,
+              showTotal: (total) => `Hiển thị ${total} danh mục`,
+              showSizeChanger: true,
             }}
-          >
-            <Button onClick={() => setIsAddModalOpen(false)} size="large">
-              Cancel
-            </Button>
-            <Button
-              type="primary"
-              size="large"
-              onClick={() => {
-                const form = document.querySelector("form");
-                if (form) {
-                  const submitButton = form.querySelector(
-                    'button[type="submit"]'
-                  ) as HTMLButtonElement;
-                  if (submitButton) submitButton.click();
-                }
-              }}
-            >
-              Add Category
-            </Button>
-          </div>
-        </Modal>
-
-        {/* Edit Category Modal */}
-        <Modal
-          title="Edit Category"
-          open={isEditModalOpen}
-          onCancel={() => {
-            setIsEditModalOpen(false);
-            setSelectedCategory(null);
-          }}
-          footer={null}
-          width={800}
-          destroyOnHidden
-        >
-          <CategoriesForm
-            onSubmit={handleEditCategory}
-            initialValues={selectedCategory}
-            isEdit={true}
+            onChange={(newPagination) => {
+              setPagination({
+                current: newPagination.current || 1,
+                pageSize: newPagination.pageSize || 10,
+                total: pagination.total,
+              })
+            }}
           />
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "flex-end",
-              gap: "12px",
-              marginTop: "24px",
-            }}
+        </Card>
+      </Spin>
+
+      {/* Add Modal */}
+      <Modal
+        title="Thêm danh mục mới"
+        open={isAddModalOpen}
+        onCancel={() => {
+          setIsAddModalOpen(false)
+          addForm.resetFields()
+        }}
+        onOk={() => addForm.submit()}
+        okText="Thêm"
+        cancelText="Hủy"
+        width={600}
+      >
+        <Form form={addForm} layout="vertical" onFinish={handleSubmitAdd}>
+          <Form.Item
+            label="Mã danh mục"
+            name="code"
+            rules={[
+              { required: true, message: "Vui lòng nhập mã danh mục" },
+              { max: 20, message: "Mã danh mục không quá 20 ký tự" },
+              { pattern: /^[A-Z0-9_]+$/, message: "Mã chỉ chứa chữ hoa, số và _" },
+            ]}
           >
-            <Button
-              onClick={() => {
-                setIsEditModalOpen(false);
-                setSelectedCategory(null);
-              }}
-              size="large"
-            >
-              Cancel
-            </Button>
-            <Button
-              type="primary"
-              size="large"
-              onClick={() => {
-                const form = document.querySelector("form");
-                if (form) {
-                  const submitButton = form.querySelector(
-                    'button[type="submit"]'
-                  ) as HTMLButtonElement;
-                  if (submitButton) submitButton.click();
-                }
-              }}
-            >
-              Save Changes
-            </Button>
-          </div>
-        </Modal>
-      </div>
+            <Input placeholder="VD: MAIN_DISH" />
+          </Form.Item>
+
+          <Form.Item
+            label="Tên danh mục"
+            name="name"
+            rules={[
+              { required: true, message: "Vui lòng nhập tên danh mục" },
+              { max: 100, message: "Tên danh mục không quá 100 ký tự" },
+            ]}
+          >
+            <Input placeholder="VD: Món chính" />
+          </Form.Item>
+
+          <Form.Item label="Mô tả" name="description">
+            <Input.TextArea rows={3} placeholder="Mô tả về danh mục..." />
+          </Form.Item>
+
+          <Form.Item label="URL hình ảnh" name="image">
+            <Input placeholder="https://example.com/image.jpg" />
+          </Form.Item>
+
+          <Form.Item 
+            label="Trạng thái" 
+            name="isActive" 
+            initialValue={true} 
+            valuePropName="checked"
+          >
+            <Switch 
+              checkedChildren="Đang hiển thị" 
+              unCheckedChildren="Đã ẩn"
+            />
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      {/* Edit Modal */}
+      <Modal
+        title="Chỉnh sửa danh mục"
+        open={isEditModalOpen}
+        onCancel={() => {
+          setIsEditModalOpen(false)
+          editForm.resetFields()
+        }}
+        onOk={() => editForm.submit()}
+        okText="Cập nhật"
+        cancelText="Hủy"
+        width={600}
+      >
+        <Form form={editForm} layout="vertical" onFinish={handleSubmitEdit}>
+          <Form.Item
+            label="Mã danh mục"
+            name="code"
+            rules={[
+              { required: true, message: "Vui lòng nhập mã danh mục" },
+              { max: 20, message: "Mã danh mục không quá 20 ký tự" },
+              { pattern: /^[A-Z0-9_]+$/, message: "Mã chỉ chứa chữ hoa, số và _" },
+            ]}
+          >
+            <Input placeholder="VD: MAIN_DISH" />
+          </Form.Item>
+
+          <Form.Item
+            label="Tên danh mục"
+            name="name"
+            rules={[
+              { required: true, message: "Vui lòng nhập tên danh mục" },
+              { max: 100, message: "Tên danh mục không quá 100 ký tự" },
+            ]}
+          >
+            <Input placeholder="VD: Món chính" />
+          </Form.Item>
+
+          <Form.Item label="Mô tả" name="description">
+            <Input.TextArea rows={3} placeholder="Mô tả về danh mục..." />
+          </Form.Item>
+
+          <Form.Item label="URL hình ảnh" name="image">
+            <Input placeholder="https://example.com/image.jpg" />
+          </Form.Item>
+
+          <Form.Item 
+            label="Trạng thái" 
+            name="isActive" 
+            valuePropName="checked"
+          >
+            <Switch 
+              checkedChildren="Đang hiển thị" 
+              unCheckedChildren="Đã ẩn"
+            />
+          </Form.Item>
+        </Form>
+      </Modal>
+    </div>
+  )
+}
+
+export default function CategoriesPage() {
+  return (
+    <AdminLayout title="Quản lý Danh mục sản phẩm">
+      <App>
+        <CategoriesContent />
+      </App>
     </AdminLayout>
-  );
+  )
 }

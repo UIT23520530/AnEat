@@ -311,6 +311,7 @@ function BranchesContent() {
       dataIndex: "name",
       key: "name",
       width: 280,
+      fixed: "left",
       render: (text, record) => (
         <Space>
           <ShopOutlined className="text-lg text-blue-600" />
@@ -363,6 +364,7 @@ function BranchesContent() {
       title: "Thao tác",
       key: "actions",
       width: 120,
+      fixed: "right",
       render: (_, record) => (
         <Space size="small">
           <Tooltip title="Xem chi tiết">
@@ -527,20 +529,7 @@ function BranchesContent() {
         {selectedBranch && (
           <Descriptions bordered column={2}>
             <Descriptions.Item label="Tên chi nhánh" span={2}>
-              <Space>
-                <span className="font-medium">{selectedBranch.name}</span>
-                <Button
-                  type="link"
-                  size="small"
-                  icon={<ArrowRightOutlined />}
-                  onClick={() => {
-                    handleCloseDetailModal()
-                    router.push(`/admin/users?branchId=${selectedBranch.id}`)
-                  }}
-                >
-                  Xem nhân viên chi nhánh
-                </Button>
-              </Space>
+              <span className="font-medium">{selectedBranch.name}</span>
             </Descriptions.Item>
             <Descriptions.Item label="Địa chỉ" span={2}>
               <EnvironmentOutlined className="mr-2" />
@@ -578,14 +567,42 @@ function BranchesContent() {
               {selectedBranch.email || "Chưa có"}
             </Descriptions.Item>
             <Descriptions.Item label="Nhân viên">
-              <Tag icon={<TeamOutlined />} color="blue">
-                {selectedBranch._count?.staff || 0}
-              </Tag>
+              <Space>
+                <Tag icon={<TeamOutlined />} color="blue">
+                  {selectedBranch._count?.staff || 0}
+                </Tag>
+                <Tooltip title="Xem nhân viên chi nhánh">
+                  <Button
+                    type="text"
+                    size="small"
+                    icon={<ArrowRightOutlined />}
+                    className="text-blue-600 hover:text-blue-700"
+                    onClick={() => {
+                      handleCloseDetailModal()
+                      router.push(`/admin/users?branchId=${selectedBranch.id}`)
+                    }}
+                  />
+                </Tooltip>
+              </Space>
             </Descriptions.Item>
             <Descriptions.Item label="Sản phẩm">
-              <Tag icon={<ShoppingOutlined />} color="green">
-                {selectedBranch._count?.products || 0}
-              </Tag>
+              <Space>
+                <Tag icon={<ShoppingOutlined />} color="green">
+                  {selectedBranch._count?.products || 0}
+                </Tag>
+                <Tooltip title="Xem sản phẩm chi nhánh">
+                  <Button
+                    type="text"
+                    size="small"
+                    icon={<ArrowRightOutlined />}
+                    className="text-blue-600 hover:text-blue-700"
+                    onClick={() => {
+                      handleCloseDetailModal()
+                      router.push(`/admin/products?branchId=${selectedBranch.id}`)
+                    }}
+                  />
+                </Tooltip>
+              </Space>
             </Descriptions.Item>
             <Descriptions.Item label="Bàn ăn">
               <Tag color="cyan">
