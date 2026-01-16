@@ -26,6 +26,9 @@ Thumbs.db
 dist/
 build/
 
+# Postman collections (exclude from version control)
+postman/
+
 /docs
 
 /package-lock.json

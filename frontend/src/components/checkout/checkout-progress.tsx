@@ -25,7 +25,7 @@ export function CheckoutProgress({ currentStep }: CheckoutProgressProps) {
                   className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm transition-all ${
                     step.number < currentStep
                       ? "bg-green-500 text-white"
-                      : step.number === currentStep
+                      :                     step.number === currentStep
                       ? "bg-orange-500 text-white"
                       : "bg-gray-200 text-gray-500"
                   }`}

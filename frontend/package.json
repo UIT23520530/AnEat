@@ -4,10 +4,10 @@
   "private": true,
   "scripts": {
     "build": "next build",
-    "dev": "npm run db:start && concurrently \"npm:dev:next\" \"npm:dev:backend\"",
+    "dev": "yarn db:start && concurrently \"yarn:dev:next\" \"yarn:dev:backend\"",
     "dev:next": "next dev",
     "dev:backend": "cd ../backend && npm run dev",
-    "db:start": "cd .. && docker-compose up -d postgres && echo 'Database started! Waiting for a few seconds...' && sleep 3",
+    "db:start": "cd .. && docker-compose up -d postgres && echo Database started! Waiting 3 seconds... && sleep 3",
     "db:stop": "cd .. && docker-compose down",
     "db:logs": "cd .. && docker-compose logs -f postgres",
     "lint": "next lint",

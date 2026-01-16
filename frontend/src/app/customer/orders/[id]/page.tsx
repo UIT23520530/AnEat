@@ -1,5 +1,6 @@
 "use client";
 
+import { use } from "react";
 import { PublicLayout } from "@/components/layouts/public-layout";
 import { notFound } from "next/navigation";
 import {
@@ -114,9 +115,10 @@ const getStatusColor = (status: string) => {
 export default function OrderDetailPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
-  const order = orderDetails[params.id as keyof typeof orderDetails];
+  const { id } = use(params);
+  const order = orderDetails[id as keyof typeof orderDetails];
 
   if (!order) {
     notFound();
@@ -153,7 +155,7 @@ export default function OrderDetailPage({
           </div>
 
           {/* Order Progress */}
-          <Card className="mb-8 shadow-lg">
+          <Card className="mb-8">
             <CardHeader>
               <CardTitle className="text-2xl">Trạng thái đơn hàng</CardTitle>
             </CardHeader>
@@ -209,7 +211,7 @@ export default function OrderDetailPage({
             {/* Left Column - Order Details */}
             <div className="lg:col-span-2 space-y-6">
               {/* Customer Information */}
-              <Card className="shadow-lg">
+              <Card>
                 <CardHeader className="bg-gradient-to-r from-orange-50 to-white">
                   <CardTitle className="flex items-center gap-2">
                     <User className="h-5 w-5 text-orange-500" />
@@ -248,7 +250,7 @@ export default function OrderDetailPage({
               </Card>
 
               {/* Order Items */}
-              <Card className="shadow-lg">
+              <Card>
                 <CardHeader className="bg-gradient-to-r from-orange-50 to-white">
                   <CardTitle className="flex items-center gap-2">
                     <Package className="h-5 w-5 text-orange-500" />
@@ -297,7 +299,7 @@ export default function OrderDetailPage({
 
             {/* Right Column - Order Summary */}
             <div className="lg:col-span-1">
-              <Card className="shadow-lg sticky top-4">
+              <Card className="sticky top-4">
                 <CardHeader className="bg-gradient-to-r from-orange-50 to-white">
                   <CardTitle className="flex items-center gap-2">
                     <FileText className="h-5 w-5 text-orange-500" />
