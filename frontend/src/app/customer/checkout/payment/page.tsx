@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { createMoMoPayment } from "@/services/payment.service";
 import { useRouter } from "next/navigation";
 import { PublicLayout } from "@/components/layouts/public-layout";
 import { useCheckout } from "@/contexts/checkout-context";
@@ -50,27 +51,36 @@ export default function CheckoutPaymentPage() {
       description: "Thanh toán khi nhận hàng",
     },
     {
-      id: "card",
-      name: "Thẻ tín dụng",
-      icon: CreditCard,
-      description: "Visa, Mastercard, JCB",
-    },
-    {
       id: "e-wallet",
-      name: "Ví điện tử",
+      name: "Momo",
       icon: Wallet,
-      description: "Momo, Zalopay, Airpay",
+      description: "Thanh toán bằng ví điện tử momo",
     },
   ];
 
   const handlePayment = async () => {
     setIsLoading(true);
     try {
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-      const newOrderNumber = `ORD-${Date.now()}`;
-      router.push(`/customer/checkout/success?orderId=${newOrderNumber}&total=${total}`);
+      if (paymentMethod === "e-wallet") {
+        // Gọi API backend để lấy link MoMo
+        const data = await createMoMoPayment({
+          amount: total,
+          orderInfo: `Thanh toán đơn hàng tại AnEat (${store})`,
+        });
+        if (data?.data?.payUrl) {
+          window.location.href = data.data.payUrl;
+          return;
+        } else {
+          alert("Không lấy được link thanh toán MoMo!");
+        }
+      } else {
+        // Thanh toán tiền mặt/thẻ: chuyển sang trang thành công
+        const newOrderNumber = `ORD-${Date.now()}`;
+        router.push(`/customer/checkout/success?orderId=${newOrderNumber}&total=${total}`);
+      }
     } catch (error) {
       console.error("Payment error:", error);
+      alert("Có lỗi khi thanh toán!");
     } finally {
       setIsLoading(false);
     }
@@ -171,7 +181,7 @@ export default function CheckoutPaymentPage() {
                     return (
                       <div
                         key={method.id}
-                        onClick={() => setPaymentMethod(method.id as "cash" | "card" | "e-wallet")}
+                        onClick={() => setPaymentMethod(method.id as "cash" | "e-wallet")}
                         className={`p-4 rounded-lg border-2 cursor-pointer transition-all flex items-center gap-3 ${
                           paymentMethod === method.id ? "border-orange-500 bg-orange-50" : "border-gray-200 hover:border-orange-300"
                         }`}

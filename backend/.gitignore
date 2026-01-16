@@ -30,3 +30,6 @@ build/
 postman/
 
 /docs
+
+/package-lock.json
+/package.json
