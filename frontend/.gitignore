@@ -35,3 +35,4 @@ public/workbox-*.js.map
 public/worker-*.js.map
 
 package.json
+.DS_Store
