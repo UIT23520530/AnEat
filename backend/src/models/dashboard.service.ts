@@ -155,13 +155,11 @@ export class DashboardService {
       prisma.product.count({
         where: {
           branchId,
-          deletedAt: null,
         },
       }),
       prisma.product.count({
         where: {
           branchId,
-          deletedAt: null,
           isAvailable: true,
         },
       }),
@@ -171,7 +169,6 @@ export class DashboardService {
     const lowStockProducts = await prisma.product.count({
       where: {
         branchId,
-        deletedAt: null,
         quantity: {
           lt: 5,
         },
