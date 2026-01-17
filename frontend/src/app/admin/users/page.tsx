@@ -281,7 +281,7 @@ function UsersContent() {
     if (!selectedUser) return
 
     const submitData = { ...values }
-    delete submitData._initialIsActive // Remove helper field
+    delete submitData._initialIsActive
 
     // Filter out empty password if in edit mode
     if (!submitData.password) {

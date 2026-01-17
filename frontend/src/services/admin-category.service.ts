@@ -16,6 +16,7 @@ export interface CategoryStats {
   totalCategories: number
   activeCategories: number
   inactiveCategories: number
+  totalProducts?: number
 }
 
 export interface CreateCategoryData {

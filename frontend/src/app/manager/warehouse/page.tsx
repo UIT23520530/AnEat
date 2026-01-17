@@ -7,8 +7,6 @@ import {
   Table,
   Input,
   Button,
-  Modal,
-  Form,
   Space,
   Tag,
   Popconfirm,
@@ -17,9 +15,9 @@ import {
   Statistic,
   Spin,
   Select,
-  DatePicker,
   Tabs,
   App,
+  Typography,
 } from "antd";
 import {
   PlusOutlined,
@@ -29,30 +27,28 @@ import {
   CheckCircleOutlined,
   CloseCircleOutlined,
   WarningOutlined,
-  HistoryOutlined,
 } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
-import {
-  stockRequestService,
-  type StockRequest,
-  type CreateStockRequestDto,
-  type StockStatistics,
-} from "@/services/stock-request.service";
-import { productService, type Product } from "@/services/product.service";
-import { categoryService, type Category } from "@/services/category.service";
+import { stockRequestService, type StockRequest } from "@/services/stock-request.service";
+import { staffWarehouseService, type InventoryItemDTO } from "@/services/staff-warehouse.service";
+import { managerCategoryService } from "@/services/manager-category.service";
+import { type Category } from "@/services/admin-category.service";
 import dayjs from "dayjs";
+import StockRequestFormModal from "@/components/forms/manager/StockRequestFormModal";
+import StockRequestDetailModal from "@/components/forms/manager/StockRequestDetailModal";
 
 const { Search } = Input;
+const { Text } = Typography;
 
 function WarehouseContent() {
   const { message } = App.useApp();
-  
+
   // States
   const [activeTab, setActiveTab] = useState("inventory");
-  const [products, setProducts] = useState<Product[]>([]);
+  const [products, setProducts] = useState<InventoryItemDTO[]>([]);
   const [stockRequests, setStockRequests] = useState<StockRequest[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
-  const [statistics, setStatistics] = useState<StockStatistics | null>(null);
+  const [statistics, setStatistics] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -64,19 +60,18 @@ function WarehouseContent() {
   });
 
   // Modal states
-  const [isRequestModalOpen, setIsRequestModalOpen] = useState(false);
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-
-  // Forms
-  const [requestForm] = Form.useForm();
+  const [isRequestFormOpen, setIsRequestFormOpen] = useState(false);
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<InventoryItemDTO | null>(null);
+  const [selectedRequest, setSelectedRequest] = useState<StockRequest | null>(null);
+  const [editingRequest, setEditingRequest] = useState<StockRequest | null>(null);
 
   // Load categories
   const loadCategories = async () => {
     try {
-      const response = await categoryService.getCategories({
+      const response = await managerCategoryService.getCategories({
         page: 1,
         limit: 100,
-        isActive: true,
       });
       setCategories(response.data);
     } catch (error: any) {
@@ -88,7 +83,7 @@ function WarehouseContent() {
   const loadProducts = async () => {
     try {
       setLoading(true);
-      const response = await productService.getProducts({
+      const response = await staffWarehouseService.getInventoryList({
         page: pagination.current,
         limit: pagination.pageSize,
         search: searchQuery || undefined,
@@ -98,7 +93,7 @@ function WarehouseContent() {
       setProducts(response.data);
       setPagination((prev) => ({
         ...prev,
-        total: response.meta.totalItems,
+        total: response.meta.total_items,
       }));
     } catch (error: any) {
       message.error(error.response?.data?.message || "Không thể tải danh sách sản phẩm");
@@ -153,41 +148,28 @@ function WarehouseContent() {
     }
   }, [activeTab, pagination.current, pagination.pageSize, searchQuery, statusFilter, categoryFilter]);
 
-  // Handle create stock request
-  const handleOpenRequestModal = (product: Product) => {
+  // Handlers
+  const handleOpenRequestForm = (product: InventoryItemDTO | null = null) => {
     setSelectedProduct(product);
-    requestForm.setFieldsValue({
-      productId: product.id,
-      type: "RESTOCK",
-      requestedQuantity: 50,
-    });
-    setIsRequestModalOpen(true);
+    setEditingRequest(null);
+    setIsRequestFormOpen(true);
   };
 
-  const handleSubmitRequest = async (values: CreateStockRequestDto) => {
-    try {
-      await stockRequestService.createStockRequest({
-        ...values,
-        expectedDate: values.expectedDate ? dayjs(values.expectedDate).toISOString() : undefined,
-      });
-      message.success("Tạo yêu cầu nhập kho thành công!");
-      setIsRequestModalOpen(false);
-      requestForm.resetFields();
-      setSelectedProduct(null);
-      loadStatistics();
-      if (activeTab === "requests") {
-        loadStockRequests();
-      }
-    } catch (error: any) {
-      message.error(error.response?.data?.message || "Không thể tạo yêu cầu");
-    }
+  const handleOpenEditRequest = (request: StockRequest) => {
+    setEditingRequest(request);
+    setSelectedProduct(null);
+    setIsRequestFormOpen(true);
   };
 
-  // Handle cancel request
+  const handleViewRequest = (request: StockRequest) => {
+    setSelectedRequest(request);
+    setIsDetailModalOpen(true);
+  };
+
   const handleCancelRequest = async (id: string) => {
     try {
       await stockRequestService.cancelStockRequest(id);
-      message.success("Đã hủy yêu cầu!");
+      message.success("Hủy yêu cầu thành công");
       loadStockRequests();
       loadStatistics();
     } catch (error: any) {
@@ -195,91 +177,41 @@ function WarehouseContent() {
     }
   };
 
-  // Get category color
-  const getCategoryColor = (categoryName: string) => {
-    const colors: Record<string, string> = {
-      // Main categories
-      "Main Course": "blue",
-      "Món Chính": "blue",
-      "Side Dish": "green",
-      "Món Phụ": "green",
-      "Beverage": "orange",
-      "Đồ Uống": "orange",
-      "Nước Giải Khát": "orange",
-      "Dessert": "purple",
-      "Tráng Miệng": "purple",
-      "Combo": "red",
-      "Set Meal": "red",
-      "Appetizer": "cyan",
-      "Khai Vị": "cyan",
-      // Additional categories
-      "Fast Food": "volcano",
-      "Đồ Ăn Nhanh": "volcano",
-      "Snack": "lime",
-      "Ăn Vặt": "lime",
-      "Salad": "green",
-      "Coffee": "gold",
-      "Cà Phê": "gold",
-      "Tea": "magenta",
-      "Trà": "magenta",
-      "Juice": "geekblue",
-      "Nước Ép": "geekblue",
-      "Smoothie": "purple",
-      "Sinh Tố": "purple",
-      "Beer": "orange",
-      "Bia": "orange",
-      "Wine": "red",
-      "Rượu": "red",
-    };
-    
-    // If found in predefined colors, return it
-    if (colors[categoryName]) {
-      return colors[categoryName];
-    }
-    
-    // Dynamic color generation based on hash
-    const dynamicColors = ["blue", "green", "orange", "purple", "cyan", "magenta", "geekblue", "volcano", "lime", "gold"];
-    const hash = categoryName.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-    return dynamicColors[hash % dynamicColors.length];
-  };
-
-  // Get stock status
+  // Status and Style helpers
   const getStockStatus = (quantity: number) => {
-    if (quantity === 0) return { color: "error", text: "Hết hàng", icon: <CloseCircleOutlined /> };
-    if (quantity < 10) return { color: "warning", text: "Sắp hết", icon: <WarningOutlined /> };
-    if (quantity < 50) return { color: "processing", text: "Còn ít", icon: <ClockCircleOutlined /> };
-    return { color: "success", text: "Đủ hàng", icon: <CheckCircleOutlined /> };
+    if (quantity === 0)
+      return { text: "Hết hàng", color: "error", icon: <CloseCircleOutlined /> };
+    if (quantity < 50)
+      return { text: "Sắp hết", color: "warning", icon: <WarningOutlined /> };
+    return { text: "Bình thường", color: "success", icon: <CheckCircleOutlined /> };
   };
 
-  // Get request status config
   const getRequestStatus = (status: string) => {
-    const configs: Record<string, { color: string; text: string }> = {
-      PENDING: { color: "default", text: "Chờ duyệt" },
-      APPROVED: { color: "processing", text: "Đã duyệt" },
-      REJECTED: { color: "error", text: "Từ chối" },
-      COMPLETED: { color: "success", text: "Hoàn thành" },
-      CANCELLED: { color: "default", text: "Đã hủy" },
+    const configs: Record<string, { text: string; color: string }> = {
+      PENDING: { text: "Chờ duyệt", color: "warning" },
+      APPROVED: { text: "Đã duyệt", color: "processing" },
+      COMPLETED: { text: "Hoàn thành", color: "success" },
+      REJECTED: { text: "Từ chối", color: "error" },
+      CANCELLED: { text: "Đã hủy", color: "default" },
     };
-    return configs[status] || configs.PENDING;
+    return configs[status] || { text: status, color: "default" };
   };
 
-  // Inventory columns
-  const inventoryColumns: ColumnsType<Product> = [
+  // Inventory Table Columns
+  const inventoryColumns: ColumnsType<InventoryItemDTO> = [
     {
       title: "Sản phẩm",
       key: "product",
+      width: 200,
       render: (_, record) => (
         <div className="flex items-center gap-3">
-          {record.image && (
-            <img
-              src={record.image}
-              alt={record.name}
-              className="w-12 h-12 rounded object-cover"
-              onError={(e) => {
-                (e.target as HTMLImageElement).src = "/products/placeholder.png";
-              }}
-            />
-          )}
+          <div className="w-10 h-10 bg-gray-50 rounded border border-gray-100 flex items-center justify-center overflow-hidden">
+            {record.image ? (
+              <img src={record.image} alt={record.name} className="w-full h-full object-cover" />
+            ) : (
+              <InboxOutlined className="text-gray-300" />
+            )}
+          </div>
           <div>
             <div className="font-medium">{record.name}</div>
             <div className="text-xs text-gray-500">SKU: {record.code}</div>
@@ -292,12 +224,9 @@ function WarehouseContent() {
       dataIndex: ["category", "name"],
       key: "category",
       width: 150,
-      render: (name: string) => 
-        name ? (
-          <Tag color={getCategoryColor(name)}>{name}</Tag>
-        ) : (
-          "-"
-        ),
+      render: (name: string) => (
+        <Tag color="blue">{name || "N/A"}</Tag>
+      ),
     },
     {
       title: "Tồn kho",
@@ -329,7 +258,7 @@ function WarehouseContent() {
       key: "costPrice",
       width: 120,
       align: "right",
-      render: (price: number) => `${price.toLocaleString()} ₫`,
+      render: (price: number) => `${(price / 100).toLocaleString("vi-VN")} ₫`,
     },
     {
       title: "Thao tác",
@@ -340,7 +269,7 @@ function WarehouseContent() {
         <Button
           type="primary"
           icon={<PlusOutlined />}
-          onClick={() => handleOpenRequestModal(record)}
+          onClick={() => handleOpenRequestForm(record)}
           disabled={!record.isAvailable}
         >
           Yêu cầu nhập
@@ -361,10 +290,20 @@ function WarehouseContent() {
     {
       title: "Sản phẩm",
       key: "product",
+      width: 200,
       render: (_, record) => (
-        <div>
-          <div className="font-medium">{record.product.name}</div>
-          <div className="text-xs text-gray-500">SKU: {record.product.code}</div>
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded bg-gray-50 flex items-center justify-center overflow-hidden border border-gray-100 flex-shrink-0">
+            {record.product.image ? (
+              <img src={record.product.image} alt={record.product.name} className="w-full h-full object-cover" />
+            ) : (
+              <InboxOutlined className="text-gray-300" />
+            )}
+          </div>
+          <div>
+            <div className="font-medium">{record.product.name}</div>
+            <div className="text-xs text-gray-500 font-mono">SKU: {record.product.code}</div>
+          </div>
         </div>
       ),
     },
@@ -379,7 +318,7 @@ function WarehouseContent() {
           ADJUSTMENT: "Điều chỉnh",
           RETURN: "Trả hàng",
         };
-        return types[type] || type;
+        return <Tag>{types[type] || type}</Tag>;
       },
     },
     {
@@ -388,6 +327,7 @@ function WarehouseContent() {
       key: "requestedQuantity",
       width: 100,
       align: "center",
+      render: (q: number) => <Text strong>{q}</Text>
     },
     {
       title: "Trạng thái",
@@ -396,49 +336,62 @@ function WarehouseContent() {
       width: 120,
       render: (status: string) => {
         const config = getRequestStatus(status);
-        return <Tag color={config.color}>{config.text}</Tag>;
+        return <Tag color={config.color} className="rounded-full px-3">{config.text}</Tag>;
       },
     },
     {
       title: "Ngày yêu cầu",
-      dataIndex: "requestedDate",
-      key: "requestedDate",
+      dataIndex: "createdAt",
+      key: "createdAt",
       width: 120,
       render: (date: string) => (date ? dayjs(date).format("DD/MM/YYYY") : "-"),
     },
     {
-      title: "Ngày dự kiến",
+      title: "Hạn dự kiến",
       dataIndex: "expectedDate",
       key: "expectedDate",
       width: 120,
       render: (date: string) => (date ? dayjs(date).format("DD/MM/YYYY") : "-"),
     },
     {
-      title: "Người yêu cầu",
-      key: "requestedBy",
-      width: 150,
-      render: (_, record) => record.requestedBy.name,
-    },
-    {
       title: "Thao tác",
       key: "action",
-      width: 120,
+      width: 150,
       fixed: "right",
       render: (_, record) => (
         <Space>
+          <Button
+            type="text"
+            size="small"
+            icon={<SearchOutlined />}
+            onClick={() => handleViewRequest(record)}
+          >
+            Xem
+          </Button>
+
           {record.status === "PENDING" && (
-            <Popconfirm
-              title="Hủy yêu cầu?"
-              description="Bạn có chắc muốn hủy yêu cầu này?"
-              onConfirm={() => handleCancelRequest(record.id)}
-              okText="Hủy YC"
-              cancelText="Không"
-              okButtonProps={{ danger: true }}
-            >
-              <Button type="text" danger size="small">
-                Hủy
+            <>
+              <Button
+                type="text"
+                size="small"
+                className="text-blue-500"
+                onClick={() => handleOpenEditRequest(record)}
+              >
+                Sửa
               </Button>
-            </Popconfirm>
+              <Popconfirm
+                title="Hủy yêu cầu?"
+                description="Bạn có chắc muốn hủy yêu cầu này?"
+                onConfirm={() => handleCancelRequest(record.id)}
+                okText="Xác nhận"
+                cancelText="Hủy"
+                okButtonProps={{ danger: true }}
+              >
+                <Button type="text" danger size="small">
+                  Hủy
+                </Button>
+              </Popconfirm>
+            </>
           )}
         </Space>
       ),
@@ -449,12 +402,7 @@ function WarehouseContent() {
     <div className="p-8">
       <Card className="border-0 shadow-sm">
         <CardHeader>
-          <div className="flex flex-col gap-4">
-            <div>
-              <CardTitle className="text-2xl font-bold text-slate-900">
-                Quản lý Kho hàng
-              </CardTitle>
-            </div>
+          <div className="flex flex-col gap-2">
 
             {/* Stats Cards */}
             <Row gutter={16}>
@@ -520,66 +468,80 @@ function WarehouseContent() {
               </Col>
             </Row>
 
-            {/* Tabs */}
-            <Tabs
-              activeKey={activeTab}
-              onChange={setActiveTab}
-              items={[
-                {
-                  key: "inventory",
-                  label: `Tồn kho (${products.length})`,
-                },
-                {
-                  key: "requests",
-                  label: `Yêu cầu nhập kho (${stockRequests.length})`,
-                },
-              ]}
-            />
           </div>
         </CardHeader>
 
-        <CardContent>
+        <CardContent className="pt-0">
+          {/* Filters Row */}
+          <div className="flex justify-between items-center mb-4">
+            <Space size="middle">
+
+              <Search
+                placeholder={activeTab === "inventory" ? "Tìm sản phẩm..." : "Tìm theo mã yêu cầu hoặc sản phẩm..."}
+                allowClear
+                enterButton={<SearchOutlined />}
+                size="middle"
+                onSearch={setSearchQuery}
+                onChange={(e) => {
+                  if (!e.target.value) setSearchQuery("");
+                }}
+                style={{ width: 300 }}
+              />
+              <Select
+                value={activeTab}
+                onChange={setActiveTab}
+                style={{ width: 180 }}
+                size="middle"
+                className="font-medium"
+              >
+                <Select.Option value="inventory">Tồn kho ({products.length})</Select.Option>
+                <Select.Option value="requests">Yêu cầu ({stockRequests.length})</Select.Option>
+              </Select>
+
+              {activeTab === "inventory" ? (
+                <Select
+                  value={categoryFilter}
+                  onChange={setCategoryFilter}
+                  style={{ width: 220 }}
+                  size="middle"
+                  placeholder="Chọn danh mục"
+                >
+                  <Select.Option value="all">Tất cả danh mục</Select.Option>
+                  {categories.map((cat) => (
+                    <Select.Option key={cat.id} value={cat.id}>
+                      {cat.name}
+                    </Select.Option>
+                  ))}
+                </Select>
+              ) : (
+                <Select
+                  value={statusFilter}
+                  onChange={setStatusFilter}
+                  style={{ width: 180 }}
+                  size="middle"
+                >
+                  <Select.Option value="all">Tất cả trạng thái</Select.Option>
+                  <Select.Option value="PENDING">Chờ duyệt</Select.Option>
+                  <Select.Option value="APPROVED">Đã duyệt</Select.Option>
+                  <Select.Option value="COMPLETED">Hoàn thành</Select.Option>
+                  <Select.Option value="REJECTED">Từ chối</Select.Option>
+                  <Select.Option value="CANCELLED">Đã hủy</Select.Option>
+                </Select>
+              )}
+            </Space>
+
+            <Button
+              type="primary"
+              icon={<PlusOutlined />}
+              size="middle"
+              onClick={() => handleOpenRequestForm()}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              Tạo yêu cầu nhập
+            </Button>
+          </div>
           {activeTab === "inventory" && (
             <>
-              {/* Filters */}
-              <div className="mb-4 flex justify-between items-center">
-                <Space>
-                  <Search
-                    placeholder="Tìm sản phẩm..."
-                    allowClear
-                    enterButton={<SearchOutlined />}
-                    size="large"
-                    onSearch={setSearchQuery}
-                    onChange={(e) => {
-                      if (!e.target.value) setSearchQuery("");
-                    }}
-                    style={{ width: 300 }}
-                  />
-                  <Select
-                    value={categoryFilter}
-                    onChange={setCategoryFilter}
-                    style={{ width: 180 }}
-                    size="large"
-                    placeholder="Chọn danh mục"
-                  >
-                    <Select.Option value="all">Tất cả danh mục</Select.Option>
-                    {categories.map((cat) => (
-                      <Select.Option key={cat.id} value={cat.id}>
-                        {cat.name}
-                      </Select.Option>
-                    ))}
-                  </Select>
-                </Space>
-                <Button
-                  type="primary"
-                  icon={<PlusOutlined />}
-                  size="large"
-                  onClick={() => setIsRequestModalOpen(true)}
-                >
-                  Tạo yêu cầu nhanh
-                </Button>
-              </div>
-
               <Spin spinning={loading}>
                 <Table
                   columns={inventoryColumns}
@@ -603,36 +565,6 @@ function WarehouseContent() {
 
           {activeTab === "requests" && (
             <>
-              {/* Filters */}
-              <div className="mb-4 flex justify-between items-center">
-                <Space>
-                  <Search
-                    placeholder="Tìm theo mã yêu cầu hoặc sản phẩm..."
-                    allowClear
-                    enterButton={<SearchOutlined />}
-                    size="large"
-                    onSearch={setSearchQuery}
-                    onChange={(e) => {
-                      if (!e.target.value) setSearchQuery("");
-                    }}
-                    style={{ width: 300 }}
-                  />
-                  <Select
-                    value={statusFilter}
-                    onChange={setStatusFilter}
-                    style={{ width: 150 }}
-                    size="large"
-                  >
-                    <Select.Option value="all">Tất cả</Select.Option>
-                    <Select.Option value="PENDING">Chờ duyệt</Select.Option>
-                    <Select.Option value="APPROVED">Đã duyệt</Select.Option>
-                    <Select.Option value="COMPLETED">Hoàn thành</Select.Option>
-                    <Select.Option value="REJECTED">Từ chối</Select.Option>
-                    <Select.Option value="CANCELLED">Đã hủy</Select.Option>
-                  </Select>
-                </Space>
-              </div>
-
               <Spin spinning={loading}>
                 <Table
                   columns={requestsColumns}
@@ -656,140 +588,37 @@ function WarehouseContent() {
         </CardContent>
       </Card>
 
-      {/* Create Stock Request Modal */}
-      <Modal
-        title="Tạo yêu cầu nhập kho"
-        open={isRequestModalOpen}
-        onCancel={() => {
-          setIsRequestModalOpen(false);
-          requestForm.resetFields();
-          setSelectedProduct(null);
+      <StockRequestFormModal
+        open={isRequestFormOpen}
+        onCancel={() => setIsRequestFormOpen(false)}
+        onSuccess={() => {
+          if (activeTab === "requests") {
+            loadStockRequests();
+          } else {
+            loadProducts();
+          }
+          loadStatistics();
         }}
-        footer={null}
-        width={600}
-      >
-          {selectedProduct && (
-            <div className="mb-4 p-3 bg-gray-50 rounded">
-              <div className="flex items-center gap-3">
-                {selectedProduct.image && (
-                  <img
-                    src={selectedProduct.image}
-                    alt={selectedProduct.name}
-                    className="w-16 h-16 rounded object-cover"
-                  />
-                )}
-                <div>
-                  <div className="font-medium">{selectedProduct.name}</div>
-                  <div className="text-sm text-gray-500">
-                    Tồn kho hiện tại: <strong>{selectedProduct.quantity}</strong>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
+        products={products}
+        selectedProduct={selectedProduct}
+        editingRequest={editingRequest}
+      />
 
-          <Form
-            form={requestForm}
-            layout="vertical"
-            onFinish={handleSubmitRequest}
-            className="mt-4"
-          >
-            {!selectedProduct && (
-              <Form.Item
-                label="Chọn sản phẩm"
-                name="productId"
-                rules={[{ required: true, message: "Vui lòng chọn sản phẩm!" }]}
-              >
-                <Select
-                  size="large"
-                  placeholder="Chọn sản phẩm cần nhập kho"
-                  showSearch
-                  filterOption={(input, option) =>
-                    ((option?.children as unknown) as string)?.toLowerCase().includes(input.toLowerCase())
-                  }
-                >
-                  {products.map((product) => (
-                    <Select.Option key={product.id} value={product.id}>
-                      {product.name} - SKU: {product.code} (Tồn: {product.quantity})
-                    </Select.Option>
-                  ))}
-                </Select>
-              </Form.Item>
-            )}
-
-            {selectedProduct && (
-              <Form.Item name="productId" hidden>
-                <Input />
-              </Form.Item>
-            )}
-
-            <Form.Item
-              label="Loại yêu cầu"
-              name="type"
-              rules={[{ required: true, message: "Vui lòng chọn loại yêu cầu!" }]}
-            >
-              <Select size="large">
-                <Select.Option value="RESTOCK">Nhập hàng</Select.Option>
-                <Select.Option value="ADJUSTMENT">Điều chỉnh</Select.Option>
-                <Select.Option value="RETURN">Trả hàng</Select.Option>
-              </Select>
-            </Form.Item>
-
-            <Form.Item
-              label="Số lượng yêu cầu"
-              name="requestedQuantity"
-              rules={[
-                { required: true, message: "Vui lòng nhập số lượng!" },
-                { type: "number", min: 1, message: "Số lượng phải lớn hơn 0!" },
-              ]}
-            >
-              <Input type="number" size="large" min={1} />
-            </Form.Item>
-
-            <Form.Item label="Ngày dự kiến nhận hàng" name="expectedDate">
-              <DatePicker
-                size="large"
-                style={{ width: "100%" }}
-                format="DD/MM/YYYY"
-                placeholder="Chọn ngày"
-                disabledDate={(current) => {
-                  return current && current < dayjs().startOf('day');
-                }}
-              />
-            </Form.Item>
-
-            <Form.Item label="Ghi chú" name="notes">
-              <Input.TextArea rows={3} placeholder="Ghi chú thêm về yêu cầu này..." />
-            </Form.Item>
-
-            <Form.Item className="mb-0 text-right">
-              <Space>
-                <Button
-                  onClick={() => {
-                    setIsRequestModalOpen(false);
-                    requestForm.resetFields();
-                    setSelectedProduct(null);
-                  }}
-                >
-                  Hủy
-                </Button>
-                <Button type="primary" htmlType="submit">
-                  Tạo yêu cầu
-                </Button>
-              </Space>
-            </Form.Item>
-          </Form>
-        </Modal>
-      </div>
-    );
-  }
+      <StockRequestDetailModal
+        open={isDetailModalOpen}
+        onCancel={() => setIsDetailModalOpen(false)}
+        request={selectedRequest}
+      />
+    </div>
+  );
+}
 
 export default function WarehousePage() {
   return (
-    <ManagerLayout>
-        <App>
-            <WarehouseContent />
-        </App>
+    <ManagerLayout title="Quản lý kho hàng">
+      <App>
+        <WarehouseContent />
+      </App>
     </ManagerLayout>
   );
 }

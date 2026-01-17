@@ -13,6 +13,7 @@ interface ProductsFormProps {
   selectedProduct?: Product | null
   categories: Category[]
   branches: Branch[]
+  hideBranch?: boolean
 }
 
 export default function ProductsForm({
@@ -22,6 +23,7 @@ export default function ProductsForm({
   selectedProduct,
   categories,
   branches,
+  hideBranch = false,
 }: ProductsFormProps) {
   useEffect(() => {
     if (isEdit && selectedProduct) {
@@ -36,6 +38,7 @@ export default function ProductsForm({
         quantity: selectedProduct.quantity,
         prepTime: selectedProduct.prepTime || undefined,
         isAvailable: selectedProduct.isAvailable,
+        costPrice: selectedProduct.costPrice ? selectedProduct.costPrice / 100 : undefined,
       })
     } else if (!isEdit) {
       form.resetFields()
@@ -56,7 +59,7 @@ export default function ProductsForm({
               { pattern: /^[A-Z0-9_]+$/, message: "Mã chỉ chứa chữ hoa, số và _" },
             ]}
           >
-            <Input placeholder="VD: PHO_BO" />
+            <Input placeholder="VD: GA_CAY" />
           </Form.Item>
         </Col>
         <Col span={12}>
@@ -68,7 +71,7 @@ export default function ProductsForm({
               { max: 200, message: "Tên không quá 200 ký tự" },
             ]}
           >
-            <Input placeholder="VD: Phở bò" />
+            <Input placeholder="VD: Gà cay" />
           </Form.Item>
         </Col>
       </Row>
@@ -80,7 +83,7 @@ export default function ProductsForm({
       <Row gutter={16}>
         <Col span={12}>
           <Form.Item
-            label="Giá (VNĐ)"
+            label="Giá bán (VNĐ)"
             name="price"
             rules={[
               { required: true, message: "Vui lòng nhập giá" },
@@ -97,6 +100,25 @@ export default function ProductsForm({
         </Col>
         <Col span={12}>
           <Form.Item
+            label="Giá vốn (VNĐ)"
+            name="costPrice"
+            rules={[
+              { type: "number", min: 0, message: "Giá vốn phải >= 0" },
+            ]}
+          >
+            <InputNumber
+              style={{ width: "100%" }}
+              placeholder="30000"
+              formatter={(value) => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ",")}
+              parser={(value) => value!.replace(/\$\s?|(,*)/g, "")}
+            />
+          </Form.Item>
+        </Col>
+      </Row>
+
+      <Row gutter={16}>
+        <Col span={12}>
+          <Form.Item
             label="Số lượng tồn kho"
             name="quantity"
             rules={[
@@ -107,9 +129,6 @@ export default function ProductsForm({
             <InputNumber style={{ width: "100%" }} placeholder={isEdit ? "100" : "0"} min={0} />
           </Form.Item>
         </Col>
-      </Row>
-
-      <Row gutter={16}>
         <Col span={12}>
           <Form.Item
             label="Danh mục"
@@ -125,24 +144,26 @@ export default function ProductsForm({
             </Select>
           </Form.Item>
         </Col>
-        <Col span={12}>
-          <Form.Item
-            label="Chi nhánh"
-            name="branchId"
-          >
-            <Select placeholder="Chọn chi nhánh (tùy chọn)" allowClear>
-              {(isEdit ? branches : branches.filter(b => b.isActive)).map((branch) => (
-                <Select.Option key={branch.id} value={branch.id}>
-                  {branch.name}
-                </Select.Option>
-              ))}
-            </Select>
-          </Form.Item>
-        </Col>
       </Row>
 
       <Row gutter={16}>
-        <Col span={12}>
+        {!hideBranch ? (
+          <Col span={12}>
+            <Form.Item
+              label="Chi nhánh"
+              name="branchId"
+            >
+              <Select placeholder="Chọn chi nhánh (tùy chọn)" allowClear>
+                {(isEdit ? branches : branches.filter(b => b.isActive)).map((branch) => (
+                  <Select.Option key={branch.id} value={branch.id}>
+                    {branch.name}
+                  </Select.Option>
+                ))}
+              </Select>
+            </Form.Item>
+          </Col>
+        ) : null}
+        <Col span={hideBranch ? 12 : 12}>
           <Form.Item label="Thời gian chuẩn bị (phút)" name="prepTime">
             <InputNumber style={{ width: "100%" }} placeholder="15" min={0} />
           </Form.Item>

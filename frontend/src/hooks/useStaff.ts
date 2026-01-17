@@ -23,8 +23,8 @@ interface UseStaffResult {
     totalPages: number;
   };
   fetchStaffList: (params?: StaffQueryParams) => Promise<void>;
-  createStaff: (data: CreateStaffRequest) => Promise<boolean>;
-  updateStaff: (id: string, data: UpdateStaffRequest) => Promise<boolean>;
+  createStaff: (data: CreateStaffRequest) => Promise<{ success: boolean; data?: StaffDTO; message?: string }>;
+  updateStaff: (id: string, data: UpdateStaffRequest) => Promise<{ success: boolean; data?: StaffDTO; message?: string }>;
   deleteStaff: (id: string) => Promise<{ success: boolean; message?: string }>;
   refreshList: () => Promise<void>;
 }
@@ -64,7 +64,7 @@ export function useStaff(initialParams?: StaffQueryParams): UseStaffResult {
           total: response.meta.totalItems,
           totalPages: response.meta.totalPages,
         });
-        return response; // Return response for external use
+        return;
       } else {
         throw new Error(response.message || 'Failed to fetch staff list');
       }
@@ -81,17 +81,18 @@ export function useStaff(initialParams?: StaffQueryParams): UseStaffResult {
   /**
    * Create new staff
    */
-  const createStaff = async (data: CreateStaffRequest): Promise<boolean> => {
+  const createStaff = async (data: CreateStaffRequest): Promise<{ success: boolean; data?: StaffDTO; message?: string }> => {
     try {
       const response = await StaffService.create(data);
 
       if (response.success) {
         await fetchStaffList(currentParams); // Refresh list
-        return true;
+        return { success: true, data: response.data };
       }
-      return false;
+      return { success: false, message: response.message };
     } catch (err: any) {
-      return false;
+      const message = err.response?.data?.message || err.message || 'Lỗi khi tạo nhân viên';
+      return { success: false, message };
     }
   };
 
@@ -101,17 +102,18 @@ export function useStaff(initialParams?: StaffQueryParams): UseStaffResult {
   const updateStaff = async (
     id: string,
     data: UpdateStaffRequest
-  ): Promise<boolean> => {
+  ): Promise<{ success: boolean; data?: StaffDTO; message?: string }> => {
     try {
       const response = await StaffService.update(id, data);
 
       if (response.success) {
         await fetchStaffList(currentParams); // Refresh list
-        return true;
+        return { success: true, data: response.data };
       }
-      return false;
+      return { success: false, message: response.message };
     } catch (err: any) {
-      return false;
+      const message = err.response?.data?.message || err.message || 'Lỗi khi cập nhật nhân viên';
+      return { success: false, message };
     }
   };
 
@@ -143,7 +145,7 @@ export function useStaff(initialParams?: StaffQueryParams): UseStaffResult {
   // Initial fetch
   useEffect(() => {
     fetchStaffList(initialParams);
-  }, []); 
+  }, []);
 
   return {
     staffList,

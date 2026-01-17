@@ -714,7 +714,9 @@ function TemplatesContent() {
 export default function TemplatesPage() {
   return (
     <AdminLayout title="Quản lý Mẫu">
+      <App>
       <TemplatesContent />
+      </App>
     </AdminLayout>
   );
 }

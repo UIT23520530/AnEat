@@ -14,6 +14,7 @@ interface TemplateFormProps {
   onSubmit: (values: CreateTemplateDto | UpdateTemplateDto) => Promise<void>;
   onCancel?: () => void;
   loading: boolean;
+  hideBranchSelect?: boolean;
 }
 
 export const TemplateForm: React.FC<TemplateFormProps> = ({
@@ -22,6 +23,7 @@ export const TemplateForm: React.FC<TemplateFormProps> = ({
   onSubmit,
   onCancel,
   loading,
+  hideBranchSelect = false,
 }) => {
   const { message } = App.useApp();
   const [branches, setBranches] = useState<any[]>([]);
@@ -43,6 +45,8 @@ export const TemplateForm: React.FC<TemplateFormProps> = ({
   }, [initialTemplate, form]);
 
   useEffect(() => {
+    if (hideBranchSelect) return;
+
     const loadBranches = async () => {
       setLoadingBranches(true);
       try {
@@ -56,7 +60,7 @@ export const TemplateForm: React.FC<TemplateFormProps> = ({
       }
     };
     loadBranches();
-  }, []);
+  }, [hideBranchSelect]);
 
   const handleSubmit = async (values: any) => {
     try {
@@ -134,26 +138,28 @@ export const TemplateForm: React.FC<TemplateFormProps> = ({
         />
       </Form.Item>
 
-      <Form.Item
-        label="Gán chi nhánh"
-        name="branchId"
-        extra="Để trống để áp dụng cho toàn hệ thống."
-      >
-        <Select
-          placeholder="Chọn chi nhánh (để trống = toàn hệ thống)"
-          allowClear
-          showSearch
-          loading={loadingBranches}
-          optionFilterProp="children"
-          filterOption={(input, option) =>
-            (option?.label ?? "").toLowerCase().includes(input.toLowerCase())
-          }
-          options={branches.map((b) => ({
-            value: b.id,
-            label: `${b.code} - ${b.name}`,
-          }))}
-        />
-      </Form.Item>
+      {!hideBranchSelect && (
+        <Form.Item
+          label="Gán chi nhánh"
+          name="branchId"
+          extra="Để trống để áp dụng cho toàn hệ thống."
+        >
+          <Select
+            placeholder="Chọn chi nhánh (để trống = toàn hệ thống)"
+            allowClear
+            showSearch
+            loading={loadingBranches}
+            optionFilterProp="children"
+            filterOption={(input, option) =>
+              (option?.label ?? "").toLowerCase().includes(input.toLowerCase())
+            }
+            options={branches.map((b) => ({
+              value: b.id,
+              label: `${b.code} - ${b.name}`,
+            }))}
+          />
+        </Form.Item>
+      )}
 
       <Form.Item
         label="Nội dung HTML"

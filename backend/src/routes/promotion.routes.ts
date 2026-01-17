@@ -12,14 +12,14 @@ router.use(authenticate);
 // Statistics - must be before /:id route
 router.get(
   '/statistics',
-  authorize(UserRole.ADMIN_SYSTEM, UserRole.ADMIN_BRAND),
+  authorize(UserRole.ADMIN_SYSTEM, UserRole.ADMIN_BRAND, UserRole.STAFF),
   promotionController.getPromotionStatistics
 );
 
 // Get all promotions
 router.get(
   '/',
-  authorize(UserRole.ADMIN_SYSTEM, UserRole.ADMIN_BRAND),
+  authorize(UserRole.ADMIN_SYSTEM, UserRole.ADMIN_BRAND, UserRole.STAFF),
   [
     query('page').optional().isInt({ min: 1 }),
     query('limit').optional().isInt({ min: 1 }),
@@ -40,7 +40,7 @@ router.get(
 // Get promotion by ID
 router.get(
   '/:id',
-  authorize(UserRole.ADMIN_SYSTEM, UserRole.ADMIN_BRAND),
+  authorize(UserRole.ADMIN_SYSTEM, UserRole.ADMIN_BRAND, UserRole.STAFF),
   param('id').notEmpty().withMessage('ID không được để trống'),
   promotionController.getPromotionById
 );
@@ -48,7 +48,7 @@ router.get(
 // Create promotion
 router.post(
   '/',
-  authorize(UserRole.ADMIN_SYSTEM, UserRole.ADMIN_BRAND),
+  authorize(UserRole.ADMIN_SYSTEM, UserRole.ADMIN_BRAND, UserRole.STAFF),
   [
     body('code')
       .notEmpty()
@@ -81,7 +81,7 @@ router.post(
 // Update promotion
 router.put(
   '/:id',
-  authorize(UserRole.ADMIN_SYSTEM, UserRole.ADMIN_BRAND),
+  authorize(UserRole.ADMIN_SYSTEM, UserRole.ADMIN_BRAND, UserRole.STAFF),
   [
     param('id').notEmpty().withMessage('ID không được để trống'),
     body('code')
@@ -102,7 +102,7 @@ router.put(
 // Delete promotion (soft delete)
 router.delete(
   '/:id',
-  authorize(UserRole.ADMIN_SYSTEM, UserRole.ADMIN_BRAND),
+  authorize(UserRole.ADMIN_SYSTEM, UserRole.ADMIN_BRAND, UserRole.STAFF),
   param('id').notEmpty().withMessage('ID không được để trống'),
   promotionController.deletePromotion
 );

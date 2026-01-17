@@ -57,6 +57,7 @@ model Branch {
   tables            Table[]
   templates         Template[]
   staff             User[]             @relation("staff")
+  promotions        Promotion[]
 
   @@map("Branch")
 }
@@ -227,7 +228,7 @@ model Table {
 
 model Promotion {
   id                 String        @id @default(cuid())
-  code               String        @unique
+  code               String
   type               PromotionType
   value              Int
   maxUses            Int?
@@ -236,10 +237,13 @@ model Promotion {
   expiryDate         DateTime?
   minOrderAmount     Int?
   applicableProducts String?
+  branchId           String?
   createdAt          DateTime      @default(now())
   updatedAt          DateTime      @updatedAt
+  branch             Branch?       @relation(fields: [branchId], references: [id])
   orders             Order[]
 
+  @@unique([code, branchId])
   @@map("Promotion")
 }
 

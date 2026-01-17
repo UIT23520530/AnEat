@@ -11,6 +11,7 @@ export interface Promotion {
   expiryDate?: string;
   minOrderAmount?: number;
   applicableProducts?: string;
+  branchId?: string | null;
   createdAt: string;
   updatedAt: string;
 }

@@ -422,14 +422,14 @@ export const getStaffList = async (req: Request, res: Response): Promise<void> =
       return;
     }
 
-    const { 
-      page = 1, 
-      limit = 10, 
-      sort = 'createdAt', 
+    const {
+      page = 1,
+      limit = 10,
+      sort = 'createdAt',
       order = 'desc',
       search,
       status,
-      role 
+      role
     } = req.query;
 
     const params = {
@@ -465,5 +465,517 @@ export const getStaffList = async (req: Request, res: Response): Promise<void> =
       code: 500,
       message: 'Failed to fetch staff list',
     });
+  }
+};
+
+// ==================== CATEGORY MANAGEMENT ====================
+
+/**
+ * Get category list for manager
+ */
+export const getCategoryList = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const {
+      page = 1,
+      limit = 10,
+      sort = 'createdAt',
+      order = 'desc',
+      search,
+      isActive
+    } = req.query;
+
+    const skip = (Number(page) - 1) * Number(limit);
+
+    const where: any = {};
+
+    if (search) {
+      where.OR = [
+        { name: { contains: search as string, mode: 'insensitive' } },
+        { code: { contains: search as string, mode: 'insensitive' } },
+      ];
+    }
+
+    if (isActive !== undefined) {
+      where.isActive = isActive === 'true';
+    }
+
+    const [categories, total] = await Promise.all([
+      prisma.productCategory.findMany({
+        where,
+        skip,
+        take: Number(limit),
+        orderBy: {
+          [sort as string]: order,
+        },
+        include: {
+          _count: {
+            select: {
+              products: {
+                where: {
+                  branchId: req.user?.branchId || undefined
+                }
+              }
+            },
+          },
+        },
+      }),
+      prisma.productCategory.count({ where }),
+    ]);
+
+    // Format response to match Expected Category DTO
+    const formattedCategories = categories.map((cat: any) => ({
+      ...cat,
+      productCount: cat._count.products,
+    }));
+
+    res.status(200).json({
+      success: true,
+      code: 200,
+      message: 'Category list retrieved successfully',
+      data: formattedCategories,
+      meta: {
+        currentPage: Number(page),
+        totalPages: Math.ceil(total / Number(limit)),
+        limit: Number(limit),
+        totalItems: total,
+      },
+    });
+  } catch (error) {
+    console.error('Get manager category list error:', error);
+    res.status(500).json({
+      success: false,
+      code: 500,
+      message: 'Failed to fetch category list',
+    });
+  }
+};
+
+/**
+ * Get category statistics for manager's branch
+ */
+export const getCategoryStats = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const branchId = req.user?.branchId;
+    if (!branchId) {
+      res.status(400).json({ success: false, message: 'Branch ID required' });
+      return;
+    }
+
+    const [totalCategories, activeCategories, totalProducts] = await Promise.all([
+      prisma.productCategory.count(),
+      prisma.productCategory.count({ where: { isActive: true } }),
+      prisma.product.count({ where: { branchId } }),
+    ]);
+
+    res.status(200).json({
+      success: true,
+      data: {
+        totalCategories,
+        activeCategories,
+        totalProducts,
+        // Add more stats if needed
+      },
+    });
+  } catch (error) {
+    console.error('Get category stats error:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch statistics' });
+  }
+};
+
+/**
+ * Create new category (Manager)
+ */
+export const createCategory = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { code, name, description, image } = req.body;
+
+    const existingCategory = await prisma.productCategory.findUnique({
+      where: { code },
+    });
+
+    if (existingCategory) {
+      res.status(400).json({
+        success: false,
+        message: 'Category code already exists',
+      });
+      return;
+    }
+
+    const category = await prisma.productCategory.create({
+      data: {
+        code,
+        name,
+        description,
+        image,
+      },
+    });
+
+    res.status(201).json({
+      success: true,
+      data: category,
+    });
+  } catch (error) {
+    console.error('Create category error:', error);
+    res.status(500).json({ success: false, message: 'Failed to create category' });
+  }
+};
+
+/**
+ * Update category (Manager)
+ */
+export const updateCategory = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const { name, description, image, isActive } = req.body;
+
+    const category = await prisma.productCategory.update({
+      where: { id },
+      data: {
+        name,
+        description,
+        image,
+        isActive,
+      },
+    });
+
+    res.status(200).json({
+      success: true,
+      data: category,
+    });
+  } catch (error) {
+    console.error('Update category error:', error);
+    res.status(500).json({ success: false, message: 'Failed to update category' });
+  }
+};
+
+/**
+ * Toggle category visibility for branch
+ * "ẩn món này ở cửa hàng, không phải toàn bộ hệ thống như admin"
+ */
+export const toggleCategoryVisibilityForBranch = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const { isActive } = req.body;
+    const branchId = req.user?.branchId;
+
+    if (!branchId) {
+      res.status(400).json({ success: false, message: 'Branch ID required' });
+      return;
+    }
+
+    // Update all products in this category for this branch
+    await prisma.product.updateMany({
+      where: {
+        categoryId: id,
+        branchId: branchId,
+      },
+      data: {
+        isAvailable: isActive,
+      },
+    });
+
+    res.status(200).json({
+      success: true,
+      message: `Updated all products in category to ${isActive ? 'available' : 'unavailable'} for this branch`,
+    });
+  } catch (error) {
+    console.error('Toggle category visibility error:', error);
+    res.status(500).json({ success: false, message: 'Failed to toggle visibility' });
+  }
+};
+
+/**
+ * Delete category (Manager)
+ */
+export const deleteCategory = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+
+    // Check if any products exist in this category GLOBALLY
+    const productCount = await prisma.product.count({
+      where: { categoryId: id },
+    });
+
+    if (productCount > 0) {
+      res.status(400).json({
+        success: false,
+        message: 'Cannot delete category with existing products',
+      });
+      return;
+    }
+
+    await prisma.productCategory.delete({
+      where: { id },
+    });
+
+    res.status(200).json({
+      success: true,
+      message: 'Category deleted successfully',
+    });
+  } catch (error) {
+    console.error('Delete category error:', error);
+    res.status(500).json({ success: false, message: 'Failed to delete category' });
+  }
+};
+
+// ==================== PRODUCT MANAGEMENT ====================
+
+/**
+ * Get product list for manager's branch
+ */
+export const getProductList = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const branchId = req.user?.branchId;
+    if (!branchId) {
+      res.status(400).json({ success: false, message: 'Branch ID required' });
+      return;
+    }
+
+    const {
+      page = 1,
+      limit = 10,
+      sort = 'createdAt',
+      order = 'desc',
+      search,
+      categoryId,
+      status
+    } = req.query;
+
+    const skip = (Number(page) - 1) * Number(limit);
+
+    const where: any = {
+      branchId: branchId,
+    };
+
+    if (search) {
+      where.OR = [
+        { name: { contains: search as string, mode: 'insensitive' } },
+        { code: { contains: search as string, mode: 'insensitive' } },
+      ];
+    }
+
+    if (categoryId) {
+      where.categoryId = categoryId as string;
+    }
+
+    if (status === 'available') {
+      where.isAvailable = true;
+      where.quantity = { gt: 10 };
+    } else if (status === 'low-stock') {
+      where.isAvailable = true;
+      where.quantity = { gt: 0, lte: 10 };
+    } else if (status === 'out-of-stock') {
+      where.quantity = 0;
+    } else if (status === 'hidden') {
+      where.isAvailable = false;
+    }
+
+    const [products, total] = await Promise.all([
+      prisma.product.findMany({
+        where,
+        skip,
+        take: Number(limit),
+        orderBy: {
+          [sort as string]: order,
+        },
+        include: {
+          category: true,
+        },
+      }),
+      prisma.product.count({ where }),
+    ]);
+
+    res.status(200).json({
+      success: true,
+      data: products,
+      meta: {
+        currentPage: Number(page),
+        totalPages: Math.ceil(total / Number(limit)),
+        limit: Number(limit),
+        totalItems: total,
+      },
+    });
+  } catch (error) {
+    console.error('Get manager product list error:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch products' });
+  }
+};
+
+/**
+ * Get product by ID (scoped to branch)
+ */
+export const getProductById = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const branchId = req.user?.branchId;
+
+    const product = await prisma.product.findFirst({
+      where: {
+        id,
+        branchId: branchId || undefined,
+      },
+      include: {
+        category: true,
+      },
+    });
+
+    if (!product) {
+      res.status(404).json({ success: false, message: 'Product not found' });
+      return;
+    }
+
+    res.status(200).json({ success: true, data: product });
+  } catch (error) {
+    console.error('Get product by ID error:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch product' });
+  }
+};
+
+/**
+ * Create product (auto-assign branchId)
+ */
+export const createProduct = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const branchId = req.user?.branchId;
+    if (!branchId) {
+      res.status(400).json({ success: false, message: 'Branch ID required' });
+      return;
+    }
+
+    const {
+      code,
+      name,
+      description,
+      price,
+      image,
+      categoryId,
+      quantity,
+      costPrice,
+      prepTime,
+      isAvailable
+    } = req.body;
+
+    // Convert price to cents if needed, but assuming frontend sends correct format or controller handles it
+    // Usually admin-product.service.ts mentions converting to cents
+
+    const existingProduct = await prisma.product.findUnique({
+      where: { code },
+    });
+
+    if (existingProduct) {
+      res.status(400).json({ success: false, message: 'Product code already exists' });
+      return;
+    }
+
+    const product = await prisma.product.create({
+      data: {
+        code,
+        name,
+        description,
+        price,
+        image,
+        categoryId,
+        branchId,
+        quantity: quantity || 0,
+        costPrice: costPrice || 0,
+        prepTime: prepTime || 15,
+        isAvailable: isAvailable !== undefined ? isAvailable : true,
+      },
+    });
+
+    res.status(201).json({ success: true, data: product });
+  } catch (error) {
+    console.error('Create product error:', error);
+    res.status(500).json({ success: false, message: 'Failed to create product' });
+  }
+};
+
+/**
+ * Update product (scoped to branch)
+ */
+export const updateProduct = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const branchId = req.user?.branchId;
+
+    const existingProduct = await prisma.product.findFirst({
+      where: { id, branchId: branchId || undefined }
+    });
+
+    if (!existingProduct) {
+      res.status(404).json({ success: false, message: 'Product not found in your branch' });
+      return;
+    }
+
+    const product = await prisma.product.update({
+      where: { id },
+      data: req.body,
+    });
+
+    res.status(200).json({ success: true, data: product });
+  } catch (error) {
+    console.error('Update product error:', error);
+    res.status(500).json({ success: false, message: 'Failed to update product' });
+  }
+};
+
+/**
+ * Delete product (scoped to branch)
+ */
+export const deleteProduct = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const branchId = req.user?.branchId;
+
+    const existingProduct = await prisma.product.findFirst({
+      where: { id, branchId: branchId || undefined }
+    });
+
+    if (!existingProduct) {
+      res.status(404).json({ success: false, message: 'Product not found in your branch' });
+      return;
+    }
+
+    await prisma.product.delete({ where: { id } });
+
+    res.status(200).json({ success: true, message: 'Product deleted successfully' });
+  } catch (error) {
+    console.error('Delete product error:', error);
+    res.status(500).json({ success: false, message: 'Failed to delete product' });
+  }
+};
+
+/**
+ * Get product statistics for manager's branch
+ */
+export const getProductStats = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const branchId = req.user?.branchId;
+    if (!branchId) {
+      res.status(400).json({ success: false, message: 'Branch ID required' });
+      return;
+    }
+
+    const [totalProducts, availableProducts, unavailableProducts, lowStockProducts, outOfStockProducts] = await Promise.all([
+      prisma.product.count({ where: { branchId } }),
+      prisma.product.count({ where: { branchId, isAvailable: true } }),
+      prisma.product.count({ where: { branchId, isAvailable: false } }),
+      prisma.product.count({ where: { branchId, isAvailable: true, quantity: { gt: 0, lte: 10 } } }),
+      prisma.product.count({ where: { branchId, quantity: 0 } }),
+    ]);
+
+    res.status(200).json({
+      success: true,
+      data: {
+        totalProducts,
+        availableProducts,
+        unavailableProducts,
+        lowStockProducts,
+        outOfStockProducts,
+      },
+    });
+  } catch (error) {
+    console.error('Get product stats error:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch statistics' });
   }
 };

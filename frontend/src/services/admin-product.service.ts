@@ -26,7 +26,9 @@ export interface ProductStats {
   totalProducts: number
   availableProducts: number
   unavailableProducts: number
-  productsByCategory: {
+  lowStockProducts?: number
+  outOfStockProducts?: number
+  productsByCategory?: {
     categoryId: string
     categoryName: string
     count: number

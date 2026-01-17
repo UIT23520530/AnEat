@@ -111,17 +111,24 @@ export const createStockRequest = async (req: Request, res: Response): Promise<v
       productId,
     } = req.body;
 
-    // Auto-assign branchId for ADMIN_BRAND
-    let branchId = req.body.branchId;
-    if (req.user && req.user.role === 'ADMIN_BRAND') {
-      branchId = req.user.branchId || undefined;
-    }
+    // Auto-assign branchId from user for branch-related roles
+    let branchId = req.body.branchId || req.user?.branchId;
 
     if (!branchId) {
+      console.warn('[StockRequest] Create failed: Missing branchId. User:', req.user?.id, 'Role:', req.user?.role);
       res.status(400).json({
         success: false,
         code: 400,
         message: 'Branch ID is required',
+      });
+      return;
+    }
+
+    if (!productId) {
+      res.status(400).json({
+        success: false,
+        code: 400,
+        message: 'Product ID is required',
       });
       return;
     }
@@ -189,16 +196,17 @@ export const cancelStockRequest = async (req: Request, res: Response): Promise<v
       return;
     }
 
-    if (request.requestedById !== req.user.id) {
+    // Check branch permission
+    if (request.branchId !== req.user.branchId && req.user.role !== 'ADMIN_SYSTEM') {
       res.status(403).json({
         success: false,
         code: 403,
-        message: 'Only the requester can cancel this request',
+        message: 'You do not have permission to cancel this request',
       });
       return;
     }
 
-    const updatedRequest = await StockRequestService.cancel(id, req.user.id);
+    const updatedRequest = await StockRequestService.cancel(id, req.user.id, req.user.branchId || undefined);
 
     res.status(200).json({
       success: true,
@@ -212,6 +220,49 @@ export const cancelStockRequest = async (req: Request, res: Response): Promise<v
       success: false,
       code: error.message.includes('not found') ? 404 : 400,
       message: error.message || 'Failed to cancel stock request',
+    });
+  }
+};
+
+/**
+ * Update stock request
+ */
+export const updateStockRequest = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const { productId, type, requestedQuantity, notes, expectedDate } = req.body;
+    const userId = req.user?.id;
+    const branchId = req.user?.branchId;
+
+    if (!userId || !branchId) {
+      res.status(400).json({
+        success: false,
+        code: 400,
+        message: 'Invalid user information',
+      });
+      return;
+    }
+
+    const updatedRequest = await StockRequestService.edit(id, userId, branchId, {
+      productId,
+      type,
+      requestedQuantity,
+      notes,
+      expectedDate: expectedDate ? new Date(expectedDate) : undefined,
+    });
+
+    res.status(200).json({
+      success: true,
+      code: 200,
+      message: 'Stock request updated successfully',
+      data: updatedRequest,
+    });
+  } catch (error: any) {
+    console.error('Update stock request error:', error);
+    res.status(400).json({
+      success: false,
+      code: 400,
+      message: error.message || 'Failed to update stock request',
     });
   }
 };

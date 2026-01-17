@@ -230,3 +230,82 @@ export const cancelStaffStockRequest = async (req: Request, res: Response): Prom
     });
   }
 };
+
+/**
+ * Get staff's branch stock request statistics
+ */
+export const getStaffStockRequestStats = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const branchId = req.user?.branchId;
+
+    if (!branchId) {
+      res.status(400).json({
+        success: false,
+        code: 400,
+        message: 'Branch ID không hợp lệ',
+        data: null,
+      });
+      return;
+    }
+
+    const statistics = await StockRequestService.getStatistics(branchId);
+
+    res.status(200).json({
+      success: true,
+      code: 200,
+      message: 'Lấy thống kê yêu cầu thành công',
+      data: statistics,
+    });
+  } catch (error) {
+    console.error('Get staff stock request stats error:', error);
+    res.status(500).json({
+      success: false,
+      code: 500,
+      message: 'Lỗi khi lấy thống kê yêu cầu',
+    });
+  }
+};
+
+/**
+ * Update stock request (staff can only edit their own pending requests)
+ */
+export const updateStaffStockRequest = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const { productId, type, requestedQuantity, notes, expectedDate } = req.body;
+    const userId = req.user?.id;
+    const branchId = req.user?.branchId;
+
+    if (!userId || !branchId) {
+      res.status(400).json({
+        success: false,
+        code: 400,
+        message: 'Thông tin người dùng không hợp lệ',
+        data: null,
+      });
+      return;
+    }
+
+    const updatedRequest = await StockRequestService.edit(id, userId, branchId, {
+      productId,
+      type,
+      requestedQuantity,
+      notes,
+      expectedDate: expectedDate ? new Date(expectedDate) : undefined,
+    });
+
+    res.status(200).json({
+      success: true,
+      code: 200,
+      message: 'Cập nhật yêu cầu thành công',
+      data: updatedRequest,
+    });
+  } catch (error: any) {
+    console.error('Update stock request error:', error);
+    res.status(500).json({
+      success: false,
+      code: 500,
+      message: error.message || 'Lỗi khi cập nhật yêu cầu',
+    });
+  }
+};

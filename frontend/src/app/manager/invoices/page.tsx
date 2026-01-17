@@ -1,22 +1,41 @@
 "use client";
 
-import { ManagerLayout } from "@/components/layouts/manager-layout";
+import { AdminLayout } from "@/components/layouts/admin-layout";
 import { useState, useEffect } from "react";
-import { Table, Space, Button, Tag, Modal, Descriptions, App, Statistic, Row, Col, DatePicker, Select, Tabs, Spin, Form, Input, Radio, InputNumber, Divider, Timeline, Badge } from "antd";
+import { Table, Space, Button, Tag, Modal, Descriptions, App, Statistic, Row, Col, Select, Input, Form, InputNumber, Divider, Timeline, Badge, Tooltip, Spin } from "antd";
 import type { TableColumnsType } from "antd";
-import { EyeOutlined, PrinterOutlined, DollarOutlined, FileTextOutlined, CheckCircleOutlined, ClockCircleOutlined, EditOutlined, HistoryOutlined } from "@ant-design/icons";
+import { EyeOutlined, PrinterOutlined, FileTextOutlined, SearchOutlined, HistoryOutlined, ShopOutlined, UserOutlined, PhoneOutlined, MailOutlined, DollarOutlined, CreditCardOutlined, BankOutlined, WalletOutlined, EditOutlined, ClockCircleOutlined } from "@ant-design/icons";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import dayjs from "dayjs";
-import { billService, BillDTO } from "@/services/bill.service";
+import { adminBillService, BillDTO, UpdateBillDto } from "@/services/admin-bill.service";
+import { adminBranchService } from "@/services/admin-branch.service";
 import ThermalPrintReceipt from "@/components/invoice/ThermalPrintReceipt";
+import { InvoiceEditForm } from "@/components/forms/admin/InvoiceEditForm";
+import { InvoiceHistoryModal } from "@/components/forms/admin/InvoiceHistoryModal"; import { InvoiceDetailModal } from "@/components/forms/admin/InvoiceDetailModal";
+import { InvoicePrintModal } from "@/components/forms/admin/InvoicePrintModal";
+import { ManagerLayout } from "@/components/layouts/manager-layout";
+const { Option } = Select;
 
-const { RangePicker } = DatePicker;
+// Search normalization helper
+const normalizeSearchString = (str: string) => {
+  return str
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/g, "d")
+    .replace(/\s+/g, "-")
+    .trim()
+}
 
 interface InvoiceItem {
+  id: string;
+  productId: string; // Product ID for backend updates
   name: string;
   quantity: number;
   price: number;
+  unitPrice: number;
   total: number;
+  image?: string;
 }
 
 interface Invoice {
@@ -27,6 +46,10 @@ interface Invoice {
   customerName: string;
   customerPhone: string;
   customerEmail?: string;
+  customerAddress?: string;
+  branchName: string;
+  branchCode: string;
+  branchAddress: string;
   date: string;
   time: string;
   items: InvoiceItem[];
@@ -34,41 +57,56 @@ interface Invoice {
   tax: number;
   discount: number;
   total: number;
-  paymentMethod: "cash" | "card" | "transfer" | "momo";
-  status: "paid" | "pending" | "cancelled" | "refunded";
+  totalAmount: number;
+  paymentMethod: "cash" | "card" | "transfer" | "momo" | null;
+  paymentStatus: "paid" | "pending" | "failed" | "refunded";
+  status: "draft" | "issued" | "paid" | "cancelled" | "refunded";
   staffName: string;
   notes?: string;
-  printedCount?: number;
+  internalNotes?: string;
+  printedCount: number;
   isEdited: boolean;
   editCount: number;
+  lastEditedAt?: string;
+  paidAmount: number;
+  changeAmount: number;
 }
 
 // Helper function to map backend data to frontend format
 const mapBillToInvoice = (bill: BillDTO): Invoice => {
   const dateTime = dayjs(bill.createdAt);
-  
+
   // Map payment method
-  let paymentMethod: "cash" | "card" | "transfer" | "momo" = "cash";
+  let paymentMethod: "cash" | "card" | "transfer" | "momo" | null = null;
   if (bill.paymentMethod === "CASH") paymentMethod = "cash";
   else if (bill.paymentMethod === "CARD") paymentMethod = "card";
   else if (bill.paymentMethod === "BANK_TRANSFER") paymentMethod = "transfer";
   else if (bill.paymentMethod === "E_WALLET") paymentMethod = "momo";
 
+  // Map payment status
+  let paymentStatus: "paid" | "pending" | "failed" | "refunded" = "pending";
+  if (bill.paymentStatus === "PAID") paymentStatus = "paid";
+  else if (bill.paymentStatus === "FAILED") paymentStatus = "failed";
+  else if (bill.paymentStatus === "REFUNDED") paymentStatus = "refunded";
+
   // Map status
-  let status: "paid" | "pending" | "cancelled" | "refunded" = "pending";
-  if (bill.status === "PAID") status = "paid";
+  let status: "draft" | "issued" | "paid" | "cancelled" | "refunded" = "issued";
+  if (bill.status === "DRAFT") status = "draft";
+  else if (bill.status === "ISSUED") status = "issued";
+  else if (bill.status === "PAID") status = "paid";
   else if (bill.status === "CANCELLED") status = "cancelled";
   else if (bill.status === "REFUNDED") status = "refunded";
-  else if (bill.status === "ISSUED" || bill.status === "DRAFT") {
-    status = bill.paymentStatus === "PAID" ? "paid" : "pending";
-  }
 
   // Map order items
   const items: InvoiceItem[] = bill.order?.items?.map(item => ({
+    id: item.id, // Use order item id for unique key
+    productId: item.product.id, // Store product ID for updates
     name: item.product.name,
     quantity: item.quantity,
     price: item.price,
+    unitPrice: item.price,
     total: item.price * item.quantity,
+    image: item.product.image,
   })) || [];
 
   return {
@@ -79,6 +117,10 @@ const mapBillToInvoice = (bill: BillDTO): Invoice => {
     customerName: bill.customerName || "Khách hàng",
     customerPhone: bill.customerPhone || "N/A",
     customerEmail: bill.customerEmail || undefined,
+    customerAddress: bill.customerAddress || undefined,
+    branchName: bill.branch?.name || "N/A",
+    branchCode: bill.branch?.code || "N/A",
+    branchAddress: bill.branch?.address || "Chưa có địa chỉ",
     date: dateTime.format("YYYY-MM-DD"),
     time: dateTime.format("HH:mm"),
     items,
@@ -86,18 +128,24 @@ const mapBillToInvoice = (bill: BillDTO): Invoice => {
     tax: bill.taxAmount,
     discount: bill.discountAmount,
     total: bill.total,
+    totalAmount: bill.total,
     paymentMethod,
+    paymentStatus,
     status,
     staffName: bill.issuedBy?.name || "N/A",
     notes: bill.notes || undefined,
+    internalNotes: bill.internalNotes || undefined,
     printedCount: bill.printedCount,
     isEdited: bill.isEdited,
     editCount: bill.editCount,
+    lastEditedAt: bill.lastEditedAt || undefined,
+    paidAmount: bill.paidAmount,
+    changeAmount: bill.changeAmount,
   };
 };
 
 function InvoicesContent() {
-  const { message } = App.useApp();
+  const { message, modal } = App.useApp();
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -106,16 +154,20 @@ function InvoicesContent() {
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [billHistory, setBillHistory] = useState<any[]>([]);
   const [editForm] = Form.useForm();
-  const [activeTab, setActiveTab] = useState("all");
-  const [dateRange, setDateRange] = useState<any>(null);
-  const [paymentFilter, setPaymentFilter] = useState<string | undefined>(undefined);
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [paymentMethodFilter, setPaymentMethodFilter] = useState<string>("all");
+  const [branchFilter, setBranchFilter] = useState<string | undefined>(undefined);
+  const [searchText, setSearchText] = useState<string>("");
   const [loading, setLoading] = useState(false);
+  const [branches, setBranches] = useState<any[]>([]);
   const [stats, setStats] = useState({
     totalBills: 0,
     paidBills: 0,
     pendingBills: 0,
+    cancelledBills: 0,
+    refundedBills: 0,
     totalRevenue: 0,
-    todayRevenue: 0,
+    averageBillAmount: 0,
   });
   const [pagination, setPagination] = useState({
     current: 1,
@@ -123,45 +175,72 @@ function InvoicesContent() {
     total: 0,
   });
 
+  // Load branches
+  const loadBranches = async () => {
+    try {
+      const response = await adminBranchService.getBranches({ page: 1, limit: 999 });
+      setBranches(response.data);
+    } catch (error: any) {
+      console.error("Failed to load branches:", error);
+    }
+  };
+
   // Fetch bills from API
   const fetchBills = async (page = 1, pageSize = 10) => {
     setLoading(true);
     try {
       const params: any = {
-        page,
-        limit: pageSize,
+        page: 1,
+        limit: 999, // Fetch more for client-side filtering with normalization
         sort: "-createdAt",
       };
 
-      // Apply filters
-      if (activeTab !== "all") {
-        if (activeTab === "paid") params.status = "PAID";
-        else if (activeTab === "pending") params.paymentStatus = "PENDING";
-        else if (activeTab === "cancelled") params.status = "CANCELLED";
-        else if (activeTab === "refunded") params.status = "REFUNDED";
-      }
+      // We still send basic filters to the backend to reduce payload
+      if (branchFilter) params.branchId = branchFilter;
 
-      if (dateRange && dateRange.length === 2) {
-        params.dateFrom = dateRange[0].format("YYYY-MM-DD");
-        params.dateTo = dateRange[1].format("YYYY-MM-DD");
-      }
-
-      if (paymentFilter) {
-        if (paymentFilter === "cash") params.paymentMethod = "CASH";
-        else if (paymentFilter === "card") params.paymentMethod = "CARD";
-        else if (paymentFilter === "transfer") params.paymentMethod = "BANK_TRANSFER";
-        else if (paymentFilter === "momo") params.paymentMethod = "E_WALLET";
-      }
-
-      const response = await billService.getBillList(params);
+      const response = await adminBillService.getBills(params);
 
       if (response.success) {
-        const mappedInvoices = response.data.map(mapBillToInvoice);
-        setInvoices(mappedInvoices);
+        let filteredData = response.data.map(mapBillToInvoice);
+
+        // Client-side filter by status
+        if (statusFilter && statusFilter !== "all") {
+          if (statusFilter === "PAID") filteredData = filteredData.filter(i => i.status === "paid");
+          else if (statusFilter === "PENDING") filteredData = filteredData.filter(i => i.paymentStatus === "pending");
+          else if (statusFilter === "CANCELLED") filteredData = filteredData.filter(i => i.status === "cancelled");
+          else if (statusFilter === "REFUNDED") filteredData = filteredData.filter(i => i.status === "refunded");
+          else if (statusFilter === "DRAFT") filteredData = filteredData.filter(i => i.status === "draft");
+          else if (statusFilter === "ISSUED") filteredData = filteredData.filter(i => i.status === "issued");
+        }
+
+        // Client-side filter by payment method
+        if (paymentMethodFilter && paymentMethodFilter !== "all") {
+          filteredData = filteredData.filter(i => i.paymentMethod === paymentMethodFilter.toLowerCase());
+        }
+
+        // Client-side filter by Search Query with normalization
+        if (searchText) {
+          const normalizedQuery = normalizeSearchString(searchText);
+          filteredData = filteredData.filter(i => {
+            const normalizedBillNumber = normalizeSearchString(i.billNumber);
+            const normalizedCustomerName = normalizeSearchString(i.customerName);
+            const normalizedOrderNumber = normalizeSearchString(i.orderNumber);
+            const normalizedPhone = i.customerPhone ? normalizeSearchString(i.customerPhone) : "";
+
+            return (
+              normalizedBillNumber.includes(normalizedQuery) ||
+              normalizedCustomerName.includes(normalizedQuery) ||
+              normalizedOrderNumber.includes(normalizedQuery) ||
+              normalizedPhone.includes(normalizedQuery)
+            );
+          });
+        }
+
+        setInvoices(filteredData);
         setPagination({
-          current: response.meta.current_page,
-          pageSize: response.meta.limit,
-          total: response.meta.total_items,
+          current: 1,
+          pageSize: 10,
+          total: filteredData.length,
         });
       }
     } catch (error: any) {
@@ -175,25 +254,10 @@ function InvoicesContent() {
   // Fetch statistics
   const fetchStats = async () => {
     try {
-      const params: any = {};
-      if (dateRange && dateRange.length === 2) {
-        params.dateFrom = dateRange[0].format("YYYY-MM-DD");
-        params.dateTo = dateRange[1].format("YYYY-MM-DD");
-      }
-
-      const response = await billService.getBillStats(
-        params.dateFrom,
-        params.dateTo
-      );
+      const response = await adminBillService.getBillStats(branchFilter);
 
       if (response.success) {
-        setStats({
-          totalBills: response.data.totalBills,
-          paidBills: response.data.paidBills,
-          pendingBills: response.data.pendingBills,
-          totalRevenue: response.data.totalRevenue,
-          todayRevenue: 0, // Calculate separately if needed
-        });
+        setStats(response.data);
       }
     } catch (error) {
       console.error("Failed to fetch stats:", error);
@@ -202,23 +266,24 @@ function InvoicesContent() {
 
   // Initial load
   useEffect(() => {
-    fetchBills(pagination.current, pagination.pageSize);
-    fetchStats();
+    loadBranches();
   }, []);
 
-  // Reload when filters change
   useEffect(() => {
     fetchBills(1, pagination.pageSize);
+  }, [statusFilter, paymentMethodFilter, branchFilter, searchText]);
+
+  // Reload stats when branch filter changes
+  useEffect(() => {
     fetchStats();
-  }, [activeTab, dateRange, paymentFilter]);
+  }, [branchFilter]);
 
   const handleViewDetails = async (record: Invoice) => {
     setLoading(true);
     try {
-      // Fetch full bill details
-      const billId = record.key; // Using key which is the bill ID
-      const response = await billService.getBillById(billId);
-      
+      const billId = record.key;
+      const response = await adminBillService.getBillById(billId);
+
       if (response.success) {
         const detailedInvoice = mapBillToInvoice(response.data);
         setSelectedInvoice(detailedInvoice);
@@ -235,10 +300,10 @@ function InvoicesContent() {
   const handlePrint = async (invoice: Invoice) => {
     try {
       const billId = invoice.key;
-      
+
       // Fetch full bill details if not already loaded
       if (!invoice.items || invoice.items.length === 0) {
-        const response = await billService.getBillById(billId);
+        const response = await adminBillService.getBillById(billId);
         if (response.success) {
           const detailedInvoice = mapBillToInvoice(response.data);
           setSelectedInvoice(detailedInvoice);
@@ -246,7 +311,7 @@ function InvoicesContent() {
       } else {
         setSelectedInvoice(invoice);
       }
-      
+
       // Open print modal
       setIsPrintModalOpen(true);
     } catch (error: any) {
@@ -257,18 +322,18 @@ function InvoicesContent() {
 
   const handleConfirmPrint = async () => {
     if (!selectedInvoice) return;
-    
+
     try {
       const billId = selectedInvoice.key;
-      
+
       // Mark as printed in backend
-      await billService.printBill(billId);
-      
+      await adminBillService.printBill(billId);
+
       // Trigger browser print
       window.print();
-      
+
       message.success(`Đã in hóa đơn ${selectedInvoice.id}`);
-      
+
       // Close modal and refresh
       setIsPrintModalOpen(false);
       fetchBills(pagination.current, pagination.pageSize);
@@ -281,13 +346,31 @@ function InvoicesContent() {
   const handleEditBill = (invoice: Invoice) => {
     setSelectedInvoice(invoice);
     editForm.setFieldsValue({
+      billNumber: invoice.billNumber,
+      orderNumber: invoice.orderNumber,
       customerName: invoice.customerName,
       customerPhone: invoice.customerPhone,
       customerEmail: invoice.customerEmail,
+      customerAddress: invoice.customerAddress,
+      items: invoice.items.map(item => ({
+        id: item.id,
+        productId: item.productId,
+        name: item.name,
+        quantity: item.quantity,
+        unitPrice: item.unitPrice,
+        price: item.price,
+        total: item.total,
+        image: item.image,
+      })),
+      discount: invoice.discount || 0,
+      subtotal: invoice.subtotal,
+      tax: invoice.tax || 0,
+      totalAmount: invoice.totalAmount,
       paymentMethod: invoice.paymentMethod,
-      paymentStatus: invoice.status === "paid" ? "PAID" : "PENDING",
-      paidAmount: invoice.total,
+      paymentStatus: invoice.paymentStatus === "paid" ? "PAID" : invoice.paymentStatus === "failed" ? "FAILED" : invoice.paymentStatus === "refunded" ? "REFUNDED" : "PENDING",
+      paidAmount: invoice.paidAmount,
       notes: invoice.notes,
+      internalNotes: invoice.internalNotes,
       editReason: "",
     });
     setIsEditModalOpen(true);
@@ -296,27 +379,30 @@ function InvoicesContent() {
   const handleUpdateBill = async () => {
     try {
       const values = await editForm.validateFields();
-      
+      let currentItems = editForm.getFieldValue("items") || [];
+      if (!Array.isArray(currentItems)) {
+        currentItems = [];
+      }
+
       if (!selectedInvoice) return;
 
       setLoading(true);
-      
-      const updateData: any = {
+
+      const updateData: UpdateBillDto = {
         editReason: values.editReason,
       };
 
-      // Only include changed fields
-      if (values.customerName !== selectedInvoice.customerName) {
-        updateData.customerName = values.customerName;
-      }
-      if (values.customerPhone !== selectedInvoice.customerPhone) {
-        updateData.customerPhone = values.customerPhone;
-      }
-      if (values.customerEmail !== selectedInvoice.customerEmail) {
-        updateData.customerEmail = values.customerEmail;
-      }
-      if (values.paymentMethod !== selectedInvoice.paymentMethod) {
-        const methodMap: Record<string, string> = {
+      // Always include all fields (backend will track what changed)
+      updateData.customerName = values.customerName;
+      updateData.customerPhone = values.customerPhone;
+      updateData.customerEmail = values.customerEmail;
+      updateData.customerAddress = values.customerAddress;
+      updateData.notes = values.notes;
+      updateData.internalNotes = values.internalNotes;
+      updateData.paidAmount = values.paidAmount;
+
+      if (values.paymentMethod) {
+        const methodMap: Record<string, any> = {
           cash: "CASH",
           card: "CARD",
           transfer: "BANK_TRANSFER",
@@ -327,20 +413,49 @@ function InvoicesContent() {
       if (values.paymentStatus) {
         updateData.paymentStatus = values.paymentStatus;
       }
-      if (values.paidAmount !== undefined) {
-        updateData.paidAmount = values.paidAmount;
-      }
-      if (values.notes !== selectedInvoice.notes) {
-        updateData.notes = values.notes;
+
+      // Handle items changes - always send if present
+      let recalculatedSubtotal = 0;
+      if (currentItems && currentItems.length > 0) {
+        updateData.items = currentItems.map((item: any) => {
+          const quantity = Number(item.quantity) || 0;
+          const unitPrice = Number(item.price ?? item.unitPrice) || 0;
+          recalculatedSubtotal += quantity * unitPrice;
+          return {
+            productId: item.productId,
+            quantity,
+            unitPrice,
+          };
+        });
       }
 
-      const response = await billService.updateBill(selectedInvoice.key, updateData);
-      
+      // Always send calculated fields (recompute to avoid stale form values)
+      const discountValue = Number(values.discount) || 0;
+      const subtotalValue = recalculatedSubtotal || Number(values.subtotal) || 0;
+      const taxValue = values.tax !== undefined ? Number(values.tax) : subtotalValue * 0.1;
+      const totalValue = subtotalValue + taxValue - discountValue;
+
+      updateData.discount = discountValue;
+      updateData.subtotal = subtotalValue;
+      updateData.tax = taxValue;
+      updateData.totalAmount = totalValue;
+
+      const response = await adminBillService.updateBill(selectedInvoice.key, updateData);
+
       if (response.success) {
         message.success("Cập nhật hóa đơn thành công");
         setIsEditModalOpen(false);
         editForm.resetFields();
+
+        // Fetch updated bill details to refresh selectedInvoice
+        const updatedResponse = await adminBillService.getBillById(selectedInvoice.key);
+        if (updatedResponse.success) {
+          const updatedInvoice = mapBillToInvoice(updatedResponse.data);
+          setSelectedInvoice(updatedInvoice);
+        }
+
         fetchBills(pagination.current, pagination.pageSize);
+        fetchStats();
       }
     } catch (error: any) {
       message.error("Không thể cập nhật hóa đơn");
@@ -354,8 +469,8 @@ function InvoicesContent() {
     setLoading(true);
     try {
       const billId = invoice.key;
-      const response = await billService.getBillHistory(billId);
-      
+      const response = await adminBillService.getBillHistory(billId);
+
       if (response.success) {
         setBillHistory(response.data);
         setSelectedInvoice(invoice);
@@ -369,11 +484,17 @@ function InvoicesContent() {
     }
   };
 
-  const handleTableChange = (newPagination: any) => {
+  const handleTableChange = (newPagination: any, filters: any, sorter: any) => {
+    setPagination({
+      ...pagination,
+      current: newPagination.current,
+      pageSize: newPagination.pageSize,
+    });
     fetchBills(newPagination.current, newPagination.pageSize);
   };
 
-  const getPaymentMethodText = (method: string) => {
+  const getPaymentMethodText = (method: string | null) => {
+    if (!method) return "Chưa chọn";
     const methods: Record<string, string> = {
       cash: "Tiền mặt",
       card: "Thẻ",
@@ -383,7 +504,8 @@ function InvoicesContent() {
     return methods[method] || method;
   };
 
-  const getPaymentMethodColor = (method: string) => {
+  const getPaymentMethodColor = (method: string | null) => {
+    if (!method) return "default";
     const colors: Record<string, string> = {
       cash: "green",
       card: "blue",
@@ -393,25 +515,100 @@ function InvoicesContent() {
     return colors[method] || "default";
   };
 
+  const getPaymentMethodIcon = (method: string | null) => {
+    if (!method) return <DollarOutlined />;
+    const icons: Record<string, React.ReactNode> = {
+      cash: <DollarOutlined />,
+      card: <CreditCardOutlined />,
+      transfer: <BankOutlined />,
+      momo: <WalletOutlined />,
+    };
+    return icons[method] || <DollarOutlined />;
+  };
+
+  const getStatusColor = (status: string) => {
+    const colors: Record<string, string> = {
+      draft: "default",
+      issued: "blue",
+      paid: "green",
+      cancelled: "red",
+      refunded: "purple",
+    };
+    return colors[status] || "default";
+  };
+
+  const getStatusText = (status: string) => {
+    const texts: Record<string, string> = {
+      draft: "Nháp",
+      issued: "Đã xuất",
+      paid: "Đã thanh toán",
+      cancelled: "Đã hủy",
+      refunded: "Đã hoàn tiền",
+    };
+    return texts[status] || status;
+  };
+
+  const getPaymentStatusColor = (status: string) => {
+    const colors: Record<string, string> = {
+      paid: "green",
+      pending: "orange",
+      failed: "red",
+      refunded: "purple",
+    };
+    return colors[status] || "default";
+  };
+
+  const getPaymentStatusText = (status: string) => {
+    const texts: Record<string, string> = {
+      paid: "Đã thanh toán",
+      pending: "Chờ thanh toán",
+      failed: "Thất bại",
+      refunded: "Đã hoàn tiền",
+    };
+    return texts[status] || status;
+  };
+
   const columns: TableColumnsType<Invoice> = [
     {
-      title: "Mã HĐ",
-      dataIndex: "id",
-      key: "id",
+      title: "Mã hóa đơn",
+      dataIndex: "billNumber",
+      key: "billNumber",
       width: 140,
       fixed: "left",
-      render: (id) => <strong style={{ color: "#1890ff" }}>{id}</strong>,
+      render: (billNumber, record) => (
+        <div>
+          <strong style={{ color: "#1890ff" }}>{billNumber}</strong>
+          {record.isEdited && (
+            <div>
+              <Badge count={record.editCount} style={{ backgroundColor: "#faad14" }} />
+            </div>
+          )}
+        </div>
+      ),
     },
     {
       title: "Mã đơn hàng",
       dataIndex: "orderNumber",
       key: "orderNumber",
-      width: 120,
+      width: 150,
+    },
+    {
+      title: "Chi nhánh",
+      key: "branch",
+      width: 250,
+      render: (_, record) => (
+        <div>
+          <div style={{ fontWeight: 500 }}>{record.branchName}</div>
+          <div style={{ fontSize: "12px", color: "#666" }}>
+            {record.branchCode}
+          </div>
+        </div>
+      ),
     },
     {
       title: "Khách hàng",
       key: "customer",
-      width: 200,
+      width: 180,
       render: (_, record) => (
         <div>
           <div style={{ fontWeight: 500 }}>{record.customerName}</div>
@@ -422,7 +619,13 @@ function InvoicesContent() {
       ),
     },
     {
-      title: "Ngày giờ",
+      title: "Nhân viên",
+      dataIndex: "staffName",
+      key: "staffName",
+      width: 190,
+    },
+    {
+      title: <Tooltip>Ngày giờ</Tooltip>,
       key: "datetime",
       width: 150,
       render: (_, record) => (
@@ -432,139 +635,95 @@ function InvoicesContent() {
         </div>
       ),
       sorter: (a, b) => dayjs(a.date + " " + a.time).unix() - dayjs(b.date + " " + b.time).unix(),
+      showSorterTooltip: { title: "Sắp xếp theo ngày giờ" },
     },
     {
-      title: "Tổng tiền",
+      title: <Tooltip>Tổng tiền</Tooltip>,
       dataIndex: "total",
       key: "total",
       width: 130,
+      align: "right",
       render: (total) => (
-        <strong style={{ color: "#52c41a" }}>
+        <strong>
           {total.toLocaleString()}đ
         </strong>
       ),
       sorter: (a, b) => a.total - b.total,
+      showSorterTooltip: { title: "Sắp xếp theo tổng tiền" },
     },
     {
-      title: "Thanh toán",
+      title: "Phương thức thanh toán",
       dataIndex: "paymentMethod",
       key: "paymentMethod",
-      width: 130,
+      align: "center",
+      width: 180,
       render: (method) => (
-        <Tag color={getPaymentMethodColor(method)}>
+        <Tag color={getPaymentMethodColor(method)} icon={getPaymentMethodIcon(method)}>
           {getPaymentMethodText(method)}
         </Tag>
       ),
-      filters: [
-        { text: "Tiền mặt", value: "cash" },
-        { text: "Thẻ", value: "card" },
-        { text: "Chuyển khoản", value: "transfer" },
-        { text: "MoMo", value: "momo" },
-      ],
-      onFilter: (value, record) => record.paymentMethod === value,
     },
     {
       title: "Trạng thái",
-      dataIndex: "status",
-      key: "status",
-      width: 130,
-      render: (status) => {
-        let color = "default";
-        let text = status;
-        let icon = null;
-        if (status === "paid") {
-          color = "green";
-          text = "Đã thanh toán";
-          icon = <CheckCircleOutlined />;
-        } else if (status === "pending") {
-          color = "orange";
-          text = "Chờ thanh toán";
-          icon = <ClockCircleOutlined />;
-        } else if (status === "cancelled") {
-          color = "red";
-          text = "Đã hủy";
-        } else if (status === "refunded") {
-          color = "purple";
-          text = "Đã hoàn tiền";
-        }
-        return (
-          <Tag icon={icon} color={color}>
-            {text}
-          </Tag>
-        );
-      },
-      filters: [
-        { text: "Đã thanh toán", value: "paid" },
-        { text: "Chờ thanh toán", value: "pending" },
-        { text: "Đã hủy", value: "cancelled" },
-        { text: "Đã hoàn tiền", value: "refunded" },
-      ],
-      onFilter: (value, record) => record.status === value,
+      dataIndex: "paymentStatus",
+      key: "paymentStatus",
+      align: "center",
+      width: 140,
+      render: (status) => (
+        <Tag color={getPaymentStatusColor(status)}>
+          {getPaymentStatusText(status)}
+        </Tag>
+      ),
     },
     {
-      title: "Nhân viên",
-      dataIndex: "staffName",
-      key: "staffName",
-      width: 130,
-    },
-    {
-      title: "Hành động",
-      key: "action",
-      width: 220,
+      title: "Thao tác",
+      key: "actions",
+      width: 170,
+      align: "center",
       fixed: "right",
       render: (_, record) => (
         <Space size="small">
-          <Button
-            type="link"
-            icon={<EyeOutlined />}
-            onClick={() => handleViewDetails(record)}
-            title="Xem chi tiết"
-          >
-            Xem
-          </Button>
-          <Button
-            type="link"
-            icon={<PrinterOutlined />}
-            onClick={() => handlePrint(record)}
-            title="In hóa đơn"
-          >
-            In
-          </Button>
-          <Button
-            type="link"
-            icon={<EditOutlined />}
-            onClick={() => handleEditBill(record)}
-            disabled={record.status === "cancelled" || record.status === "refunded"}
-            title="Chỉnh sửa (khiếu nại)"
-          >
-            Sửa
-          </Button>
-          {record.editCount > 0 && (
+          <Tooltip title="Xem chi tiết">
             <Button
-              type="link"
-              icon={<HistoryOutlined />}
-              onClick={() => handleViewHistory(record)}
-              title="Xem lịch sử"
-            >
-              <Badge count={record.editCount} size="small">
-                Lịch sử
-              </Badge>
-            </Button>
+              type="text"
+              icon={<EyeOutlined />}
+              onClick={() => handleViewDetails(record)}
+            />
+          </Tooltip>
+          <Tooltip title="In hóa đơn">
+            <Button
+              type="text"
+              icon={<PrinterOutlined />}
+              onClick={() => handlePrint(record)}
+            />
+          </Tooltip>
+          <Tooltip title="Chỉnh sửa">
+            <Button
+              type="text"
+              icon={<EditOutlined />}
+              onClick={() => handleEditBill(record)}
+            />
+          </Tooltip>
+          {record.editCount > 0 && (
+            <Tooltip title="Xem lịch sử">
+              <Button
+                type="text"
+                icon={<HistoryOutlined />}
+                onClick={() => handleViewHistory(record)}
+              />
+            </Tooltip>
           )}
         </Space>
       ),
     },
   ];
 
-  // Filter invoices based on active tab and filters (client-side for already fetched data)
-  const filteredInvoices = invoices;
-
-  // Calculate counts from stats
+  // Calculate counts for filters
+  const totalCount = pagination.total;
   const paidCount = stats.paidBills;
   const pendingCount = stats.pendingBills;
-  const cancelledCount = invoices.filter((inv) => inv.status === "cancelled").length;
-  const refundedCount = invoices.filter((inv) => inv.status === "refunded").length;
-  const totalCount = stats.totalBills;
+  const cancelledCount = stats.cancelledBills;
+  const refundedCount = stats.refundedBills;
 
   return (
     <div className="p-8">
@@ -572,19 +731,13 @@ function InvoicesContent() {
         <Card className="border-0 shadow-sm">
           <CardHeader>
             <div className="flex flex-col gap-4">
-              <div>
-                <CardTitle className="text-2xl font-bold text-slate-900">
-                  Quản lý Hóa đơn
-                </CardTitle>
-              </div>
-
               {/* Stats Cards */}
               <Row gutter={16}>
                 <Col span={6}>
                   <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
                     <Statistic
                       title="Tổng hóa đơn"
-                      value={totalCount}
+                      value={stats.totalBills}
                       prefix={<FileTextOutlined />}
                       valueStyle={{ color: "#1890ff" }}
                     />
@@ -593,10 +746,9 @@ function InvoicesContent() {
                 <Col span={6}>
                   <div className="bg-green-50 p-4 rounded-lg border border-green-100">
                     <Statistic
-                      title="Tổng doanh thu"
-                      value={stats.totalRevenue}
+                      title="Đã thanh toán"
+                      value={stats.paidBills}
                       prefix={<DollarOutlined />}
-                      suffix="đ"
                       valueStyle={{ color: "#52c41a" }}
                     />
                   </div>
@@ -604,11 +756,11 @@ function InvoicesContent() {
                 <Col span={6}>
                   <div className="bg-orange-50 p-4 rounded-lg border border-orange-100">
                     <Statistic
-                      title="Doanh thu hôm nay"
-                      value={stats.todayRevenue}
+                      title="Tổng doanh thu"
+                      value={stats.totalRevenue}
                       prefix={<DollarOutlined />}
+                      valueStyle={{ color: "#fa8c16" }}
                       suffix="đ"
-                      valueStyle={{ color: "#faad14" }}
                     />
                   </div>
                 </Col>
@@ -616,7 +768,7 @@ function InvoicesContent() {
                   <div className="bg-red-50 p-4 rounded-lg border border-red-100">
                     <Statistic
                       title="Chờ thanh toán"
-                      value={pendingCount}
+                      value={stats.pendingBills}
                       prefix={<ClockCircleOutlined />}
                       valueStyle={{ color: "#ff4d4f" }}
                     />
@@ -625,56 +777,65 @@ function InvoicesContent() {
               </Row>
 
               {/* Filters */}
-              <div>
-                <Space>
-                  <RangePicker
-                    placeholder={["Từ ngày", "Đến ngày"]}
-                    format="YYYY-MM-DD"
-                    onChange={setDateRange}
-                    style={{ width: 240 }}
-                  />
-                  <Select
-                    placeholder="Phương thức thanh toán"
+              <div className="flex justify-between items-center">
+                <Space size="middle">
+                  {/* Search */}
+                  <Input
+                    placeholder="Tìm số hóa đơn, khách hàng..."
+                    prefix={<SearchOutlined />}
+                    style={{ width: 280 }}
+                    value={searchText}
+                    onChange={(e) => setSearchText(e.target.value)}
                     allowClear
-                    style={{ width: 200 }}
-                    onChange={setPaymentFilter}
-                    options={[
-                      { label: "Tiền mặt", value: "cash" },
-                      { label: "Thẻ", value: "card" },
-                      { label: "Chuyển khoản", value: "transfer" },
-                      { label: "MoMo", value: "momo" },
-                    ]}
                   />
+
+                  {/* Status Filter */}
+                  <Select
+                    value={statusFilter}
+                    onChange={setStatusFilter}
+                    style={{ width: 200 }}
+                    className={statusFilter !== "all" ? "[&>.ant-select-selector]:!bg-blue-50 [&>.ant-select-selector]:!border-blue-500" : ""}
+                  >
+                    <Select.Option value="all">Tất cả trạng thái</Select.Option>
+                    <Select.Option value="PAID">Đã thanh toán</Select.Option>
+                    <Select.Option value="PENDING">Chờ thanh toán</Select.Option>
+                    <Select.Option value="CANCELLED">Đã hủy</Select.Option>
+                    <Select.Option value="REFUNDED">Đã hoàn tiền</Select.Option>
+                    <Select.Option value="DRAFT">Nháp</Select.Option>
+                    <Select.Option value="ISSUED">Đã xuất</Select.Option>
+                  </Select>
+
+                  {/* Payment Method Filter */}
+                  <Select
+                    value={paymentMethodFilter}
+                    onChange={setPaymentMethodFilter}
+                    style={{ width: 180 }}
+                    className={paymentMethodFilter !== "all" ? "[&>.ant-select-selector]:!bg-blue-50 [&>.ant-select-selector]:!border-blue-500" : ""}
+                  >
+                    <Select.Option value="all">Tất cả phương thức</Select.Option>
+                    <Select.Option value="CASH">Tiền mặt</Select.Option>
+                    <Select.Option value="CARD">Thẻ</Select.Option>
+                    <Select.Option value="BANK_TRANSFER">Chuyển khoản</Select.Option>
+                    <Select.Option value="E_WALLET">Ví điện tử</Select.Option>
+                  </Select>
+
+                  {/* Branch Filter */}
+                  <Select
+                    placeholder="Lọc theo chi nhánh"
+                    allowClear
+                    style={{ width: 240 }}
+                    value={branchFilter}
+                    onChange={setBranchFilter}
+                    className={branchFilter ? "[&>.ant-select-selector]:!bg-blue-50 [&>.ant-select-selector]:!border-blue-500" : ""}
+                  >
+                    {branches.map((branch) => (
+                      <Option key={branch.id} value={branch.id}>
+                        {branch.code} # {branch.name}
+                      </Option>
+                    ))}
+                  </Select>
                 </Space>
               </div>
-
-              {/* Tabs */}
-              <Tabs
-                activeKey={activeTab}
-                onChange={setActiveTab}
-                items={[
-                  {
-                    key: "all",
-                    label: `Tất cả (${totalCount})`,
-                  },
-                  {
-                    key: "paid",
-                    label: `Đã thanh toán (${paidCount})`,
-                  },
-                  {
-                    key: "pending",
-                    label: `Chờ thanh toán (${pendingCount})`,
-                  },
-                  {
-                    key: "cancelled",
-                    label: `Đã hủy (${cancelledCount})`,
-                  },
-                  {
-                    key: "refunded",
-                    label: `Đã hoàn tiền (${refundedCount})`,
-                  },
-                ]}
-              />
             </div>
           </CardHeader>
 
@@ -682,17 +843,18 @@ function InvoicesContent() {
             {/* Table */}
             <Table
               columns={columns}
-              dataSource={filteredInvoices}
+              dataSource={invoices}
               loading={loading}
               pagination={{
                 current: pagination.current,
                 pageSize: pagination.pageSize,
                 total: pagination.total,
                 showSizeChanger: true,
-                showTotal: (total) => `Tổng ${total} hóa đơn`,
+                showTotal: (total) => `Hiển thị ${total} hóa đơn`,
+                pageSizeOptions: ['10', '20', '50', '100'],
               }}
               onChange={handleTableChange}
-              scroll={{ x: 1400 }}
+              scroll={{ x: 1800 }}
               bordered={false}
               className="ant-table-custom"
             />
@@ -700,449 +862,65 @@ function InvoicesContent() {
         </Card>
       </Spin>
 
-      {/* Detail Modal */}
-      <Modal
-        title={
-          <div className="flex items-center gap-2">
-            <span className="text-lg font-semibold">Chi tiết hóa đơn {selectedInvoice?.id}</span>
-            {selectedInvoice && selectedInvoice.isEdited && (
-              <Tag color="orange">Đã chỉnh sửa {selectedInvoice.editCount} lần</Tag>
-            )}
-          </div>
-        }
+      {/* Detail Modal - ENHANCED VERSION */}
+      <InvoiceDetailModal
         open={isDetailModalOpen}
-        onCancel={() => setIsDetailModalOpen(false)}
-        width={800}
-        centered
-        maskClosable={false}
-        transitionName="ant-fade"
-        maskTransitionName="ant-fade"
-        footer={[
-          <Button key="print" type="primary" icon={<PrinterOutlined />} onClick={() => selectedInvoice && handlePrint(selectedInvoice)} className="bg-blue-500 hover:bg-blue-600">
-            In hóa đơn
-          </Button>,
-          selectedInvoice && selectedInvoice.editCount > 0 && (
-            <Button key="history" icon={<HistoryOutlined />} onClick={() => handleViewHistory(selectedInvoice)}>
-              Xem lịch sử
-            </Button>
-          ),
-          <Button key="close" onClick={() => setIsDetailModalOpen(false)}>
-            Đóng
-          </Button>,
-        ]}
-      >
-        {selectedInvoice && (
-          <div>
-            <Descriptions bordered column={2} size="small">
-              <Descriptions.Item label="Mã hóa đơn" span={1}>
-                {selectedInvoice.id}
-              </Descriptions.Item>
-              <Descriptions.Item label="Mã đơn hàng" span={1}>
-                {selectedInvoice.orderNumber}
-              </Descriptions.Item>
-              <Descriptions.Item label="Khách hàng" span={1}>
-                {selectedInvoice.customerName}
-              </Descriptions.Item>
-              <Descriptions.Item label="Số điện thoại" span={1}>
-                {selectedInvoice.customerPhone}
-              </Descriptions.Item>
-              {selectedInvoice.customerEmail && (
-                <Descriptions.Item label="Email" span={2}>
-                  {selectedInvoice.customerEmail}
-                </Descriptions.Item>
-              )}
-              <Descriptions.Item label="Ngày giờ" span={1}>
-                {selectedInvoice.date} {selectedInvoice.time}
-              </Descriptions.Item>
-              <Descriptions.Item label="Nhân viên" span={1}>
-                {selectedInvoice.staffName}
-              </Descriptions.Item>
-              <Descriptions.Item label="Thanh toán" span={1}>
-                <Tag color={getPaymentMethodColor(selectedInvoice.paymentMethod)}>
-                  {getPaymentMethodText(selectedInvoice.paymentMethod)}
-                </Tag>
-              </Descriptions.Item>
-              <Descriptions.Item label="Trạng thái" span={1}>
-                <Tag
-                  color={
-                    selectedInvoice.status === "paid"
-                      ? "green"
-                      : selectedInvoice.status === "pending"
-                        ? "orange"
-                        : selectedInvoice.status === "cancelled"
-                          ? "red"
-                          : "purple"
-                  }
-                >
-                  {selectedInvoice.status === "paid"
-                    ? "Đã thanh toán"
-                    : selectedInvoice.status === "pending"
-                      ? "Chờ thanh toán"
-                      : selectedInvoice.status === "cancelled"
-                        ? "Đã hủy"
-                        : "Đã hoàn tiền"}
-                </Tag>
-              </Descriptions.Item>
-            </Descriptions>
-
-            <div style={{ marginTop: 24 }}>
-              <h4 style={{ marginBottom: 12, fontWeight: "bold" }}>Chi tiết món ăn</h4>
-              <Table
-                dataSource={selectedInvoice.items.map((item, index) => ({
-                  ...item,
-                  key: index,
-                }))}
-                columns={[
-                  { title: "Tên món", dataIndex: "name", key: "name" },
-                  { title: "SL", dataIndex: "quantity", key: "quantity", width: 80, align: "center" },
-                  {
-                    title: "Đơn giá",
-                    dataIndex: "price",
-                    key: "price",
-                    width: 120,
-                    align: "right",
-                    render: (price) => `${price.toLocaleString()}đ`,
-                  },
-                  {
-                    title: "Thành tiền",
-                    dataIndex: "total",
-                    key: "total",
-                    width: 120,
-                    align: "right",
-                    render: (total) => `${total.toLocaleString()}đ`,
-                  },
-                ]}
-                pagination={false}
-                size="small"
-              />
-            </div>
-
-            <div style={{ marginTop: 16, textAlign: "right" }}>
-              <Space direction="vertical" style={{ width: "100%", alignItems: "flex-end" }}>
-                <div>
-                  <span style={{ marginRight: 16 }}>Tạm tính:</span>
-                  <strong>{selectedInvoice.subtotal.toLocaleString()}đ</strong>
-                </div>
-                <div>
-                  <span style={{ marginRight: 16 }}>VAT (10%):</span>
-                  <strong>{selectedInvoice.tax.toLocaleString()}đ</strong>
-                </div>
-                {selectedInvoice.discount > 0 && (
-                  <div>
-                    <span style={{ marginRight: 16 }}>Giảm giá:</span>
-                    <strong style={{ color: "#ff4d4f" }}>
-                      -{selectedInvoice.discount.toLocaleString()}đ
-                    </strong>
-                  </div>
-                )}
-                <div style={{ fontSize: 16, paddingTop: 8, borderTop: "1px solid #d9d9d9" }}>
-                  <span style={{ marginRight: 16 }}>Tổng cộng:</span>
-                  <strong style={{ color: "#52c41a", fontSize: 18 }}>
-                    {selectedInvoice.total.toLocaleString()}đ
-                  </strong>
-                </div>
-              </Space>
-            </div>
-
-            {selectedInvoice.notes && (
-              <div style={{ marginTop: 16, padding: 12, background: "#f5f5f5", borderRadius: 4 }}>
-                <strong>Ghi chú:</strong>
-                <p style={{ margin: "8px 0 0 0" }}>{selectedInvoice.notes}</p>
-              </div>
-            )}
-          </div>
-        )}
-      </Modal>
+        onClose={() => setIsDetailModalOpen(false)}
+        invoice={selectedInvoice}
+        onViewHistory={handleViewHistory}
+        getPaymentMethodText={getPaymentMethodText}
+        getPaymentMethodColor={getPaymentMethodColor}
+        getPaymentMethodIcon={getPaymentMethodIcon}
+        getPaymentStatusText={getPaymentStatusText}
+        getPaymentStatusColor={getPaymentStatusColor}
+        getStatusText={getStatusText}
+        getStatusColor={getStatusColor}
+      />
 
       {/* Edit Modal */}
       <Modal
-        title={
-          <span className="text-lg font-semibold">
-            Chỉnh sửa hóa đơn {selectedInvoice?.id}
-          </span>
-        }
+        title="Chỉnh sửa hóa đơn"
         open={isEditModalOpen}
+        onOk={handleUpdateBill}
         onCancel={() => {
           setIsEditModalOpen(false);
           editForm.resetFields();
         }}
-        width={700}
+        width={900}
         centered
-        maskClosable={false}
-        footer={[
-          <Button key="cancel" onClick={() => {
-            setIsEditModalOpen(false);
-            editForm.resetFields();
-          }}>
-            Hủy
-          </Button>,
-          <Button
-            key="submit"
-            type="primary"
-            loading={loading}
-            onClick={handleUpdateBill}
-            className="bg-blue-500 hover:bg-blue-600"
-          >
-            Cập nhật
-          </Button>,
-        ]}
+        confirmLoading={loading}
+        okText="Cập nhật"
+        cancelText="Hủy"
       >
-        <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded">
-          <p className="text-sm text-yellow-800">
-            <strong>Lưu ý:</strong> Khi cập nhật hóa đơn do khiếu nại của khách hàng, 
-            hệ thống sẽ tạo một phiên bản mới và lưu lại lịch sử chỉnh sửa. 
-            Hóa đơn cũ sẽ không bị xóa.
-          </p>
-        </div>
-
-        <Form
-          form={editForm}
-          layout="vertical"
-          initialValues={{
-            paymentMethod: "cash",
-            paymentStatus: "PENDING",
-          }}
-        >
-          <Divider orientation="left">Thông tin khách hàng</Divider>
-          
-          <Form.Item
-            label="Tên khách hàng"
-            name="customerName"
-            rules={[{ required: true, message: "Vui lòng nhập tên khách hàng" }]}
-          >
-            <Input placeholder="Nhập tên khách hàng" />
-          </Form.Item>
-
-          <Form.Item
-            label="Số điện thoại"
-            name="customerPhone"
-            rules={[
-              { required: true, message: "Vui lòng nhập số điện thoại" },
-              { pattern: /^[0-9]{10}$/, message: "Số điện thoại không hợp lệ" },
-            ]}
-          >
-            <Input placeholder="Nhập số điện thoại" />
-          </Form.Item>
-
-          <Form.Item
-            label="Email"
-            name="customerEmail"
-            rules={[{ type: "email", message: "Email không hợp lệ" }]}
-          >
-            <Input placeholder="Nhập email (tùy chọn)" />
-          </Form.Item>
-
-          <Divider orientation="left">Thông tin thanh toán</Divider>
-
-          <Form.Item
-            label="Phương thức thanh toán"
-            name="paymentMethod"
-            rules={[{ required: true, message: "Vui lòng chọn phương thức thanh toán" }]}
-          >
-            <Radio.Group>
-              <Radio value="cash">Tiền mặt</Radio>
-              <Radio value="card">Thẻ</Radio>
-              <Radio value="transfer">Chuyển khoản</Radio>
-              <Radio value="momo">MoMo</Radio>
-            </Radio.Group>
-          </Form.Item>
-
-          <Form.Item
-            label="Trạng thái thanh toán"
-            name="paymentStatus"
-            rules={[{ required: true, message: "Vui lòng chọn trạng thái" }]}
-          >
-            <Radio.Group>
-              <Radio value="PENDING">Chờ thanh toán</Radio>
-              <Radio value="PAID">Đã thanh toán</Radio>
-            </Radio.Group>
-          </Form.Item>
-
-          <Form.Item
-            label="Số tiền thanh toán"
-            name="paidAmount"
-          >
-            <Space.Compact style={{ width: "100%" }}>
-              <InputNumber
-                style={{ width: "100%" }}
-                formatter={(value) => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ",")}
-                parser={(value) => value!.replace(/\$\s?|(,*)/g, "")}
-              />
-              <Button disabled>VNĐ</Button>
-            </Space.Compact>
-          </Form.Item>
-
-          <Form.Item
-            label="Ghi chú"
-            name="notes"
-          >
-            <Input.TextArea rows={3} placeholder="Nhập ghi chú (tùy chọn)" />
-          </Form.Item>
-
-          <Divider orientation="left" className="text-red-600">
-            Lý do chỉnh sửa (Bắt buộc)
-          </Divider>
-
-          <Form.Item
-            label="Lý do chỉnh sửa hóa đơn"
-            name="editReason"
-            rules={[
-              { required: true, message: "Vui lòng nhập lý do chỉnh sửa" },
-              { min: 10, message: "Lý do phải có ít nhất 10 ký tự" },
-            ]}
-          >
-            <Input.TextArea
-              rows={3}
-              placeholder="Ví dụ: Khách hàng khiếu nại về số điện thoại sai, yêu cầu cập nhật thông tin..."
-            />
-          </Form.Item>
-        </Form>
+        {selectedInvoice && <InvoiceEditForm form={editForm} initialInvoice={selectedInvoice} />}
       </Modal>
 
       {/* History Modal */}
-      <Modal
-        title={
-          <span className="text-lg font-semibold">
-            Lịch sử chỉnh sửa - {selectedInvoice?.id}
-          </span>
-        }
+      <InvoiceHistoryModal
         open={isHistoryModalOpen}
-        onCancel={() => {
-          setIsHistoryModalOpen(false);
-          setBillHistory([]);
-        }}
-        width={900}
-        centered
-        footer={[
-          <Button key="close" onClick={() => {
-            setIsHistoryModalOpen(false);
-            setBillHistory([]);
-          }}>
-            Đóng
-          </Button>,
-        ]}
-      >
-        {billHistory.length > 0 ? (
-          <Timeline
-            mode="left"
-            items={billHistory.map((history, index) => ({
-              color: index === 0 ? "green" : "blue",
-              label: dayjs(history.editedAt).format("YYYY-MM-DD HH:mm:ss"),
-              children: (
-                <div>
-                  <div className="mb-2">
-                    <strong>Người chỉnh sửa:</strong> {history.editedBy?.name || "N/A"}
-                  </div>
-                  <div className="mb-2">
-                    <strong>Lý do:</strong>
-                    <div className="mt-1 p-2 bg-gray-50 rounded border">
-                      {history.editReason}
-                    </div>
-                  </div>
-                  {history.changes && Object.keys(history.changes).length > 0 && (
-                    <div>
-                      <strong>Thay đổi:</strong>
-                      <div className="mt-1 p-2 bg-blue-50 rounded border border-blue-200">
-                        {Object.entries(history.changes).map(([key, value]: [string, any]) => (
-                          <div key={key} className="text-sm">
-                            <span className="font-medium">{key}:</span>{" "}
-                            <span className="text-red-600 line-through">{value.old}</span>
-                            {" → "}
-                            <span className="text-green-600">{value.new}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ),
-            }))}
-          />
-        ) : (
-          <div className="text-center py-8 text-gray-500">
-            Không có lịch sử chỉnh sửa
-          </div>
-        )}
-      </Modal>
+        onClose={() => setIsHistoryModalOpen(false)}
+        billNumber={selectedInvoice?.billNumber || ""}
+        history={billHistory}
+      />
 
       {/* Print Modal */}
-      <Modal
-        title={
-          <span className="text-lg font-semibold">
-            Xem trước in hóa đơn
-          </span>
-        }
+      <InvoicePrintModal
         open={isPrintModalOpen}
-        onCancel={() => setIsPrintModalOpen(false)}
-        width={400}
-        centered
-        footer={[
-          <Button key="cancel" onClick={() => setIsPrintModalOpen(false)}>
-            Hủy
-          </Button>,
-          <Button
-            key="print"
-            type="primary"
-            icon={<PrinterOutlined />}
-            onClick={handleConfirmPrint}
-            className="bg-blue-500 hover:bg-blue-600"
-          >
-            In hóa đơn
-          </Button>,
-        ]}
-      >
-        {selectedInvoice && (
-          <div style={{ maxHeight: '70vh', overflow: 'auto' }}>
-            <ThermalPrintReceipt
-              billNumber={selectedInvoice.billNumber}
-              orderNumber={selectedInvoice.orderNumber}
-              date={selectedInvoice.date}
-              time={selectedInvoice.time}
-              customerName={selectedInvoice.customerName}
-              customerPhone={selectedInvoice.customerPhone}
-              items={selectedInvoice.items}
-              subtotal={selectedInvoice.subtotal}
-              tax={selectedInvoice.tax}
-              discount={selectedInvoice.discount}
-              total={selectedInvoice.total}
-              paymentMethod={getPaymentMethodText(selectedInvoice.paymentMethod)}
-              staffName={selectedInvoice.staffName}
-              notes={selectedInvoice.notes}
-            />
-          </div>
-        )}
-      </Modal>
-
-      {/* Print Styles */}
-      <style jsx global>{`
-        @media print {
-          body * {
-            visibility: hidden;
-          }
-          #thermal-receipt,
-          #thermal-receipt * {
-            visibility: visible;
-          }
-          #thermal-receipt {
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 80mm;
-          }
-          @page {
-            size: 80mm auto;
-            margin: 0;
-          }
-        }
-      `}</style>
+        onClose={() => setIsPrintModalOpen(false)}
+        invoice={selectedInvoice}
+        onConfirmPrint={handleConfirmPrint}
+        getPaymentMethodText={getPaymentMethodText}
+      />
     </div>
   );
 }
 
-export default function ManagerInvoicesPage() {
+export default function AdminInvoicesPage() {
   return (
-    <ManagerLayout>
-      <InvoicesContent />
+    <ManagerLayout title="Quản lý Hóa đơn">
+      <App>
+        <InvoicesContent />
+      </App>
     </ManagerLayout>
   );
 }

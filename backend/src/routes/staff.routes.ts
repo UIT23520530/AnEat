@@ -46,12 +46,6 @@ import {
   getInventoryStats,
 } from '../controllers/staff/staff-warehouse.controller';
 import {
-  getStaffStockRequests,
-  getStaffStockRequestById,
-  createStaffStockRequest,
-  cancelStaffStockRequest,
-} from '../controllers/staff/staff-stock-request.controller';
-import {
   createStaffOrder,
   getStaffOrderById,
   getStaffOrders,
@@ -555,47 +549,5 @@ router.put(
   updateOrderStatus
 );
 
-// ==================== STOCK REQUEST ROUTES ====================
-
-/**
- * @route   GET /api/v1/staff/stock-requests
- * @desc    Get stock requests for staff's branch
- * @access  Staff only
- */
-router.get('/stock-requests', getStaffStockRequests);
-
-/**
- * @route   GET /api/v1/staff/stock-requests/:id
- * @desc    Get stock request by ID
- * @access  Staff only
- */
-router.get('/stock-requests/:id', getStaffStockRequestById);
-
-/**
- * @route   POST /api/v1/staff/stock-requests
- * @desc    Create new stock request
- * @access  Staff only
- */
-router.post(
-  '/stock-requests',
-  [
-    body('type').optional().isString().isIn(['RESTOCK', 'ADJUSTMENT', 'RETURN']),
-    body('requestedQuantity')
-      .isInt({ min: 1 })
-      .withMessage('Requested quantity must be at least 1'),
-    body('notes').optional().isString(),
-    body('expectedDate').optional().isISO8601(),
-    body('productId').isString().notEmpty().withMessage('Product ID is required'),
-  ],
-  validate,
-  createStaffStockRequest
-);
-
-/**
- * @route   PUT /api/v1/staff/stock-requests/:id/cancel
- * @desc    Cancel stock request
- * @access  Staff only
- */
-router.put('/stock-requests/:id/cancel', cancelStaffStockRequest);
 
 export default router;

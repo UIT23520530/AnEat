@@ -76,6 +76,22 @@ export interface CreateStockRequestDto {
   productId: string;
 }
 
+export interface StockStatistics {
+  totalRequests: number;
+  pendingRequests: number;
+  approvedRequests: number;
+  completedRequests: number;
+  rejectedRequests: number;
+  cancelledRequests: number;
+}
+
+export interface StockStatisticsResponse {
+  success: boolean;
+  code: number;
+  message: string;
+  data: StockStatistics;
+}
+
 const STAFF_STOCK_REQUEST_BASE_URL = '/staff/stock-requests';
 
 export class StaffStockRequestService {
@@ -123,6 +139,27 @@ export class StaffStockRequestService {
   static async cancel(id: string): Promise<StockRequestResponse> {
     const response = await apiClient.put<StockRequestResponse>(
       `${STAFF_STOCK_REQUEST_BASE_URL}/${id}/cancel`
+    );
+    return response.data;
+  }
+
+  /**
+   * PUT Update Stock Request
+   */
+  static async update(id: string, data: Partial<CreateStockRequestDto>): Promise<StockRequestResponse> {
+    const response = await apiClient.put<StockRequestResponse>(
+      `${STAFF_STOCK_REQUEST_BASE_URL}/${id}`,
+      data
+    );
+    return response.data;
+  }
+
+  /**
+   * GET Stock Request Statistics
+   */
+  static async getStatistics(): Promise<StockStatisticsResponse> {
+    const response = await apiClient.get<StockStatisticsResponse>(
+      `${STAFF_STOCK_REQUEST_BASE_URL}/stats`
     );
     return response.data;
   }

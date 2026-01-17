@@ -31,13 +31,13 @@ const corsOptions = {
       if (origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:')) {
         return callback(null, true);
       }
-      
+
       // Allow local network IPs (10.x.x.x, 192.168.x.x, 172.16-31.x.x)
       const localNetworkPattern = /^http:\/\/(10\.|192\.168\.|172\.(1[6-9]|2[0-9]|3[01])\.)/;
       if (localNetworkPattern.test(origin)) {
         return callback(null, true);
       }
-      
+
       // Also check CORS_ORIGIN env variable
       if (process.env.CORS_ORIGIN) {
         const allowedOrigins = process.env.CORS_ORIGIN.split(',');
@@ -79,7 +79,7 @@ app.get('/health', async (req: Request, res: Response) => {
   try {
     // Check database connection
     await prisma.$queryRaw`SELECT 1`;
-    
+
     res.status(200).json({
       status: 'success',
       message: 'Server is healthy',
@@ -187,8 +187,8 @@ app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
   res.status(500).json({
     success: false,
     code: 500,
-    message: process.env.NODE_ENV === 'production' 
-      ? 'Internal server error' 
+    message: process.env.NODE_ENV === 'production'
+      ? 'Internal server error'
       : err.message,
     ...(process.env.NODE_ENV === 'development' && { stack: err.stack }),
   });

@@ -1,64 +1,94 @@
-"use client";
+"use client"
 
-import { Form, Input, InputNumber, Select, DatePicker, Switch, Row, Col } from "antd";
-import { useEffect } from "react";
-import dayjs from "dayjs";
-
-const { TextArea } = Input;
-const { RangePicker } = DatePicker;
+import React, { useEffect } from "react"
+import {
+  Form,
+  Row,
+  Col,
+  Input,
+  Select,
+  InputNumber,
+  DatePicker,
+  TreeSelect,
+  Switch,
+  Button,
+} from "antd"
+import dayjs from "dayjs"
+import { Promotion } from "@/services/promotion.service"
 
 interface PromotionsFormProps {
-  form: any;
-  initialValues?: any;
-  onFinish: (values: any) => void;
+  form: any
+  onFinish: (values: any) => void
+  isEdit?: boolean
+  editingPromotion?: Promotion | null
+  productTreeData: any[]
+  onCancel: () => void
 }
 
-export default function PromotionsForm({ form, initialValues, onFinish }: PromotionsFormProps) {
+export default function PromotionsForm({
+  form,
+  onFinish,
+  isEdit = false,
+  editingPromotion,
+  productTreeData,
+  onCancel,
+}: PromotionsFormProps) {
   useEffect(() => {
-    if (initialValues) {
-      // Convert date strings to dayjs objects for RangePicker
-      const formValues = {
-        ...initialValues,
-        dateRange: initialValues.startDate && initialValues.endDate 
-          ? [dayjs(initialValues.startDate), dayjs(initialValues.endDate)]
-          : undefined,
-      };
-      form.setFieldsValue(formValues);
-    } else {
-      form.resetFields();
+    if (isEdit && editingPromotion) {
+      let productIds: string[] = []
+      try {
+        if (editingPromotion.applicableProducts) {
+          productIds = JSON.parse(editingPromotion.applicableProducts)
+        }
+      } catch (e) {
+        console.error("Error parsing product IDs", e)
+      }
+
+      form.setFieldsValue({
+        code: editingPromotion.code,
+        type: editingPromotion.type,
+        value: editingPromotion.value,
+        maxUses: editingPromotion.maxUses,
+        isActive: editingPromotion.isActive,
+        expiryDate: editingPromotion.expiryDate ? dayjs(editingPromotion.expiryDate) : undefined,
+        minOrderAmount: editingPromotion.minOrderAmount,
+        applicableProducts: productIds,
+      })
+    } else if (!isEdit) {
+      form.resetFields()
+      form.setFieldsValue({
+        isActive: true,
+        type: "PERCENTAGE",
+        applicableProducts: [],
+      })
     }
-  }, [initialValues, form]);
+  }, [isEdit, editingPromotion, form])
 
   return (
     <Form
       form={form}
       layout="vertical"
       onFinish={onFinish}
-      autoComplete="off"
+      className="mt-4"
     >
-      <Row gutter={16}>
-        <Col span={12}>
-          <Form.Item
-            label="Tên chương trình"
-            name="name"
-            rules={[{ required: true, message: "Vui lòng nhập tên chương trình!" }]}
-          >
-            <Input placeholder="Nhập tên chương trình" />
-          </Form.Item>
-        </Col>
-        <Col span={12}>
-          <Form.Item
-            label="Mã khuyến mãi"
-            name="code"
-            rules={[
-              { required: true, message: "Vui lòng nhập mã!" },
-              { pattern: /^[A-Z0-9]+$/, message: "Mã chỉ chứa chữ in hoa và số!" }
-            ]}
-          >
-            <Input placeholder="VD: SALE20" style={{ textTransform: 'uppercase' }} />
-          </Form.Item>
-        </Col>
-      </Row>
+      <Form.Item
+        label="Mã khuyến mãi"
+        name="code"
+        rules={[
+          { required: true, message: "Vui lòng nhập mã khuyến mãi!" },
+          { min: 3, max: 20, message: "Mã phải từ 3-20 ký tự!" },
+          { pattern: /^[a-zA-Z0-9_-]+$/, message: "Mã chỉ chứa chữ cái, số và gạch ngang/dưới" }
+        ]}
+      >
+        <Input
+          size="large"
+          placeholder="VD: SALE20"
+          style={{ textTransform: "uppercase" }}
+          onChange={(e) => {
+            form.setFieldsValue({ code: e.target.value.toUpperCase() })
+          }}
+        />
+      </Form.Item>
 
       <Row gutter={16}>
         <Col span={12}>
@@ -67,104 +97,115 @@ export default function PromotionsForm({ form, initialValues, onFinish }: Promot
             name="type"
             rules={[{ required: true, message: "Vui lòng chọn loại!" }]}
           >
-            <Select placeholder="Chọn loại khuyến mãi">
-              <Select.Option value="percentage">Giảm theo %</Select.Option>
-              <Select.Option value="fixed">Giảm cố định</Select.Option>
-              <Select.Option value="freeship">Miễn phí vận chuyển</Select.Option>
-              <Select.Option value="bogo">Mua 1 tặng 1</Select.Option>
+            <Select size="large">
+              <Select.Option value="PERCENTAGE">Phần trăm (%)</Select.Option>
+              <Select.Option value="FIXED">Số tiền cố định (₫)</Select.Option>
             </Select>
           </Form.Item>
         </Col>
         <Col span={12}>
           <Form.Item
-            label="Giá trị"
-            name="value"
-            rules={[{ required: true, message: "Vui lòng nhập giá trị!" }]}
+            noStyle
+            shouldUpdate={(prev, curr) => prev.type !== curr.type}
           >
-            <InputNumber
-              placeholder="Nhập giá trị"
-              min={0}
-              style={{ width: '100%' }}
-              formatter={value => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
-            />
+            {({ getFieldValue }) => {
+              const type = getFieldValue("type")
+              return (
+                <Form.Item
+                  label={`Giá trị giảm (${type === "PERCENTAGE" ? "%" : "₫"})`}
+                  name="value"
+                  rules={[
+                    { required: true, message: "Vui lòng nhập giá trị!" },
+                    { 
+                      type: "number", 
+                      min: 0, 
+                      max: type === "PERCENTAGE" ? 100 : undefined,
+                      message: type === "PERCENTAGE" ? "Phần trăm từ 0-100" : "Giá trị phải > 0" 
+                    },
+                  ]}
+                >
+                  <InputNumber<number>
+                    size="large" 
+                    style={{ width: "100%" }} 
+                    min={0}
+                    formatter={(value) => type !== "PERCENTAGE" && value ? `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',') : `${value}`}
+                    parser={(value) => value?.replace(/\$\s?|(,*)/g, '') as unknown as number}
+                  />
+                </Form.Item>
+              )
+            }}
           </Form.Item>
         </Col>
       </Row>
 
       <Row gutter={16}>
         <Col span={12}>
-          <Form.Item
-            label="Thời gian áp dụng"
-            name="dateRange"
-            rules={[{ required: true, message: "Vui lòng chọn thời gian!" }]}
-          >
-            <RangePicker style={{ width: '100%' }} format="YYYY-MM-DD" />
-          </Form.Item>
-        </Col>
-        <Col span={12}>
-          <Form.Item
-            label="Đơn tối thiểu"
-            name="minOrderValue"
-            rules={[{ required: true, message: "Vui lòng nhập giá trị đơn tối thiểu!" }]}
-          >
-            <InputNumber
-              placeholder="Giá trị đơn tối thiểu"
+          <Form.Item label="Giá trị đơn hàng tối thiểu" name="minOrderAmount">
+            <InputNumber<number>
+              size="large"
+              style={{ width: "100%" }}
               min={0}
-              style={{ width: '100%' }}
-              formatter={value => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+              placeholder="0 (Không áp dụng)"
+              formatter={(value) => value ? `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',') : ''}
+              parser={(value) => value?.replace(/\$\s?|(,*)/g, '') as unknown as number}
+              suffix="₫"
             />
           </Form.Item>
         </Col>
-      </Row>
-
-      <Row gutter={16}>
         <Col span={12}>
-          <Form.Item
-            label="Giới hạn sử dụng"
-            name="usageLimit"
-          >
+          <Form.Item label="Lượt sử dụng tối đa" name="maxUses">
             <InputNumber
-              placeholder="Không giới hạn nếu để trống"
+              size="large"
+              style={{ width: "100%" }}
               min={1}
-              style={{ width: '100%' }}
-            />
-          </Form.Item>
-        </Col>
-        <Col span={12}>
-          <Form.Item
-            label="Đã sử dụng"
-            name="usedCount"
-          >
-            <InputNumber
-              placeholder="0"
-              min={0}
-              disabled
-              style={{ width: '100%' }}
+              placeholder="Không giới hạn"
             />
           </Form.Item>
         </Col>
       </Row>
 
-      <Form.Item
-        label="Mô tả"
-        name="description"
-      >
-        <TextArea
-          rows={3}
-          placeholder="Nhập mô tả chi tiết về chương trình khuyến mãi"
+      <Form.Item label="Ngày hết hạn" name="expiryDate">
+        <DatePicker
+          size="large"
+          style={{ width: "100%" }}
+          format="DD/MM/YYYY"
+          placeholder="Chọn ngày hết hạn (Để trống nếu không giới hạn)"
+          disabledDate={(current) => {
+            return current && current < dayjs().startOf("day")
+          }}
+        />
+      </Form.Item>
+
+      <Form.Item label="Áp dụng cho sản phẩm (Tùy chọn)" name="applicableProducts">
+        <TreeSelect
+          treeData={productTreeData}
+          treeCheckable
+          showCheckedStrategy={TreeSelect.SHOW_CHILD}
+          placeholder="Chọn sản phẩm áp dụng (Chọn danh mục để chọn tất cả sản phẩm)"
+          style={{ width: '100%' }}
+          allowClear
+          size="large"
+          maxTagCount="responsive"
+          treeDefaultExpandAll
         />
       </Form.Item>
 
       <Form.Item
-        label="Kích hoạt"
-        name="active"
+        label="Trạng thái"
+        name="isActive"
         valuePropName="checked"
       >
-        <Switch />
+        <Switch checkedChildren="Đang hoạt động" unCheckedChildren="Ngừng hoạt động" />
       </Form.Item>
 
-      {/* Hidden submit button */}
-      <button type="submit" style={{ display: 'none' }} />
+      <div className="flex justify-end gap-2 pt-4 border-t border-gray-100">
+        <Button onClick={onCancel}>
+          Hủy
+        </Button>
+        <Button type="primary" htmlType="submit">
+          {isEdit ? "Lưu thay đổi" : "Tạo khuyến mãi"}
+        </Button>
+      </div>
     </Form>
-  );
+  )
 }
