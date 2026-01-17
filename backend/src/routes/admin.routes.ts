@@ -13,6 +13,17 @@ import {
   getAvailableManagers,
 } from '../controllers/admin/admin.controller';
 import {
+  getSystemStats,
+  getBranchPerformance,
+  getTopBranches,
+  getSystemRevenueData,
+  getTopProductsSystemWide,
+  getUserStatsByRole,
+  getGrowthMetrics,
+  getSystemAlerts,
+  exportSystemReport,
+} from '../controllers/admin/admin-dashboard.controller';
+import {
   getAllUsers,
   getUserById,
   // createUser, // Removed - Admin cannot create users directly
@@ -67,10 +78,86 @@ router.use(isAdmin);
 
 /**
  * @route   GET /api/v1/admin/dashboard
- * @desc    Trang tổng quan hệ thống
+ * @desc    Trang tổng quan hệ thống (legacy - simple stats)
  * @access  Admin only
  */
 router.get('/dashboard', getDashboardStats);
+
+/**
+ * ==================== ADMIN DASHBOARD ROUTES (NEW) ====================
+ */
+
+/**
+ * @route   GET /api/v1/admin/dashboard/system-stats
+ * @desc    Lấy thống kê toàn hệ thống (revenue, orders, branches, users, customers, products)
+ * @access  Admin only
+ */
+router.get('/dashboard/system-stats', getSystemStats);
+
+/**
+ * @route   GET /api/v1/admin/dashboard/branch-performance
+ * @desc    Lấy so sánh hiệu suất giữa các chi nhánh
+ * @access  Admin only
+ * @query   limit - Giới hạn số lượng chi nhánh (optional)
+ */
+router.get('/dashboard/branch-performance', getBranchPerformance);
+
+/**
+ * @route   GET /api/v1/admin/dashboard/top-branches
+ * @desc    Lấy danh sách top chi nhánh theo doanh thu hoặc đơn hàng
+ * @access  Admin only
+ * @query   metric - 'revenue' hoặc 'orders' (default: revenue)
+ * @query   limit - Số lượng top branches (default: 10)
+ */
+router.get('/dashboard/top-branches', getTopBranches);
+
+/**
+ * @route   GET /api/v1/admin/dashboard/revenue-data
+ * @desc    Lấy dữ liệu doanh thu toàn hệ thống theo thời gian
+ * @access  Admin only
+ * @query   period - 'day', 'week', hoặc 'month'
+ * @query   dateFrom - Ngày bắt đầu (optional)
+ * @query   dateTo - Ngày kết thúc (optional)
+ */
+router.get('/dashboard/revenue-data', getSystemRevenueData);
+
+/**
+ * @route   GET /api/v1/admin/dashboard/top-products
+ * @desc    Lấy top sản phẩm bán chạy nhất toàn hệ thống
+ * @access  Admin only
+ * @query   limit - Số lượng sản phẩm (default: 10)
+ */
+router.get('/dashboard/top-products', getTopProductsSystemWide);
+
+/**
+ * @route   GET /api/v1/admin/dashboard/user-stats
+ * @desc    Lấy thống kê người dùng theo role
+ * @access  Admin only
+ */
+router.get('/dashboard/user-stats', getUserStatsByRole);
+
+/**
+ * @route   GET /api/v1/admin/dashboard/growth-metrics
+ * @desc    Lấy các chỉ số tăng trưởng (MoM, YoY)
+ * @access  Admin only
+ */
+router.get('/dashboard/growth-metrics', getGrowthMetrics);
+
+/**
+ * @route   GET /api/v1/admin/dashboard/alerts
+ * @desc    Lấy các cảnh báo hệ thống (chi nhánh có vấn đề)
+ * @access  Admin only
+ */
+router.get('/dashboard/alerts', getSystemAlerts);
+
+/**
+ * @route   GET /api/v1/admin/dashboard/export
+ * @desc    Xuất báo cáo toàn hệ thống ra file Excel
+ * @access  Admin only
+ * @query   dateFrom - Ngày bắt đầu (required)
+ * @query   dateTo - Ngày kết thúc (required)
+ */
+router.get('/dashboard/export', exportSystemReport);
 
 /**
  * ==================== QUẢN LÝ CHI NHÁNH ====================

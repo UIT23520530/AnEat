@@ -1,395 +1,948 @@
 "use client"
 
 import { AdminLayout } from "@/components/layouts/admin-layout"
-import { Card } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { 
-  Package, 
-  TrendingUp, 
-  TrendingDown,
-  ShoppingCart,
-  DollarSign,
-  Calendar,
-  ChevronDown,
-  MoreVertical,
-  Download
-} from "lucide-react"
-import { 
-  Line, 
-  LineChart, 
-  ResponsiveContainer, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip,
-  Area,
-  AreaChart,
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { useState, useEffect } from "react"
+import {
+  Statistic,
+  Row,
+  Col,
+  Select,
+  Spin,
+  App,
+  Table,
+  Tag,
+  DatePicker,
+  Space,
+  Button,
+  Alert,
+  Badge,
+  Progress,
+  Tooltip as AntTooltip,
+  Modal,
+  InputNumber,
+} from "antd"
+import type { TableColumnsType } from "antd"
+import {
+  DollarOutlined,
+  ShoppingOutlined,
+  RiseOutlined,
+  UserOutlined,
+  TrophyOutlined,
+  WarningOutlined,
+  DownloadOutlined,
+  AlertOutlined,
+  BankOutlined,
+  TeamOutlined,
+  AppstoreOutlined,
+  ArrowUpOutlined,
+  ArrowDownOutlined,
+  SettingOutlined,
+  InfoCircleOutlined,
+} from "@ant-design/icons"
+import {
   Bar,
   BarChart,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  XAxis,
+  YAxis,
+  Tooltip,
+  CartesianGrid,
+  Area,
+  AreaChart,
   PieChart,
   Pie,
-  Cell
+  Cell,
+  Legend,
 } from "recharts"
+import {
+  adminDashboardService,
+  type SystemStats,
+  type BranchPerformance,
+  type SystemRevenueData,
+  type SystemTopProduct,
+  type SystemAlert,
+  type GrowthMetrics,
+} from "@/services/admin-dashboard.service"
+import dayjs from "dayjs"
 
-const totalRevenueData = [
-  { month: "Jan", value2020: 15000, value2021: 28000 },
-  { month: "Feb", value2020: 22000, value2021: 18000 },
-  { month: "Mar", value2020: 18000, value2021: 25000 },
-  { month: "Apr", value2020: 28000, value2021: 22000 },
-  { month: "May", value2020: 24000, value2021: 36000 },
-  { month: "Jun", value2020: 36000, value2021: 32000 },
-  { month: "Jul", value2020: 28000, value2021: 26000 },
-  { month: "Aug", value2020: 32000, value2021: 30000 },
-  { month: "Sept", value2020: 28000, value2021: 32000 },
-  { month: "Oct", value2020: 26000, value2021: 28000 },
-  { month: "Nov", value2020: 30000, value2021: 35000 },
-  { month: "Des", value2020: 28000, value2021: 32000 },
-]
+const { RangePicker } = DatePicker
 
-const chartOrderData = [
-  { day: "Sunday", value: 55 },
-  { day: "Monday", value: 85 },
-  { day: "Tuesday", value: 40 },
-  { day: "Wednesday", value: 65 },
-  { day: "Thursday", value: 95 },
-  { day: "Friday", value: 75 },
-  { day: "Saturday", value: 60 },
-]
+const COLORS = ["#3B82F6", "#10B981", "#F59E0B", "#EF4444", "#8B5CF6"]
 
-const customerMapData = [
-  { day: "Sun", red: 60, yellow: 90 },
-  { day: "Sun", red: 40, yellow: 70 },
-  { day: "Sun", red: 50, yellow: 45 },
-  { day: "Sun", red: 35, yellow: 85 },
-  { day: "Sun", red: 70, yellow: 60 },
-  { day: "Sun", red: 30, yellow: 75 },
-  { day: "Sun", red: 55, yellow: 65 },
-]
+// Default thresholds
+const DEFAULT_THRESHOLDS = {
+  revenuePercent: 50,
+  minStaff: 3,
+  minStock: 10,
+  silverPoints: 2000,
+  goldPoints: 5000,
+  vipPoints: 10000,
+  // Branch scoring weights
+  revenueWeight: 40,
+  aovWeight: 20,
+  efficiencyWeight: 20,
+  retentionWeight: 20,
+}
 
-const pieChartData = [
-  { name: "Total Order", value: 81, color: "#EF4444" },
-  { name: "Customer Growth", value: 22, color: "#22D3EE" },
-  { name: "Total Revenue", value: 62, color: "#3B82F6" },
-]
+function DashboardContent() {
+  const { message } = App.useApp()
+  const [loading, setLoading] = useState(false)
+  const [stats, setStats] = useState<SystemStats | null>(null)
+  const [branchPerformance, setBranchPerformance] = useState<BranchPerformance[]>([])
+  const [revenueData, setRevenueData] = useState<SystemRevenueData[]>([])
+  const [topProducts, setTopProducts] = useState<SystemTopProduct[]>([])
+  const [alerts, setAlerts] = useState<SystemAlert[]>([])
+  const [growthMetrics, setGrowthMetrics] = useState<GrowthMetrics | null>(null)
+  const [period, setPeriod] = useState<"day" | "week" | "month">("day")
+  const [dateRange, setDateRange] = useState<any>(null)
+  const [exporting, setExporting] = useState(false)
+  const [dismissedAlerts, setDismissedAlerts] = useState<Set<string>>(new Set())
+  const [thresholds, setThresholds] = useState(DEFAULT_THRESHOLDS)
+  const [settingsModalVisible, setSettingsModalVisible] = useState(false)
+  const [tempThresholds, setTempThresholds] = useState(DEFAULT_THRESHOLDS)
+
+  // Load dismissed alerts from sessionStorage (resets on page refresh)
+  useEffect(() => {
+    const dismissed = sessionStorage.getItem("dismissedAlerts")
+    if (dismissed) {
+      try {
+        setDismissedAlerts(new Set(JSON.parse(dismissed)))
+      } catch (e) {
+        // Clear invalid data
+        sessionStorage.removeItem("dismissedAlerts")
+      }
+    }
+    const savedThresholds = localStorage.getItem("dashboardThresholds")
+    if (savedThresholds) {
+      const parsed = JSON.parse(savedThresholds)
+      setThresholds(parsed)
+      setTempThresholds(parsed)
+    }
+  }, [])
+
+  // Save dismissed alerts to sessionStorage (will reset on page refresh)
+  const handleAlertClose = (alertId: string) => {
+    const newDismissed = new Set(dismissedAlerts)
+    newDismissed.add(alertId)
+    setDismissedAlerts(newDismissed)
+    sessionStorage.setItem("dismissedAlerts", JSON.stringify(Array.from(newDismissed)))
+  }
+
+  // Filter visible alerts
+  const visibleAlerts = alerts.filter((alert) => !dismissedAlerts.has(alert.id))
+  
+  // Debug: Log filtering
+  console.log("👁️ Total alerts:", alerts.length, "Visible alerts:", visibleAlerts.length)
+
+  // Calculate branch score
+  const calculateBranchScore = (branch: BranchPerformance, avgRevenue: number, avgAOV: number): number => {
+    // Revenue score (configurable %)
+    const revenueScore = (branch.revenue / avgRevenue) * thresholds.revenueWeight
+
+    // AOV score (configurable %)
+    const aovScore = (branch.averageOrderValue / avgAOV) * thresholds.aovWeight
+
+    // Efficiency score (configurable %) - orders per staff
+    const ordersPerStaff = branch.staff > 0 ? branch.orders / branch.staff : 0
+    const avgOrdersPerStaff = branchPerformance.reduce((sum, b) => sum + (b.staff > 0 ? b.orders / b.staff : 0), 0) / branchPerformance.length
+    const efficiencyScore = avgOrdersPerStaff > 0 ? (ordersPerStaff / avgOrdersPerStaff) * thresholds.efficiencyWeight : 0
+
+    // Retention score (configurable %) - customers per order ratio
+    const retentionRatio = branch.orders > 0 ? branch.customers / branch.orders : 0
+    const avgRetentionRatio = branchPerformance.reduce((sum, b) => sum + (b.orders > 0 ? b.customers / b.orders : 0), 0) / branchPerformance.length
+    const retentionScore = avgRetentionRatio > 0 ? (retentionRatio / avgRetentionRatio) * thresholds.retentionWeight : 0
+
+    const totalScore = revenueScore + aovScore + efficiencyScore + retentionScore
+    return Math.min(Math.max(totalScore, 0), 100) // Clamp between 0-100
+  }
+
+  // Load dashboard data
+  const loadDashboard = async () => {
+    setLoading(true)
+    try {
+      const [statsRes, branchRes, revenueRes, productsRes, alertsRes, growthRes] = await Promise.all([
+        adminDashboardService.getSystemStats(),
+        adminDashboardService.getBranchPerformance(),
+        adminDashboardService.getSystemRevenueData({ period }),
+        adminDashboardService.getTopProductsSystemWide(10),
+        adminDashboardService.getSystemAlerts({
+          revenuePercent: thresholds.revenuePercent,
+          minStaff: thresholds.minStaff,
+          minStock: thresholds.minStock,
+        }),
+        adminDashboardService.getGrowthMetrics(),
+      ])
+
+      setStats(statsRes.data)
+      setBranchPerformance(branchRes.data)
+      setRevenueData(revenueRes.data)
+      setTopProducts(productsRes.data)
+      setAlerts(alertsRes.data)
+      setGrowthMetrics(growthRes.data)
+      
+      // Debug: Log alerts data
+      console.log("🔔 Alerts received:", alertsRes.data)
+      console.log("📝 Dismissed alerts from sessionStorage:", Array.from(dismissedAlerts))
+    } catch (error: any) {
+      message.error("Không thể tải dữ liệu dashboard")
+      console.error("Dashboard load error:", error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Load revenue data when period changes
+  const loadRevenueData = async () => {
+    try {
+      const response = await adminDashboardService.getSystemRevenueData({ period })
+      setRevenueData(response.data)
+    } catch (error) {
+      console.error("Revenue data load error:", error)
+    }
+  }
+
+  useEffect(() => {
+    loadDashboard()
+  }, [])
+
+  // Reload alerts when thresholds change (after applying settings)
+  useEffect(() => {
+    if (alerts.length > 0 || branchPerformance.length > 0) {
+      // Re-fetch alerts to reflect new thresholds
+      adminDashboardService.getSystemAlerts({
+        revenuePercent: thresholds.revenuePercent,
+        minStaff: thresholds.minStaff,
+        minStock: thresholds.minStock,
+      }).then((res) => {
+        setAlerts(res.data)
+      }).catch((error) => {
+        console.error("Failed to reload alerts:", error)
+      })
+    }
+  }, [thresholds])
+
+  useEffect(() => {
+    loadRevenueData()
+  }, [period])
+
+  // Handle export report
+  const handleExport = async () => {
+    if (!dateRange || dateRange.length !== 2) {
+      message.warning("Vui lòng chọn khoảng thời gian")
+      return
+    }
+
+    setExporting(true)
+    try {
+      const dateFrom = dateRange[0].format("YYYY-MM-DD")
+      const dateTo = dateRange[1].format("YYYY-MM-DD")
+
+      const blob = await adminDashboardService.exportSystemReport(dateFrom, dateTo)
+
+      // Create download link
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement("a")
+      link.href = url
+      link.download = `BaoCaoHeThong_${dateFrom}_${dateTo}.xlsx`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      window.URL.revokeObjectURL(url)
+
+      message.success("Đã xuất báo cáo thành công")
+    } catch (error: any) {
+      message.error("Không thể xuất báo cáo")
+      console.error("Export error:", error)
+    } finally {
+      setExporting(false)
+    }
+  }
+
+  // Format currency
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat("vi-VN", {
+      style: "currency",
+      currency: "VND",
+    }).format(value)
+  }
+
+  // Calculate average metrics for scoring
+  const avgRevenue = branchPerformance.length > 0 ? branchPerformance.reduce((sum, b) => sum + b.revenue, 0) / branchPerformance.length : 1
+  const avgAOV = branchPerformance.length > 0 ? branchPerformance.reduce((sum, b) => sum + b.averageOrderValue, 0) / branchPerformance.length : 1
+
+  // Handle settings modal
+  const handleSettingsApply = () => {
+    // Validate that scoring weights sum to 100%
+    const totalWeight = tempThresholds.revenueWeight + tempThresholds.aovWeight + tempThresholds.efficiencyWeight + tempThresholds.retentionWeight
+    if (totalWeight !== 100) {
+      message.error(`Tổng trọng số phải bằng 100% (hiện tại: ${totalWeight}%)`)
+      return
+    }
+
+    setThresholds(tempThresholds)
+    localStorage.setItem("dashboardThresholds", JSON.stringify(tempThresholds))
+    setSettingsModalVisible(false)
+    message.success("Đã cập nhật cài đặt ngưỡng", 2)
+    // Clear dismissed alerts and reload dashboard
+    setDismissedAlerts(new Set())
+    sessionStorage.removeItem("dismissedAlerts")
+    setTimeout(() => {
+      loadDashboard()
+    }, 500)
+  }
+
+  const handleSettingsCancel = () => {
+    setTempThresholds(thresholds)
+    setSettingsModalVisible(false)
+  }
+
+  // Table columns for branch performance
+  const branchColumns: TableColumnsType<BranchPerformance> = [
+    {
+      title: "Chi nhánh",
+      key: "branch",
+      render: (_, record) => (
+        <div>
+          <div className="font-semibold">{record.name}</div>
+          <div className="text-xs text-gray-500">{record.code}</div>
+        </div>
+      ),
+    },
+    {
+      title: "Quản lý",
+      dataIndex: "managerName",
+      key: "manager",
+      render: (name) => name || <span className="text-gray-400 italic">Chưa có</span>,
+    },
+    {
+      title: "Doanh thu",
+      dataIndex: "revenue",
+      key: "revenue",
+      sorter: (a, b) => a.revenue - b.revenue,
+      render: (value) => <span className="text-green-600 font-semibold">{formatCurrency(value)}</span>,
+    },
+    {
+      title: "Đơn hàng",
+      dataIndex: "orders",
+      key: "orders",
+      sorter: (a, b) => a.orders - b.orders,
+    },
+    {
+      title: "Nhân viên",
+      dataIndex: "staff",
+      key: "staff",
+      sorter: (a, b) => a.staff - b.staff,
+    },
+    {
+      title: "Khách hàng",
+      dataIndex: "customers",
+      key: "customers",
+      sorter: (a, b) => a.customers - b.customers,
+    },
+    {
+      title: "Giá trị TB",
+      dataIndex: "averageOrderValue",
+      key: "averageOrderValue",
+      render: (value) => formatCurrency(value),
+    },
+    {
+      title: (
+        <div className="flex items-center gap-1">
+          <span>Điểm số</span>
+          <AntTooltip title={`Điểm đánh giá tổng thể: Doanh thu (${thresholds.revenueWeight}%) + Giá trị TB (${thresholds.aovWeight}%) + Hiệu suất (${thresholds.efficiencyWeight}%) + Khách hàng (${thresholds.retentionWeight}%)`}>
+            <InfoCircleOutlined className="text-gray-400 cursor-help" />
+          </AntTooltip>
+        </div>
+      ),
+      key: "score",
+      align: "center",
+      sorter: (a, b) => calculateBranchScore(a, avgRevenue, avgAOV) - calculateBranchScore(b, avgRevenue, avgAOV),
+      render: (_, record) => {
+        const score = calculateBranchScore(record, avgRevenue, avgAOV)
+        const color = score >= 80 ? "green" : score >= 60 ? "blue" : score >= 40 ? "gold" : "red"
+        return (
+          <Tag color={color} className="text-base font-semibold px-3 py-1">
+            {score.toFixed(1)}
+          </Tag>
+        )
+      },
+    },
+  ]
+
+  // Table columns for top products
+  const productColumns: TableColumnsType<SystemTopProduct> = [
+    {
+      title: "#",
+      key: "rank",
+      width: 60,
+      render: (_, __, index) => (
+        <div
+          className={`h-8 w-8 rounded-full flex items-center justify-center font-bold text-white ${
+            index === 0 ? "bg-yellow-500" : index === 1 ? "bg-slate-400" : index === 2 ? "bg-orange-600" : "bg-slate-300"
+          }`}
+        >
+          {index + 1}
+        </div>
+      ),
+    },
+    {
+      title: "Sản phẩm",
+      dataIndex: "name",
+      key: "name",
+    },
+    {
+      title: "Chi nhánh",
+      dataIndex: "branchName",
+      key: "branch",
+    },
+    {
+      title: "Số lượng bán",
+      dataIndex: "unitsSold",
+      key: "unitsSold",
+      render: (value) => <span className="font-semibold">{value.toLocaleString()}</span>,
+    },
+    {
+      title: "Doanh thu",
+      dataIndex: "revenue",
+      key: "revenue",
+      render: (value) => <span className="text-green-600 font-semibold">{formatCurrency(value)}</span>,
+    },
+  ]
+
+  // Format revenue chart data
+  const chartData = revenueData.map((item) => ({
+    date: item.date,
+    revenue: item.revenue,
+    orders: item.orders,
+  }))
+
+  // Customer tier data for pie chart
+  const customerTierData = stats
+    ? [
+        { name: "Bronze", value: stats.totalCustomers.byTier.BRONZE, color: "#CD7F32" },
+        { name: "Silver", value: stats.totalCustomers.byTier.SILVER, color: "#C0C0C0" },
+        { name: "Gold", value: stats.totalCustomers.byTier.GOLD, color: "#FFD700" },
+        { name: "VIP", value: stats.totalCustomers.byTier.VIP, color: "#8B5CF6" },
+      ]
+    : []
+
+  return (
+    <div className="p-8">
+      <Spin spinning={loading}>
+        <Card className="border-0 shadow-sm">
+          <CardHeader>
+            <div className="flex flex-col gap-4">
+              <div className="flex items-center justify-between">
+                <Space>
+                  <RangePicker format="YYYY-MM-DD" onChange={setDateRange} placeholder={["Từ ngày", "Đến ngày"]} />
+                  <Button
+                    type="primary"
+                    icon={<DownloadOutlined />}
+                    onClick={handleExport}
+                    loading={exporting}
+                    className="bg-blue-600 hover:bg-blue-700"
+                  >
+                    Xuất báo cáo
+                  </Button>
+                </Space>
+                <Button
+                  icon={<SettingOutlined />}
+                  onClick={() => setSettingsModalVisible(true)}
+                  className="flex items-center gap-1"
+                  size="large"
+                >
+                  Cài đặt ngưỡng
+                </Button>
+              </div>
+
+              {/* System Alerts */}
+              {visibleAlerts.length > 0 && (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-semibold text-gray-700">Cảnh báo hệ thống ({visibleAlerts.length})</span>
+                    {dismissedAlerts.size > 0 && (
+                      <Button
+                        size="small"
+                        type="link"
+                        onClick={() => {
+                          setDismissedAlerts(new Set())
+                          sessionStorage.removeItem("dismissedAlerts")
+                          message.info("Đã hiển thị lại tất cả cảnh báo")
+                        }}
+                      >
+                        Hiển thị lại tất cả ({dismissedAlerts.size} đã ẩn)
+                      </Button>
+                    )}
+                  </div>
+                  {visibleAlerts.map((alert) => (
+                    <Alert
+                      key={alert.id}
+                      message={
+                        <div className="flex items-center gap-2">
+                          <AlertOutlined />
+                          <span className="font-semibold">{alert.title}</span>
+                        </div>
+                      }
+                      description={alert.message}
+                      type={alert.severity === "critical" ? "error" : "warning"}
+                      showIcon
+                      closable
+                      onClose={() => handleAlertClose(alert.id)}
+                    />
+                  ))}
+                </div>
+              )}
+
+              {/* Main Stats Cards */}
+              {stats && (
+                <Row gutter={16}>
+                  <Col span={6}>
+                    <div className="bg-gradient-to-br from-blue-500 to-blue-600 p-6 rounded-lg text-white">
+                      <Statistic
+                        title={<span className="text-white opacity-90">Doanh thu tháng</span>}
+                        value={stats.totalRevenue.month}
+                        prefix={<DollarOutlined />}
+                        suffix="đ"
+                        valueStyle={{ color: "white" }}
+                        formatter={(value) => new Intl.NumberFormat("vi-VN").format(value as number)}
+                      />
+                      {growthMetrics && (
+                        <AntTooltip title="Month over Month: Tỷ lệ tăng trưởng so với tháng trước = ((tháng này - tháng trước) / tháng trước) × 100%">
+                          <div className="mt-2 flex items-center gap-1 cursor-help">
+                            {growthMetrics.revenueGrowth.mom >= 0 ? (
+                              <ArrowUpOutlined className="text-green-300" />
+                            ) : (
+                              <ArrowDownOutlined className="text-red-300" />
+                            )}
+                            <span className="text-sm">{growthMetrics.revenueGrowth.mom.toFixed(1)}% MoM</span>
+                          </div>
+                        </AntTooltip>
+                      )}
+                    </div>
+                  </Col>
+                  <Col span={6}>
+                    <div className="bg-gradient-to-br from-green-500 to-green-600 p-6 rounded-lg text-white">
+                      <Statistic
+                        title={<span className="text-white opacity-90">Đơn hàng tháng</span>}
+                        value={stats.totalOrders.month}
+                        prefix={<ShoppingOutlined />}
+                        valueStyle={{ color: "white" }}
+                      />
+                      {growthMetrics && (
+                        <AntTooltip title="Month over Month: Tỷ lệ tăng trưởng so với tháng trước = ((tháng này - tháng trước) / tháng trước) × 100%">
+                          <div className="mt-2 flex items-center gap-1 cursor-help">
+                            {growthMetrics.orderGrowth.mom >= 0 ? (
+                              <ArrowUpOutlined className="text-green-300" />
+                            ) : (
+                              <ArrowDownOutlined className="text-red-300" />
+                            )}
+                            <span className="text-sm">{growthMetrics.orderGrowth.mom.toFixed(1)}% MoM</span>
+                          </div>
+                        </AntTooltip>
+                      )}
+                    </div>
+                  </Col>
+                  <Col span={6}>
+                    <div className="bg-gradient-to-br from-purple-500 to-purple-600 p-6 rounded-lg text-white">
+                      <Statistic
+                        title={<span className="text-white opacity-90">Tổng chi nhánh</span>}
+                        value={stats.totalBranches.active}
+                        prefix={<BankOutlined />}
+                        suffix={`/${stats.totalBranches.total}`}
+                        valueStyle={{ color: "white" }}
+                      />
+                      <div className="mt-2">
+                        <Progress percent={(stats.totalBranches.active / stats.totalBranches.total) * 100} showInfo={false} strokeColor="white" />
+                      </div>
+                    </div>
+                  </Col>
+                  <Col span={6}>
+                    <div className="bg-gradient-to-br from-orange-500 to-orange-600 p-6 rounded-lg text-white">
+                      <Statistic
+                        title={<span className="text-white opacity-90">Khách hàng mới</span>}
+                        value={stats.totalCustomers.new}
+                        prefix={<UserOutlined />}
+                        suffix={`/${stats.totalCustomers.total}`}
+                        valueStyle={{ color: "white" }}
+                      />
+                      {growthMetrics && (
+                        <AntTooltip title="Month over Month: Tỷ lệ tăng trưởng so với tháng trước = ((tháng này - tháng trước) / tháng trước) × 100%">
+                          <div className="mt-2 flex items-center gap-1 cursor-help">
+                            {growthMetrics.customerGrowth.mom >= 0 ? (
+                              <ArrowUpOutlined className="text-green-300" />
+                            ) : (
+                              <ArrowDownOutlined className="text-red-300" />
+                            )}
+                            <span className="text-sm">{growthMetrics.customerGrowth.mom.toFixed(1)}% MoM</span>
+                          </div>
+                        </AntTooltip>
+                      )}
+                    </div>
+                  </Col>
+                </Row>
+              )}
+
+              {/* Secondary Stats */}
+              {stats && (
+                <Row gutter={16}>
+                  <Col span={8}>
+                    <div className="bg-slate-50 p-4 rounded-lg border border-slate-100">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm text-slate-600">Tổng người dùng</p>
+                          <p className="text-2xl font-bold text-slate-900">{stats.totalUsers.total}</p>
+                          <p className="text-xs text-slate-500 mt-1">
+                            {stats.totalUsers.active} đang hoạt động
+                          </p>
+                        </div>
+                        <TeamOutlined className="text-4xl text-slate-400" />
+                      </div>
+                    </div>
+                  </Col>
+                  <Col span={8}>
+                    <div className="bg-slate-50 p-4 rounded-lg border border-slate-100">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm text-slate-600">Tổng sản phẩm</p>
+                          <p className="text-2xl font-bold text-slate-900">{stats.totalProducts.total}</p>
+                          <p className="text-xs text-slate-500 mt-1">
+                            {stats.totalProducts.available} đang bán
+                          </p>
+                        </div>
+                        <AppstoreOutlined className="text-4xl text-slate-400" />
+                      </div>
+                    </div>
+                  </Col>
+                  <Col span={8}>
+                    <div className="bg-slate-50 p-4 rounded-lg border border-slate-100">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm text-slate-600">Doanh thu toàn thời gian</p>
+                          <p className="text-2xl font-bold text-slate-900">
+                            {(stats.totalRevenue.allTime / 1000000).toFixed(1)}M
+                          </p>
+                          <p className="text-xs text-slate-500 mt-1">
+                            {stats.totalOrders.total} đơn hàng
+                          </p>
+                        </div>
+                        <RiseOutlined className="text-4xl text-slate-400" />
+                      </div>
+                    </div>
+                  </Col>
+                </Row>
+              )}
+            </div>
+          </CardHeader>
+
+          <CardContent>
+            {/* Revenue Chart */}
+            <div className="mb-8">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-900">Biểu đồ doanh thu toàn hệ thống</h3>
+                  <p className="text-sm text-slate-500">Theo dõi xu hướng doanh thu</p>
+                </div>
+                <Select
+                  value={period}
+                  onChange={setPeriod}
+                  style={{ width: 150 }}
+                  options={[
+                    { label: "Theo ngày", value: "day" },
+                    { label: "Theo tuần", value: "week" },
+                    { label: "Theo tháng", value: "month" },
+                  ]}
+                />
+              </div>
+              <div className="h-96">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={chartData}>
+                    <defs>
+                      <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.3} />
+                        <stop offset="95%" stopColor="#3B82F6" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" />
+                    <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fill: "#94A3B8", fontSize: 12 }} />
+                    <YAxis
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fill: "#94A3B8", fontSize: 12 }}
+                      label={{ value: "Doanh thu (VNĐ)", angle: -90, position: "insideLeft" }}
+                      tickFormatter={(value) => new Intl.NumberFormat("vi-VN").format(value)}
+                    />
+                    <Tooltip
+                      formatter={(value: any, name: string | undefined) => {
+                        if (name === "revenue") {
+                          return [`${new Intl.NumberFormat("vi-VN").format(value)}đ`, "Doanh thu"]
+                        }
+                        return [value, "Đơn hàng"]
+                      }}
+                    />
+                    <Area type="monotone" dataKey="revenue" stroke="#3B82F6" strokeWidth={2} fillOpacity={1} fill="url(#colorRevenue)" />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            {/* Branch Performance & Customer Distribution */}
+            <Row gutter={16} className="mb-8">
+              <Col span={16}>
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-2">
+                      <BankOutlined className="text-blue-500 text-lg" />
+                      <h3 className="text-lg font-semibold text-slate-900">Hiệu suất các chi nhánh</h3>
+                    </div>
+                  </div>
+                  <div className="text-xs text-gray-500 italic mb-2">
+                    <InfoCircleOutlined className="mr-1" />
+                    Điểm số tính theo: Doanh thu ({thresholds.revenueWeight}%), Giá trị đơn TB ({thresholds.aovWeight}%), Hiệu suất nhân viên ({thresholds.efficiencyWeight}%), Tỷ lệ giữ chân khách ({thresholds.retentionWeight}%)
+                  </div>
+                  <Table
+                    columns={branchColumns}
+                    dataSource={branchPerformance}
+                    rowKey="id"
+                    pagination={{ pageSize: 5 }}
+                    size="small"
+                    scroll={{ x: 800 }}
+                  />
+                </div>
+              </Col>
+              <Col span={8}>
+                <div>
+                  <div className="flex items-center gap-2 mb-4">
+                    <UserOutlined className="text-purple-500 text-lg" />
+                    <h3 className="text-lg font-semibold text-slate-900">Phân bố khách hàng</h3>
+                  </div>
+                  <div className="text-xs text-gray-500 italic mb-2">
+                    <InfoCircleOutlined className="mr-1" />
+                    Phân hạng: Bronze (mặc định), Silver (≥{thresholds.silverPoints} điểm), Gold (≥{thresholds.goldPoints} điểm), VIP (≥{thresholds.vipPoints} điểm)
+                  </div>
+                  <div className="h-80 flex items-center justify-center">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={customerTierData}
+                          cx="50%"
+                          cy="50%"
+                          labelLine={false}
+                          label={(entry) => `${entry.name}: ${entry.value}`}
+                          outerRadius={100}
+                          fill="#8884d8"
+                          dataKey="value"
+                        >
+                          {customerTierData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.color} />
+                          ))}
+                        </Pie>
+                        <Tooltip />
+                        <Legend />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              </Col>
+            </Row>
+
+            {/* Top Products */}
+            <div className="mb-8">
+              <div className="flex items-center gap-2 mb-4">
+                <TrophyOutlined className="text-yellow-500 text-lg" />
+                <h3 className="text-lg font-semibold text-slate-900">Top sản phẩm bán chạy toàn hệ thống</h3>
+              </div>
+              <div className="text-xs text-gray-500 italic mb-2">
+                <InfoCircleOutlined className="mr-1" />
+                Thống kê dựa trên dữ liệu trong 30 ngày gần nhất
+              </div>
+              <Table columns={productColumns} dataSource={topProducts} rowKey="id" pagination={false} size="small" />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Settings Modal */}
+        <Modal
+          title="Cài đặt ngưỡng cảnh báo"
+          open={settingsModalVisible}
+          onCancel={handleSettingsCancel}
+          footer={[
+            <Button key="cancel" onClick={handleSettingsCancel}>
+              Hủy
+            </Button>,
+            <Button key="apply" type="primary" onClick={handleSettingsApply}>
+              Áp dụng
+            </Button>,
+          ]}
+          width={600}
+        >
+          <div className="space-y-4 py-4">
+            <div>
+              <label className="block text-sm font-medium mb-2">Ngưỡng doanh thu thấp (%)</label>
+              <Space.Compact className="w-full">
+                <InputNumber
+                  min={0}
+                  max={100}
+                  value={tempThresholds.revenuePercent}
+                  onChange={(value) => setTempThresholds({ ...tempThresholds, revenuePercent: value || 50 })}
+                  className="w-full"
+                />
+                <Button disabled>%</Button>
+              </Space.Compact>
+              <p className="text-xs text-gray-500 mt-1">Cảnh báo khi doanh thu chi nhánh {'<'} % mức trung bình</p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-2">Số nhân viên tối thiểu</label>
+              <InputNumber
+                min={1}
+                max={50}
+                value={tempThresholds.minStaff}
+                onChange={(value) => setTempThresholds({ ...tempThresholds, minStaff: value || 3 })}
+                className="w-full"
+              />
+              <p className="text-xs text-gray-500 mt-1">Cảnh báo khi chi nhánh có {'<'} số nhân viên này</p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-2">Ngưỡng tồn kho tối thiểu</label>
+              <InputNumber
+                min={0}
+                max={1000}
+                value={tempThresholds.minStock}
+                onChange={(value) => setTempThresholds({ ...tempThresholds, minStock: value || 10 })}
+                className="w-full"
+              />
+              <p className="text-xs text-gray-500 mt-1">Cảnh báo khi số lượng sản phẩm {'<='} ngưỡng này</p>
+            </div>
+
+            <div className="border-t pt-4">
+              <h4 className="font-medium mb-3">Tiêu chí đánh giá hiệu suất chi nhánh (%)</h4>
+              <p className="text-xs text-gray-500 mb-3">Tổng các trọng số phải bằng 100%</p>
+
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-sm font-medium mb-2">Trọng số Doanh thu (%)</label>
+                  <Space.Compact className="w-full">
+                    <InputNumber
+                      min={0}
+                      max={100}
+                      value={tempThresholds.revenueWeight}
+                      onChange={(value) => setTempThresholds({ ...tempThresholds, revenueWeight: value || 40 })}
+                      className="w-full"
+                    />
+                    <Button disabled>%</Button>
+                  </Space.Compact>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">Trọng số Giá trị đơn TB (%)</label>
+                  <Space.Compact className="w-full">
+                    <InputNumber
+                      min={0}
+                      max={100}
+                      value={tempThresholds.aovWeight}
+                      onChange={(value) => setTempThresholds({ ...tempThresholds, aovWeight: value || 20 })}
+                      className="w-full"
+                    />
+                    <Button disabled>%</Button>
+                  </Space.Compact>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">Trọng số Hiệu suất nhân viên (%)</label>
+                  <Space.Compact className="w-full">
+                    <InputNumber
+                      min={0}
+                      max={100}
+                      value={tempThresholds.efficiencyWeight}
+                      onChange={(value) => setTempThresholds({ ...tempThresholds, efficiencyWeight: value || 20 })}
+                      className="w-full"
+                    />
+                    <Button disabled>%</Button>
+                  </Space.Compact>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">Trọng số Tỷ lệ giữ chân khách (%)</label>
+                  <Space.Compact className="w-full">
+                    <InputNumber
+                      min={0}
+                      max={100}
+                      value={tempThresholds.retentionWeight}
+                      onChange={(value) => setTempThresholds({ ...tempThresholds, retentionWeight: value || 20 })}
+                      className="w-full"
+                    />
+                    <Button disabled>%</Button>
+                  </Space.Compact>
+                </div>
+
+                <div className="bg-gray-50 p-2 rounded">
+                  <span className="text-xs font-medium">Tổng: </span>
+                  <span className={`text-xs font-bold ${
+                    tempThresholds.revenueWeight + tempThresholds.aovWeight + tempThresholds.efficiencyWeight + tempThresholds.retentionWeight === 100
+                      ? "text-green-600"
+                      : "text-red-600"
+                  }`}>
+                    {tempThresholds.revenueWeight + tempThresholds.aovWeight + tempThresholds.efficiencyWeight + tempThresholds.retentionWeight}%
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="border-t pt-4">
+              <h4 className="font-medium mb-3">Ngưỡng phân hạng khách hàng</h4>
+
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-sm font-medium mb-2">Silver (điểm)</label>
+                  <InputNumber
+                    min={0}
+                    max={100000}
+                    value={tempThresholds.silverPoints}
+                    onChange={(value) => setTempThresholds({ ...tempThresholds, silverPoints: value || 2000 })}
+                    className="w-full"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">Gold (điểm)</label>
+                  <InputNumber
+                    min={0}
+                    max={100000}
+                    value={tempThresholds.goldPoints}
+                    onChange={(value) => setTempThresholds({ ...tempThresholds, goldPoints: value || 5000 })}
+                    className="w-full"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">VIP (điểm)</label>
+                  <InputNumber
+                    min={0}
+                    max={100000}
+                    value={tempThresholds.vipPoints}
+                    onChange={(value) => setTempThresholds({ ...tempThresholds, vipPoints: value || 10000 })}
+                    className="w-full"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        </Modal>
+      </Spin>
+    </div>
+  )
+}
 
 export default function AdminDashboardPage() {
   return (
-    <AdminLayout>
-      <div className="p-8 space-y-6 bg-slate-50">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-slate-900">Dashboard</h1>
-            <p className="text-sm text-slate-500 mt-1">Hi, Haa Ju. Welcome back to AnEat Admin!</p>
-          </div>
-          {/* <Button className="bg-blue-500 hover:bg-blue-600 text-white gap-2">
-            <Calendar className="h-4 w-4 text-white" />
-            <span className="text-white">Thời gian</span>
-            <ChevronDown className="h-4 w-4 text-white" />
-          </Button> */}
-          {/* Calendar button */}
-          
-        </div>
-
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {/* Card 1 - Total Orders */}
-          <Card className="p-6 bg-white border-0 shadow-sm">
-            <div className="flex items-start justify-between">
-              <div className="flex-1">
-                <div className="flex items-center gap-3">
-                  <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-green-100 to-green-50 flex items-center justify-center">
-                    <Package className="h-8 w-8 text-green-500" />
-                  </div>
-                </div>
-                <div className="mt-4">
-                  <p className="text-sm text-slate-500 font-medium">Total Orders</p>
-                  <div className="flex items-end gap-2 mt-2">
-                    <h3 className="text-3xl font-bold text-slate-900">75</h3>
-                  </div>
-                  <div className="flex items-center gap-1 mt-2">
-                    <TrendingUp className="h-3 w-3 text-green-500" />
-                    <span className="text-xs text-green-500 font-medium">+3% (30 days)</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </Card>
-
-          {/* Card 2 - Total Delivered */}
-          <Card className="p-6 bg-white border-0 shadow-sm">
-            <div className="flex items-start justify-between">
-              <div className="flex-1">
-                <div className="flex items-center gap-3">
-                  <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-green-400 to-green-300 flex items-center justify-center">
-                    <Package className="h-8 w-8 text-white" />
-                  </div>
-                </div>
-                <div className="mt-4">
-                  <p className="text-sm text-slate-500 font-medium">Total Delivered</p>
-                  <div className="flex items-end gap-2 mt-2">
-                    <h3 className="text-3xl font-bold text-slate-900">357</h3>
-                  </div>
-                  <div className="flex items-center gap-1 mt-2">
-                    <TrendingDown className="h-3 w-3 text-red-500" />
-                    <span className="text-xs text-red-500 font-medium">-3% (30 days)</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </Card>
-
-          {/* Card 3 - Total Canceled */}
-          <Card className="p-6 bg-white border-0 shadow-sm">
-            <div className="flex items-start justify-between">
-              <div className="flex-1">
-                <div className="flex items-center gap-3">
-                  <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-green-100 to-green-50 flex items-center justify-center">
-                    <Package className="h-8 w-8 text-green-500" />
-                  </div>
-                </div>
-                <div className="mt-4">
-                  <p className="text-sm text-slate-500 font-medium">Total Canceled</p>
-                  <div className="flex items-end gap-2 mt-2">
-                    <h3 className="text-3xl font-bold text-slate-900">65</h3>
-                  </div>
-                  <div className="flex items-center gap-1 mt-2">
-                    <TrendingUp className="h-3 w-3 text-green-500" />
-                    <span className="text-xs text-green-500 font-medium">+3% (30 days)</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </Card>
-
-          {/* Card 4 - Total Revenue */}
-          <Card className="p-6 bg-white border-0 shadow-sm">
-            <div className="flex items-start justify-between">
-              <div className="flex-1">
-                <div className="flex items-center gap-3">
-                  <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-pink-400 to-pink-300 flex items-center justify-center">
-                    <DollarSign className="h-8 w-8 text-white" />
-                  </div>
-                </div>
-                <div className="mt-4">
-                  <p className="text-sm text-slate-500 font-medium">Total Revenue</p>
-                  <div className="flex items-end gap-2 mt-2">
-                    <h3 className="text-3xl font-bold text-slate-900">$128</h3>
-                  </div>
-                  <div className="flex items-center gap-1 mt-2">
-                    <TrendingUp className="h-3 w-3 text-green-500" />
-                    <span className="text-xs text-green-500 font-medium">+3% (30 days)</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </Card>
-        </div>
-
-        {/* Charts Row */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Pie Chart */}
-          <Card className="p-6 bg-white border-0 shadow-sm">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="font-semibold text-slate-900">Pie Chart</h3>
-              <div className="flex items-center gap-4 text-sm">
-                {/* <label className="flex items-center gap-2 cursor-pointer">
-                  <input type="checkbox" className="rounded" checked readOnly />
-                  <span className="text-slate-600">Chart</span>
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input type="checkbox" className="rounded" checked readOnly />
-                  <span className="text-slate-600">Show Value</span>
-                </label> */}
-                <Button variant="ghost" size="icon" className="h-8 w-8">
-                  <MoreVertical className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-            <div className="flex items-center justify-center">
-              <div className="grid grid-cols-3 gap-6 w-full">
-                {pieChartData.map((item, index) => (
-                  <div key={index} className="flex flex-col items-center">
-                    <div className="relative w-24 h-24">
-                      <svg className="w-24 h-24 transform -rotate-90">
-                        <circle
-                          cx="48"
-                          cy="48"
-                          r="40"
-                          stroke="#E5E7EB"
-                          strokeWidth="12"
-                          fill="none"
-                        />
-                        <circle
-                          cx="48"
-                          cy="48"
-                          r="40"
-                          stroke={item.color}
-                          strokeWidth="12"
-                          fill="none"
-                          strokeDasharray={`${(item.value / 100) * 251.2} 251.2`}
-                          strokeLinecap="round"
-                        />
-                      </svg>
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <span className="text-xl font-bold text-slate-900">{item.value}%</span>
-                      </div>
-                    </div>
-                    <p className="text-xs text-slate-600 mt-2 text-center">{item.name}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </Card>
-
-          {/* Chart Order */}
-          <Card className="p-6 bg-white border-0 shadow-sm lg:col-span-2">
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                <h3 className="font-semibold text-slate-900">Chart Order</h3>
-              </div>
-              {/* <Button variant="outline" className="gap-2 text-blue-600 border-blue-200 hover:bg-blue-50">
-                <Download className="h-4 w-4" />
-                Save Report
-              </Button> */}
-            </div>
-            <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={chartOrderData}>
-                  <defs>
-                    <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.3}/>
-                      <stop offset="95%" stopColor="#3B82F6" stopOpacity={0}/>
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" />
-                  <XAxis 
-                    dataKey="day" 
-                    axisLine={false}
-                    tickLine={false}
-                    tick={{ fill: '#94A3B8', fontSize: 12 }}
-                  />
-                  <YAxis 
-                    axisLine={false}
-                    tickLine={false}
-                    tick={{ fill: '#94A3B8', fontSize: 12 }}
-                  />
-                  <Tooltip />
-                  <Area 
-                    type="monotone" 
-                    dataKey="value" 
-                    stroke="#3B82F6" 
-                    strokeWidth={2}
-                    fillOpacity={1} 
-                    fill="url(#colorValue)" 
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-            <div className="flex items-center justify-center gap-2 mt-4">
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-blue-500"></div>
-                <span className="text-xs text-slate-600">456 Order</span>
-              </div>
-              <span className="text-slate-300">•</span>
-              <span className="text-xs text-slate-500">Oct 18th, 2022</span>
-            </div>
-          </Card>
-        </div>
-
-        {/* Bottom Row */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Total Revenue */}
-          <Card className="p-6 bg-white border-0 shadow-sm">
-            <h3 className="font-semibold text-slate-900 mb-6">Total Revenue</h3>
-            <div className="h-80">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={totalRevenueData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" />
-                  <XAxis 
-                    dataKey="month" 
-                    axisLine={false}
-                    tickLine={false}
-                    tick={{ fill: '#94A3B8', fontSize: 12 }}
-                  />
-                  <YAxis 
-                    axisLine={false}
-                    tickLine={false}
-                    tick={{ fill: '#94A3B8', fontSize: 12 }}
-                    tickFormatter={(value) => `$${value/1000}k`}
-                  />
-                  <Tooltip 
-                    formatter={(value) => `$${Number(value).toLocaleString()}`}
-                    contentStyle={{ 
-                      backgroundColor: 'white',
-                      border: '1px solid #E2E8F0',
-                      borderRadius: '8px'
-                    }}
-                  />
-                  <Line 
-                    type="monotone" 
-                    dataKey="value2020" 
-                    stroke="#3B82F6" 
-                    strokeWidth={2}
-                    dot={{ fill: '#3B82F6', r: 4 }}
-                    activeDot={{ r: 6 }}
-                  />
-                  <Line 
-                    type="monotone" 
-                    dataKey="value2021" 
-                    stroke="#EF4444" 
-                    strokeWidth={2}
-                    dot={{ fill: '#EF4444', r: 4 }}
-                    activeDot={{ r: 6 }}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-            <div className="flex items-center justify-center gap-6 mt-4">
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-blue-500"></div>
-                <span className="text-sm text-slate-600">2020</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-red-500"></div>
-                <span className="text-sm text-slate-600">2021</span>
-              </div>
-            </div>
-          </Card>
-
-          {/* Customer Map */}
-          <Card className="p-6 bg-white border-0 shadow-sm">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="font-semibold text-slate-900">Customer Map</h3>
-              <Button variant="outline" className="gap-2 text-sm">
-                Weekly
-                <ChevronDown className="h-4 w-4" />
-              </Button>
-            </div>
-            <div className="h-80">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={customerMapData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" vertical={false} />
-                  <XAxis 
-                    dataKey="day" 
-                    axisLine={false}
-                    tickLine={false}
-                    tick={{ fill: '#94A3B8', fontSize: 12 }}
-                  />
-                  <YAxis 
-                    axisLine={false}
-                    tickLine={false}
-                    tick={{ fill: '#94A3B8', fontSize: 12 }}
-                  />
-                  <Tooltip />
-                  <Bar dataKey="red" fill="#EF4444" radius={[8, 8, 0, 0]} barSize={20} />
-                  <Bar dataKey="yellow" fill="#F59E0B" radius={[8, 8, 0, 0]} barSize={20} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </Card>
-        </div>
-      </div>
+    <AdminLayout title="Dashboard Quản trị Hệ thống">
+      <App>
+        <DashboardContent />
+      </App>
     </AdminLayout>
   )
 }
