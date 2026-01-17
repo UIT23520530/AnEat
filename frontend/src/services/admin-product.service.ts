@@ -80,8 +80,9 @@ class AdminProductService {
   /**
    * Get product statistics
    */
-  async getProductStats() {
-    const response = await apiClient.get("/admin/products/stats")
+  async getProductStats(branchId?: string | null) {
+    const params = branchId ? { branchId } : {}
+    const response = await apiClient.get("/admin/products/stats", { params })
     return response.data
   }
 

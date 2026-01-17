@@ -52,6 +52,8 @@ export const authenticate = async (
       process.env.JWT_SECRET || 'default-secret'
     ) as JwtPayload;
 
+    console.log('[AUTH DEBUG] Decoded token userId:', decoded.userId);
+
     // Get user from database
     const user = await prisma.user.findUnique({
       where: { id: decoded.userId },
@@ -64,8 +66,11 @@ export const authenticate = async (
       },
     });
 
+    console.log('[AUTH DEBUG] User found:', user ? `${user.email} (${user.role}) - Active: ${user.isActive}` : 'NOT FOUND');
+
     // Check if user exists and is active
     if (!user || !user.isActive) {
+      console.log('[AUTH DEBUG] User validation failed - exists:', !!user, 'isActive:', user?.isActive);
       res.status(401).json({
         status: 'error',
         message: 'User not found or inactive',

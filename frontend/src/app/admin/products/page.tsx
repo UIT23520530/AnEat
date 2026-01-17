@@ -161,7 +161,7 @@ function ProductsContent() {
   // Load statistics
   const loadStatistics = async () => {
     try {
-      const response = await adminProductService.getProductStats()
+      const response = await adminProductService.getProductStats(branchFilter)
       setStatistics(response.data)
     } catch (error: any) {
       console.error("❌ Load statistics error:", error)

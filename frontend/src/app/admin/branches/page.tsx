@@ -508,6 +508,7 @@ function BranchesContent() {
               }}
               bordered={false}
               className="ant-table-custom"
+              scroll={{ x: 1400 }}
             />
           </CardContent>
         </Card>
