@@ -133,9 +133,10 @@ export const createBill = async (req: Request, res: Response): Promise<void> => 
  */
 export const getBillList = async (req: Request, res: Response): Promise<void> => {
   try {
-    const isAdmin = req.user?.role === 'ADMIN_SYSTEM' || req.user?.role === 'ADMIN_BRAND';
+    // Only ADMIN_SYSTEM can view all branches
+    const isSystemAdmin = req.user?.role === 'ADMIN_SYSTEM';
     
-    if (!req.user?.branchId && !isAdmin) {
+    if (!req.user?.branchId && !isSystemAdmin) {
       sendError(res, 400, 'User is not assigned to any branch');
       return;
     }
@@ -148,7 +149,7 @@ export const getBillList = async (req: Request, res: Response): Promise<void> =>
       status: req.query.status as BillStatus,
       paymentStatus: req.query.paymentStatus as PaymentStatus,
       search: req.query.search as string,
-      branchId: isAdmin ? (req.query.branchId as string) : (req.user!.branchId || undefined), // Admin can filter or see all, others restricted to their branch
+      branchId: isSystemAdmin ? (req.query.branchId as string) : (req.user!.branchId || undefined), // Only ADMIN_SYSTEM can filter or see all, others restricted to their branch
       dateFrom: req.query.dateFrom ? new Date(req.query.dateFrom as string) : undefined,
       dateTo: req.query.dateTo ? new Date(req.query.dateTo as string) : undefined,
     };
@@ -179,8 +180,21 @@ export const getBillById = async (req: Request, res: Response): Promise<void> =>
 
     const bill = await BillService.getBillById(id);
 
+    // Debug logging
+    console.log('getBillById - User:', {
+      userId: req.user?.id,
+      role: req.user?.role,
+      branchId: req.user?.branchId,
+    });
+    console.log('getBillById - Bill:', {
+      billId: bill.id,
+      billNumber: bill.billNumber,
+      branchId: bill.branch?.id,
+    });
+
     // Check if bill belongs to user's branch
     if (bill.branch?.id !== req.user?.branchId && req.user?.role !== 'ADMIN_SYSTEM') {
+      console.log('Access denied: bill.branch.id !== user.branchId');
       sendError(res, 403, 'Access denied to this bill');
       return;
     }

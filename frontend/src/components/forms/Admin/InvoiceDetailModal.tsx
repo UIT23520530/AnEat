@@ -97,7 +97,7 @@ export const InvoiceDetailModal: React.FC<InvoiceDetailModalProps> = ({
       }
       open={open}
       onCancel={onClose}
-      width={900}
+      width={800}
       centered
       maskClosable={false}
       footer={[
@@ -152,7 +152,7 @@ export const InvoiceDetailModal: React.FC<InvoiceDetailModalProps> = ({
             <Descriptions.Item label="Nhân viên xuất" span={1}>
               {invoice.staffName}
             </Descriptions.Item>
-            <Descriptions.Item label="Phương thức thanh toán" span={1}>
+            <Descriptions.Item label="Thanh toán" span={1}>
               <Tag color={getPaymentMethodColor(invoice.paymentMethod)} icon={getPaymentMethodIcon(invoice.paymentMethod)}>
                 {getPaymentMethodText(invoice.paymentMethod)}
               </Tag>
@@ -181,7 +181,7 @@ export const InvoiceDetailModal: React.FC<InvoiceDetailModalProps> = ({
 
           {/* Items Table */}
           <div>
-            <h4 style={{ marginBottom: 12, fontWeight: "bold", fontSize: 16 }}>Chi tiết đơn hàng</h4>
+            <h4 style={{ marginBottom: 12, fontWeight: "bold" }}>Chi tiết món ăn</h4>
             <Table
               dataSource={invoice.items}
               rowKey={(record) => record.id}
@@ -199,7 +199,7 @@ export const InvoiceDetailModal: React.FC<InvoiceDetailModalProps> = ({
                     </div>
                   ),
                 },
-                { title: "Số lượng", dataIndex: "quantity", key: "quantity", width: 100, align: "center" as const },
+                { title: "SL", dataIndex: "quantity", key: "quantity", width: 80, align: "center" as const },
                 {
                   title: "Đơn giá",
                   dataIndex: "price",
@@ -226,40 +226,39 @@ export const InvoiceDetailModal: React.FC<InvoiceDetailModalProps> = ({
           <Divider />
 
           {/* Payment Summary */}
-          <div style={{ textAlign: "right" }}>
-            <Space direction="vertical" style={{ width: "100%", alignItems: "flex-end" }} size="small">
-              <div style={{ display: "flex", justifyContent: "space-between", width: 300 }}>
-                <span>Tạm tính:</span>
+          <div style={{ marginTop: 16, textAlign: "right" }}>
+            <Space direction="vertical" style={{ width: "100%", alignItems: "flex-end" }}>
+              <div>
+                <span style={{ marginRight: 16 }}>Tạm tính:</span>
                 <strong>{invoice.subtotal.toLocaleString()}đ</strong>
               </div>
-              <div style={{ display: "flex", justifyContent: "space-between", width: 300 }}>
-                <span>VAT (10%):</span>
+              <div>
+                <span style={{ marginRight: 16 }}>VAT (10%):</span>
                 <strong>{invoice.tax.toLocaleString()}đ</strong>
               </div>
               {invoice.discount > 0 && (
-                <div style={{ display: "flex", justifyContent: "space-between", width: 300 }}>
-                  <span>Giảm giá:</span>
+                <div>
+                  <span style={{ marginRight: 16 }}>Giảm giá:</span>
                   <strong style={{ color: "#ff4d4f" }}>
                     -{invoice.discount.toLocaleString()}đ
                   </strong>
                 </div>
               )}
-              <Divider style={{ margin: "8px 0" }} />
-              <div style={{ display: "flex", justifyContent: "space-between", width: 300, fontSize: 16 }}>
-                <span>Tổng cộng:</span>
+              <div style={{ fontSize: 16, paddingTop: 8, borderTop: "1px solid #d9d9d9" }}>
+                <span style={{ marginRight: 16 }}>Tổng cộng:</span>
                 <strong style={{ color: "#52c41a", fontSize: 18 }}>
                   {invoice.total.toLocaleString()}đ
                 </strong>
               </div>
               {invoice.paidAmount > 0 && (
                 <>
-                  <div style={{ display: "flex", justifyContent: "space-between", width: 300 }}>
-                    <span>Tiền khách đưa:</span>
+                  <div>
+                    <span style={{ marginRight: 16 }}>Tiền khách đưa:</span>
                     <strong>{invoice.paidAmount.toLocaleString()}đ</strong>
                   </div>
                   {invoice.changeAmount > 0 && (
-                    <div style={{ display: "flex", justifyContent: "space-between", width: 300 }}>
-                      <span>Tiền thối:</span>
+                    <div>
+                      <span style={{ marginRight: 16 }}>Tiền thối:</span>
                       <strong style={{ color: "#1890ff" }}>{invoice.changeAmount.toLocaleString()}đ</strong>
                     </div>
                   )}

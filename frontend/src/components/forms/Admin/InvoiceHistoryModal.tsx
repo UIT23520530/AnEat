@@ -82,11 +82,17 @@ const getFieldValue = (item: BillHistoryItem, field: string): any => {
 
 // Format value for display
 const formatValue = (field: string, value: any): string => {
-  if (value === null || value === undefined) return "Trống";
+  // For money fields, treat 0 as valid value, not empty
+  const isMoneyField = field.includes("Amount") || field === "total" || field === "subtotal" || field === "paidAmount";
   
-  if (field.includes("Amount") || field === "total" || field === "subtotal" || field === "paidAmount") {
+  if (isMoneyField) {
+    // null/undefined for money = 0đ, not "Trống"
+    if (value === null || value === undefined) return "0đ";
     return `${Number(value).toLocaleString()}đ`;
   }
+  
+  // For text fields, null/undefined/empty = "Trống"
+  if (value === null || value === undefined || value === "") return "Trống";
   
   if (field === "paymentMethod") {
     const methods: Record<string, string> = {
@@ -209,25 +215,8 @@ export const InvoiceHistoryModal: React.FC<InvoiceHistoryModalProps> = ({
                       // Get new value from current version
                       const newValue = getFieldValue(item, field);
 
-                      // Special case: items changed (thêm/xóa/cập nhật món)
-                      const isItemsField = field === "items" || field.toLowerCase().includes("item");
-                      if (isItemsField) {
-                        return (
-                          <div key={idx} style={{ marginBottom: 8, paddingBottom: 8, borderBottom: idx < parseChangedFields(item.changedFields).length - 1 ? "1px dashed #e0e0e0" : "none" }}>
-                            <div style={{ fontWeight: 600, marginBottom: 4 }}>
-                              {label}:
-                            </div>
-                            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                              <Tag color="orange" style={{ width: "100%", textAlign: "center" }}>
-                                Có thay đổi món ăn
-                              </Tag>
-                            </div>
-                          </div>
-                        );
-                      }
-
-                      // Skip if both values are the same or both undefined
-                      if (oldValue === newValue && oldValue === undefined) {
+                      // Skip if both values are the same
+                      if (oldValue === newValue) {
                         return null;
                       }
 
