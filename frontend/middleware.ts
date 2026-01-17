@@ -6,7 +6,8 @@ const routePermissions: Record<string, string[]> = {
   "/admin": ["ADMIN_SYSTEM"],
   "/manager": ["ADMIN_BRAND"],
   "/staff": ["STAFF"],
-  "/profile": ["ADMIN_SYSTEM", "ADMIN_BRAND", "STAFF", "CUSTOMER"],
+  "/logistics-staff": ["LOGISTICS_STAFF"],
+  "/profile": ["ADMIN_SYSTEM", "ADMIN_BRAND", "STAFF", "CUSTOMER", "LOGISTICS_STAFF"],
 }
 
 export function middleware(request: NextRequest) {
@@ -19,21 +20,30 @@ export function middleware(request: NextRequest) {
   const protectedRoute = Object.keys(routePermissions).find((route) => pathname.startsWith(route))
 
   if (protectedRoute) {
+    console.log('[Middleware] Checking route:', pathname, '| Protected route:', protectedRoute)
+    
     if (!userCookie) {
       // Redirect to login if not authenticated
-      return NextResponse.redirect(new URL("/login", request.url))
+      return NextResponse.redirect(new URL("/auth/login", request.url))
     }
 
     try {
-      const user = JSON.parse(userCookie.value)
+      // Decode the cookie value (it's URI encoded)
+      console.log('[Middleware] Raw cookie value:', userCookie.value.substring(0, 50) + '...')
+      const decodedValue = decodeURIComponent(userCookie.value)
+      console.log('[Middleware] Decoded cookie:', decodedValue)
+      const user = JSON.parse(decodedValue)
       const allowedRoles = routePermissions[protectedRoute]
+
+      console.log('[Middleware] ✓ User:', user.email, '| Role:', user.role, '| Allowed:', allowedRoles)
 
       if (!allowedRoles.includes(user.role)) {
         // Redirect to unauthorized page
+        console.log('[Middleware] ❌ User role not allowed, redirecting to unauthorized')
         return NextResponse.redirect(new URL("/unauthorized", request.url))
       }
     } catch {
-      return NextResponse.redirect(new URL("/login", request.url))
+      return NextResponse.redirect(new URL("/auth/login", request.url))
     }
   }
 
@@ -41,5 +51,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/admin/:path*", "/manager/:path*", "/staff/:path*", "/profile/:path*"],
+  matcher: ["/admin/:path*", "/manager/:path*", "/staff/:path*", "/logistics-staff/:path*", "/profile/:path*"],
 }

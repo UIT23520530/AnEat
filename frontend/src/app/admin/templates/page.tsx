@@ -29,6 +29,17 @@ import dayjs from "dayjs";
 
 const { Option } = Select;
 
+// Search normalization helper
+const normalizeSearchString = (str: string) => {
+  return str
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/g, "d")
+    .replace(/\s+/g, "-")
+    .trim()
+}
+
 function TemplatesContent() {
   const { message, modal } = App.useApp();
   const [form] = Form.useForm();

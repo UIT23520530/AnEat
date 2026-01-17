@@ -2,6 +2,14 @@
 
 import { createContext, useContext, useState, ReactNode, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { getTempOrderFromCookie, saveTempOrderToCookie } from "@/lib/temp-order-cookie";
+import { useCart } from "./cart-context";
+
+interface CartItemOption {
+  id: string;
+  name: string;
+  price: number;
+}
 
 interface CartItem {
   id: string;
@@ -9,6 +17,7 @@ interface CartItem {
   price: number;
   quantity: number;
   image: string;
+  options?: CartItemOption[];
 }
 
 interface CheckoutContextType {
@@ -19,6 +28,12 @@ interface CheckoutContextType {
   // Order info
   store: string;
   setStore: (store: string) => void;
+  deliveryAddress: string;
+  setDeliveryAddress: (address: string) => void;
+  phoneNumber: string;
+  setPhoneNumber: (phone: string) => void;
+  orderType: "DELIVERY" | "PICKUP";
+  setOrderType: (type: "DELIVERY" | "PICKUP") => void;
   notes: string;
   setNotes: (notes: string) => void;
   addOns: {
@@ -58,7 +73,10 @@ export const useCheckout = () => {
 
 export const CheckoutProvider = ({ children }: { children: ReactNode }) => {
   const [items, setItems] = useState<CartItem[]>([]);
-  const [store, setStore] = useState("1");
+  const [store, setStore] = useState("");
+  const [deliveryAddress, setDeliveryAddress] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [orderType, setOrderType] = useState<"DELIVERY" | "PICKUP">("DELIVERY");
   const [notes, setNotes] = useState("");
   const [addOns, setAddOns] = useState({
     utensils: false,
@@ -69,17 +87,66 @@ export const CheckoutProvider = ({ children }: { children: ReactNode }) => {
   const [discountCode, setDiscountCode] = useState("");
   const [appliedDiscount, setAppliedDiscount] = useState(0);
 
+  // Restore state from cookie on mount
+  useEffect(() => {
+    const tempOrder = getTempOrderFromCookie();
+    if (tempOrder) {
+      if (tempOrder.branchId) setStore(tempOrder.branchId);
+      if (tempOrder.deliveryAddress) setDeliveryAddress(tempOrder.deliveryAddress === "Lấy tại cửa hàng" ? "" : tempOrder.deliveryAddress);
+      if (tempOrder.deliveryPhone) setPhoneNumber(tempOrder.deliveryPhone);
+      if (tempOrder.orderType) setOrderType(tempOrder.orderType);
+      if (tempOrder.notes) setNotes(tempOrder.notes);
+      
+      // We don't restore items here because they usually come from CartContext
+      // but we could if needed. Since cart-context already has localStorage, 
+      // we'll let it handle the items.
+    }
+  }, []);
+
+  // Save state to cookie whenever it changes
+  useEffect(() => {
+    if (!store) return;
+    
+    const tempOrderData = {
+      branchId: store,
+      items: items.map(item => ({
+        productId: item.id,
+        quantity: item.quantity,
+        price: Math.round(item.price * 100),
+        options: item.options?.map(opt => ({
+          optionId: opt.id,
+          optionName: opt.name,
+          optionPrice: Math.round(opt.price * 100),
+        })) || [],
+      })),
+      deliveryAddress: orderType === "DELIVERY" ? deliveryAddress : "Lấy tại cửa hàng",
+      deliveryPhone: phoneNumber,
+      orderType,
+      notes,
+      createdAt: new Date().toISOString(),
+    };
+    
+    saveTempOrderToCookie(tempOrderData);
+  }, [store, items, deliveryAddress, phoneNumber, orderType, notes]);
+
   const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const total = subtotal - appliedDiscount;
 
+  const { updateQuantity, removeFromCart } = useCart();
+
   const handleItemQuantityChange = (id: string, quantity: number) => {
+    const newQuantity = Math.max(1, quantity);
     setItems(items.map(item =>
-      item.id === id ? { ...item, quantity: Math.max(1, quantity) } : item
+      item.id === id ? { ...item, quantity: newQuantity } : item
     ));
+    // Sync to main cart
+    updateQuantity(id, newQuantity);
   };
 
   const handleItemRemove = (id: string) => {
     setItems(items.filter(item => item.id !== id));
+    // Sync to main cart
+    removeFromCart(id);
   };
 
   const handleApplyDiscount = () => {
@@ -97,6 +164,12 @@ export const CheckoutProvider = ({ children }: { children: ReactNode }) => {
         setItems,
         store,
         setStore,
+        deliveryAddress,
+        setDeliveryAddress,
+        phoneNumber,
+        setPhoneNumber,
+        orderType,
+        setOrderType,
         notes,
         setNotes,
         addOns,

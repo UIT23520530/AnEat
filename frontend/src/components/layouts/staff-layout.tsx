@@ -1,54 +1,77 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { Button } from "@/components/ui/button";
+import { Button, IconButton } from "@/components/ui/button";
 import {
   ShoppingCart,
   List,
-  UtensilsCrossed,
   LogOut,
   Users,
-  UserCircle,
   LayoutGrid,
   Receipt,
   Settings,
-  ChefHat,
-  Menu,
+  Package,
+  ChevronLeft,
+  ChevronRight,
+  ArrowRightFromLine,
 } from "lucide-react";
 import { logout } from "@/lib/auth";
 import { cn } from "@/lib/utils";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { AntdProvider } from "@/components/providers/AntdProvider"
 import 'antd/dist/reset.css'
 import '@/styles/antd-custom.css'
 
 export function StaffLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  const [collapsed, setCollapsed] = useState(false);
 
   const navItems = [
-    { href: "/staff/pos", icon: LayoutGrid, label: "POS Dashboard" },
-    { href: "/staff/orders", icon: Receipt, label: "Đơn hàng" },
-    { href: "/staff/kitchen", icon: ChefHat, label: "Bếp" },
+    { href: "/staff/dashboard", icon: LayoutGrid, label: "Tổng quan" },
+    { href: "/staff/orders", icon: ShoppingCart, label: "Thực hiện Order" },
     { href: "/staff/customers", icon: Users, label: "Khách hàng" },
+    { href: "/staff/bills-history", icon: Receipt, label: "Lịch sử đơn hàng" },
+    { href: "/staff/warehouse", icon: Package, label: "Kho hàng" },
   ];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-orange-50">
       <div className="flex h-screen overflow-hidden">
         {/* Sidebar */}
-        <aside className="w-20 bg-white border-r border-orange-100 flex flex-col items-center py-6 shadow-sm">
-          {/* Logo */}
-          <Link
-            href="/staff/pos"
-            className="mb-8 w-14 h-14 rounded-2xl bg-gradient-to-br from-orange-500 to-red-500 flex items-center justify-center shadow-lg hover:shadow-xl transition-shadow"
-          >
-            <span className="text-white font-bold text-2xl">AE</span>
-          </Link>
+        <aside
+          className={cn(
+            "bg-white border-r border-gray-200 flex flex-col py-6 shadow-sm transition-all duration-300 relative",
+            collapsed ? "w-20" : "w-64"
+          )}
+        >
+          {/* Logo & Branch Info */}
+          <div className={cn("mb-8 px-4", collapsed && "flex justify-center px-2")}>
+            <Link href="/staff/dashboard" className="block">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <Image
+                    src="/icons/AnEat.svg"
+                    alt="AnEat Logo"
+                    width={48}
+                    height={48}
+                    className="text-white"
+                  />
+                </div>
+                {!collapsed && (
+                  <div className="flex flex-col">
+                    <span className="font-bold text-gray-800 text-lg">AnEat</span>
+                    <span className="text-xs text-gray-500">Cửa hàng chi nhánh Quận 1</span>
+                  </div>
+                )}
+              </div>
+            </Link>
+          </div>
 
-          {/* Navigation Icons */}
-          <nav className="flex-1 flex flex-col gap-4 w-full px-2">
+          {/* Navigation */}
+          <nav className={cn("flex flex-col gap-1", collapsed ? "px-2" : "px-4")}>
             {navItems.map((item) => {
               const Icon = item.icon;
               const isActive = pathname.startsWith(item.href);
@@ -56,61 +79,61 @@ export function StaffLayout({ children }: { children: ReactNode }) {
                 <Link key={item.href} href={item.href}>
                   <button
                     className={cn(
-                      "w-full h-14 rounded-xl flex items-center justify-center transition-all group relative",
+                      "w-full h-11 rounded-lg flex items-center gap-3 transition-all",
+                      collapsed ? "justify-center px-0" : "px-3",
                       isActive
-                        ? "bg-gradient-to-br from-orange-500 to-red-500 shadow-lg shadow-orange-200"
-                        : "hover:bg-orange-50"
+                        ? "bg-orange-50 text-orange-500"
+                        : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
                     )}
                   >
-                    <Icon
-                      className={cn(
-                        "h-6 w-6 transition-colors",
-                        isActive ? "text-white" : "text-gray-600 group-hover:text-orange-500"
-                      )}
-                    />
-                    {/* Tooltip */}
-                    <span className="absolute left-full ml-4 px-3 py-1.5 bg-gray-900 text-white text-sm rounded-lg opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap transition-opacity z-50">
-                      {item.label}
-                    </span>
+                    <Icon className={cn("h-5 w-5 flex-shrink-0", isActive && "text-orange-500")} />
+                    {!collapsed && (
+                      <span className={cn("text-sm font-medium", isActive && "text-orange-500")}>{item.label}</span>
+                    )}
                   </button>
                 </Link>
               );
             })}
           </nav>
 
-          {/* Bottom Actions */}
-          <div className="flex flex-col gap-4 w-full px-2">
-            <Link href="/staff/settings">
-              <button className="w-full h-14 rounded-xl flex items-center justify-center hover:bg-orange-50 transition-all group relative">
-                <Settings className="h-6 w-6 text-gray-600 group-hover:text-orange-500 transition-colors" />
-                <span className="absolute left-full ml-4 px-3 py-1.5 bg-gray-900 text-white text-sm rounded-lg opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap transition-opacity z-50">
-                  Cài đặt
-                </span>
-              </button>
-            </Link>
+          {/* Divider with Toggle Button */}
+          <div className="relative px-4 my-3">
+            <div className="border-t border-gray-200" />
+            {/* Toggle Button on the right side of divider */}
+            <div className="absolute -right-4 top-1/2 -translate-y-1/2 z-10">
+              <IconButton
+                onClick={() => setCollapsed(!collapsed)}
+                className="bg-white border border-gray-200 shadow-md hover:shadow-lg rounded-full h-8 w-8 p-0"
+              >
+                {collapsed ? (
+                  <ChevronRight className="h-4 w-4 text-gray-600" />
+                ) : (
+                  <ChevronLeft className="h-4 w-4 text-gray-600" />
+                )}
+              </IconButton>
+            </div>
+          </div>
 
+          {/* Spacer để đẩy logout xuống dưới cùng */}
+          <div className="flex-1" />
+
+          {/* Divider before Logout */}
+          <div className="px-4 my-1">
+            <div className="border-t border-gray-200" />
+          </div>
+
+          <div className={cn("flex flex-col gap-1", collapsed ? "px-2" : "px-4")}>
+            {/* Logout */}
             <button
               onClick={logout}
-              className="w-full h-14 rounded-xl flex items-center justify-center hover:bg-red-50 transition-all group relative"
+              className={cn(
+                "w-full h-11 rounded-lg flex items-center gap-3 text-red-500 hover:bg-red-50 transition-all",
+                collapsed ? "justify-center px-0" : "px-3"
+              )}
             >
-              <LogOut className="h-6 w-6 text-gray-600 group-hover:text-red-500 transition-colors" />
-              <span className="absolute left-full ml-4 px-3 py-1.5 bg-gray-900 text-white text-sm rounded-lg opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap transition-opacity z-50">
-                Đăng xuất
-              </span>
+              <ArrowRightFromLine className="h-5 w-5 flex-shrink-0 text-red-500" />
+              {!collapsed && <span className="text-sm font-medium text-red-500">Đăng xuất</span>}
             </button>
-
-            {/* User Avatar */}
-            <div className="mt-2 relative group">
-              <Avatar className="w-14 h-14 border-2 border-orange-200 cursor-pointer hover:border-orange-400 transition-colors">
-                <AvatarImage src="/staff-avatar.jpg" alt="Staff" />
-                <AvatarFallback className="bg-gradient-to-br from-orange-400 to-red-400 text-white font-semibold">
-                  NV
-                </AvatarFallback>
-              </Avatar>
-              <span className="absolute left-full ml-4 px-3 py-1.5 bg-gray-900 text-white text-sm rounded-lg opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap transition-opacity z-50 top-1/2 -translate-y-1/2">
-                Nhân viên
-              </span>
-            </div>
           </div>
         </aside>
 

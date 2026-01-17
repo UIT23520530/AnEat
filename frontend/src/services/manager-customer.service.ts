@@ -207,4 +207,10 @@ export const managerCustomerService = {
     });
     return response.data;
   },
+
+  // Delete customer
+  deleteCustomer: async (id: string): Promise<CustomerResponse> => {
+    const response = await apiClient.delete(`/manager/customers/${id}`);
+    return response.data;
+  },
 };

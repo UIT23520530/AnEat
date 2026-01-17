@@ -1,232 +1,234 @@
-"use client";
+"use client"
 
-import { Form, Input, Select, Row, Col, Avatar } from "antd";
-import { UserOutlined } from "@ant-design/icons";
-import { useEffect, useState } from "react";
-
-const { Option } = Select;
-const { TextArea } = Input;
+import { Form, Input, Select, Switch, message, Tooltip, Divider } from "antd"
+import { ShopOutlined, UserOutlined, MailOutlined, PhoneOutlined, CopyOutlined, KeyOutlined, CheckCircleOutlined } from "@ant-design/icons"
+import { useEffect } from "react"
+import { User, UserRole } from "@/services/admin-user.service"
+import { Branch } from "@/services/admin-branch.service"
 
 interface UsersFormProps {
-  initialValues?: any;
-  onSubmit: (values: any) => void;
-  isEdit?: boolean;
+  form: any
+  onFinish: (values: any) => void
+  isEdit?: boolean
+  selectedUser?: User | null
+  branches: Branch[]
+  users?: User[] 
 }
 
 export default function UsersForm({
-  initialValues,
-  onSubmit,
+  form,
+  onFinish,
   isEdit = false,
+  selectedUser,
+  branches,
+  users = [],
 }: UsersFormProps) {
-  const [form] = Form.useForm();
-  const [selectedRole, setSelectedRole] = useState(
-    initialValues?.role || "customer"
-  );
-
   useEffect(() => {
-    if (initialValues) {
-      form.setFieldsValue(initialValues);
-      setSelectedRole(initialValues.role);
+    if (isEdit && selectedUser) {
+      form.setFieldsValue({
+        name: selectedUser.name,
+        phone: selectedUser.phone,
+        email: selectedUser.email,
+        role: selectedUser.role,
+        branchId: selectedUser.branchId || selectedUser.managedBranches?.id || null,
+        isActive: selectedUser.isActive,
+        _initialIsActive: selectedUser.isActive,
+        password: "", // Reset password field on edit
+      })
+    } else if (!isEdit) {
+      form.resetFields()
+      form.setFieldsValue({ isActive: false, role: "STAFF" })
     }
-  }, [initialValues, form]);
-
-  const handleFinish = (values: any) => {
-    onSubmit(values);
-    if (!isEdit) {
-      form.resetFields();
-    }
-  };
-
-  const handleRoleChange = (value: string) => {
-    setSelectedRole(value);
-    // Clear store field if role is admin or customer
-    if (value === "admin" || value === "customer") {
-      form.setFieldsValue({ store: undefined });
-    }
-  };
+  }, [isEdit, selectedUser, form])
 
   return (
-    <Form
-      form={form}
-      layout="vertical"
-      onFinish={handleFinish}
-      autoComplete="off"
-      size="large"
-    >
-      <Row gutter={16}>
-        {/* Full Name */}
-        <Col span={12}>
-          <Form.Item
-            label="Full Name"
-            name="name"
-            rules={[
-              { required: true, message: "Please enter full name" },
-              { min: 2, message: "Name must be at least 2 characters" },
-            ]}
-          >
-            <Input
-              prefix={<UserOutlined />}
-              placeholder="Enter full name"
-            />
-          </Form.Item>
-        </Col>
-
-        {/* Email */}
-        <Col span={12}>
-          <Form.Item
-            label="Email"
+    <Form form={form} layout="vertical" onFinish={onFinish}>
+      <div className="grid grid-cols-2 gap-6">
+        <div>
+          <div className="text-sm font-semibold text-slate-700 mb-4 flex items-center gap-2">
+            <UserOutlined className="text-blue-500" />
+            Thông tin cơ bản
+          </div>
+          <Form.Item 
+            label="Email" 
             name="email"
             rules={[
-              { required: true, message: "Please enter email" },
-              { type: "email", message: "Please enter valid email" },
+              { required: true, message: "Vui lòng nhập email" },
+              { type: "email", message: "Email không hợp lệ" }
             ]}
           >
-            <Input
-              type="email"
-              placeholder="user@example.com"
-              disabled={isEdit}
-            />
+            <Input placeholder="user@example.com" />
           </Form.Item>
-        </Col>
-
-        {/* Phone */}
-        <Col span={12}>
-          <Form.Item
-            label="Phone Number"
+          <Form.Item 
+            label="Họ tên" 
+            name="name"
+            rules={[{ required: true, message: "Vui lòng nhập họ tên" }]}
+          >
+            <Input placeholder="Nguyễn Văn A" />
+          </Form.Item>
+          <Form.Item 
+            label="Số điện thoại" 
             name="phone"
             rules={[
-              { pattern: /^[0-9]{10,11}$/, message: "Please enter valid phone number" },
+              { required: true, message: "Vui lòng nhập số điện thoại" },
+              { pattern: /^[0-9]{10}$/, message: "Số điện thoại phải có đúng 10 chữ số" }
             ]}
           >
-            <Input placeholder="0901234567" />
+            <Input placeholder="0123456789" maxLength={10} />
           </Form.Item>
-        </Col>
-
-        {/* Role */}
-        <Col span={12}>
+          
+          <Divider className="my-4" />
+          
+          <div className="text-sm font-semibold text-slate-700 mb-4 flex items-center gap-2">
+            <KeyOutlined className="text-amber-500" />
+            {isEdit ? "Đổi mật khẩu (Tùy chọn)" : "Mật khẩu"}
+          </div>
           <Form.Item
-            label="Role"
-            name="role"
-            rules={[{ required: true, message: "Please select role" }]}
+            name="password"
+            rules={[
+              { min: 6, message: "Mật khẩu phải có ít nhất 6 ký tự" }
+            ]}
           >
-            <Select
-              placeholder="Select role"
-              onChange={handleRoleChange}
-            >
-              <Option value="admin">Admin</Option>
-              <Option value="manager">Manager</Option>
-              <Option value="staff">Staff</Option>
-              <Option value="customer">Customer</Option>
-            </Select>
-          </Form.Item>
-        </Col>
-
-        {/* Store - Only show for Manager and Staff */}
-        {(selectedRole === "manager" || selectedRole === "staff") && (
-          <Col span={12}>
-            <Form.Item
-              label="Assigned Store"
-              name="store"
-              rules={[
-                {
-                  required: true,
-                  message: "Please select store for manager/staff",
-                },
-              ]}
-            >
-              <Select placeholder="Select store">
-                <Option value="Store #1">Store #1 - Downtown</Option>
-                <Option value="Store #2">Store #2 - Mall</Option>
-                <Option value="Store #3">Store #3 - Airport</Option>
-                <Option value="Store #4">Store #4 - University</Option>
-                <Option value="Store #5">Store #5 - Business District</Option>
-              </Select>
-            </Form.Item>
-          </Col>
-        )}
-
-        {/* Status */}
-        <Col span={12}>
-          <Form.Item
-            label="Status"
-            name="status"
-            rules={[{ required: true, message: "Please select status" }]}
-          >
-            <Select placeholder="Select status">
-              <Option value="active">Active</Option>
-              <Option value="inactive">Inactive</Option>
-              <Option value="suspended">Suspended</Option>
-            </Select>
-          </Form.Item>
-        </Col>
-
-        {/* Password - Only show when creating new user */}
-        {!isEdit && (
-          <>
-            <Col span={12}>
-              <Form.Item
-                label="Password"
-                name="password"
-                rules={[
-                  { required: true, message: "Please enter password" },
-                  { min: 6, message: "Password must be at least 6 characters" },
-                ]}
-              >
-                <Input.Password placeholder="Enter password" />
-              </Form.Item>
-            </Col>
-
-            <Col span={12}>
-              <Form.Item
-                label="Confirm Password"
-                name="confirmPassword"
-                dependencies={["password"]}
-                rules={[
-                  { required: true, message: "Please confirm password" },
-                  ({ getFieldValue }) => ({
-                    validator(_, value) {
-                      if (!value || getFieldValue("password") === value) {
-                        return Promise.resolve();
-                      }
-                      return Promise.reject(
-                        new Error("Passwords do not match")
-                      );
-                    },
-                  }),
-                ]}
-              >
-                <Input.Password placeholder="Confirm password" />
-              </Form.Item>
-            </Col>
-          </>
-        )}
-
-        {/* Address */}
-        <Col span={24}>
-          <Form.Item label="Address" name="address">
-            <TextArea
-              rows={2}
-              placeholder="Enter address (optional)"
-              maxLength={200}
-              showCount
+            <Input.Password 
+              placeholder={isEdit ? "Nhập mật khẩu mới nếu muốn thay đổi" : "Để trống để tạo tự động"} 
+              autoComplete="new-password"
             />
           </Form.Item>
-        </Col>
+          {!isEdit && (
+            <div className="text-xs text-slate-500 mt-[-12px]">
+              Nếu để trống, hệ thống sẽ tự động tạo mật khẩu ngẫu nhiên.
+            </div>
+          )}
+          {isEdit && (
+            <div className="text-xs text-slate-500 mt-[-12px]">
+              Để trống nếu không muốn thay đổi mật khẩu hiện tại.
+            </div>
+          )}
+        </div>
+        
+        <div>
+          <div className="text-sm font-semibold text-slate-700 mb-4 flex items-center gap-2">
+            <ShopOutlined className="text-purple-500" />
+            Phân quyền & Công tác
+          </div>
+          <Form.Item 
+            label="Vai trò" 
+            name="role" 
+            rules={[{ required: true, message: "Vui lòng chọn vai trò" }]}
+          >
+            <Select
+              placeholder="Chọn vai trò"
+              options={[
+                { label: "Quản trị hệ thống", value: "ADMIN_SYSTEM" },
+                { label: "Quản lý chi nhánh", value: "ADMIN_BRAND" },
+                { label: "Nhân viên", value: "STAFF" },
+                { label: "Nhân viên logistics", value: "LOGISTICS_STAFF" },
+              ]}
+              onChange={(value) => {
+                if (value === "ADMIN_SYSTEM") {
+                  form.setFieldsValue({ branchId: null })
+                }
+              }}
+            />
+          </Form.Item>
+          
+          <Form.Item noStyle shouldUpdate={(prev, curr) => prev.role !== curr.role || prev.isActive !== curr.isActive || prev.branchId !== curr.branchId}>
+            {({ getFieldValue, setFieldsValue }) => {
+              const currentRole = getFieldValue("role")
+              const branchId = getFieldValue("branchId")
+              const isActive = getFieldValue("isActive")
+              
+              if (currentRole === "ADMIN_SYSTEM") return null
+              
+              const availableBranches = currentRole === "ADMIN_BRAND"
+                ? branches.filter(b => !b.managerId || (isEdit && b.managerId === selectedUser?.id))
+                : branches
 
-        {/* Notes - Admin only */}
-        {isEdit && (
-          <Col span={24}>
-            <Form.Item label="Admin Notes" name="notes">
-              <TextArea
-                rows={3}
-                placeholder="Internal notes (not visible to user)"
-                maxLength={500}
-                showCount
-              />
-            </Form.Item>
-          </Col>
-        )}
-      </Row>
+              return (
+                <>
+                  <Form.Item name="branchId" label="Chi nhánh">
+                    <Select
+                      showSearch
+                      allowClear
+                      placeholder={currentRole === "ADMIN_BRAND" ? "Chọn chi nhánh quản lý" : "Chọn chi nhánh công tác"}
+                      optionFilterProp="children"
+                      filterOption={(input, option) =>
+                        (option?.label ?? "").toLowerCase().includes(input.toLowerCase())
+                      }
+                      options={availableBranches.map((b) => ({
+                        value: b.id,
+                        label: `${b.name} (${b.code})`,
+                      }))}
+                      notFoundContent={
+                        currentRole === "ADMIN_BRAND" ? (
+                          <div className="text-center text-slate-500 py-2">
+                            <ShopOutlined className="mr-2" />
+                            Tất cả chi nhánh đã có quản lý
+                          </div>
+                        ) : null
+                      }
+                      onChange={(value) => {
+                        const wasActive = getFieldValue("_initialIsActive")
+                        const currentActive = getFieldValue("isActive")
+                        if (!value && currentActive && (isEdit ? wasActive : true)) {
+                          setFieldsValue({ isActive: false })
+                          message.info("Đã tự động vô hiệu hóa người dùng")
+                        }
+                      }}
+                    />
+                  </Form.Item>
+                  {currentRole === "ADMIN_BRAND" && (
+                    <div className="text-xs text-blue-600 mb-2">
+                      {isEdit 
+                        ? "Chỉ hiển thị chi nhánh chưa có quản lý hoặc do người dùng này quản lý"
+                        : "Chỉ hiển thị chi nhánh chưa có quản lý"}
+                    </div>
+                  )}
+                </>
+              )
+            }}
+          </Form.Item>
+
+          <Divider className="my-4" />
+          
+          <div className="text-sm font-semibold text-slate-700 mb-4 flex items-center gap-2">
+            <CheckCircleOutlined className="text-green-500" />
+            Trạng thái tài khoản
+          </div>
+          <Form.Item noStyle shouldUpdate={(prev, curr) => prev.branchId !== curr.branchId || prev.role !== curr.role || prev.isActive !== curr.isActive}>
+            {({ getFieldValue, setFieldsValue }) => {
+              const currentRole = getFieldValue("role")
+              const branchId = getFieldValue("branchId")
+              
+              return (
+                <>
+                  <Form.Item name="isActive" valuePropName="checked">
+                    <Switch 
+                      checkedChildren="Hoạt động" 
+                      unCheckedChildren="Vô hiệu hóa"
+                      disabled={currentRole !== "ADMIN_SYSTEM" && !branchId}
+                      onChange={(checked) => {
+                        if (checked && currentRole === "ADMIN_SYSTEM") {
+                          const activeAdmins = users.filter(u => u.role === "ADMIN_SYSTEM" && u.isActive && (isEdit ? u.id !== selectedUser?.id : true))
+                          if (activeAdmins.length > 0) {
+                            message.error(`Chỉ được phép một Admin Hệ thống hoạt động`)
+                            setFieldsValue({ isActive: false })
+                          }
+                        }
+                      }}
+                    />
+                  </Form.Item>
+                  {currentRole !== "ADMIN_SYSTEM" && !branchId && (
+                    <div className="text-xs text-amber-600">
+                      Cần gán chi nhánh trước khi kích hoạt tài khoản
+                    </div>
+                  )}
+                </>
+              )
+            }}
+          </Form.Item>
+        </div>
+      </div>
     </Form>
-  );
+  )
 }

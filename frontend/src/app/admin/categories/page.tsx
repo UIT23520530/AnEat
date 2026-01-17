@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { AdminLayout } from "@/components/layouts/admin-layout"
 import { Card, CardHeader } from "@/components/ui/card"
+import CategoriesForm from "@/components/forms/admin/CategoriesForm"
 import {
   Table,
   Button,
@@ -51,6 +52,17 @@ const stringToColor = (str: string) => {
   return colors[Math.abs(hash) % colors.length]
 }
 
+// Search normalization helper
+const normalizeSearchString = (str: string) => {
+  return str
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/g, "d")
+    .replace(/\s+/g, "-")
+    .trim()
+}
+
 function CategoriesContent() {
   const router = useRouter()
   const { message, modal } = App.useApp()
@@ -90,7 +102,18 @@ function CategoriesContent() {
         search: searchQuery || undefined,
       })
 
+      // Client-side filter
       let filteredData = response.data
+
+      if (searchQuery) {
+        const normalizedQuery = normalizeSearchString(searchQuery)
+        filteredData = filteredData.filter((c: Category) => {
+          const normalizedName = normalizeSearchString(c.name)
+          const normalizedCode = normalizeSearchString(c.code)
+          return normalizedName.includes(normalizedQuery) || normalizedCode.includes(normalizedQuery)
+        })
+      }
+
       if (statusFilter === "active") {
         filteredData = filteredData.filter((c: Category) => c.isActive)
       } else if (statusFilter === "inactive") {
@@ -123,13 +146,6 @@ function CategoriesContent() {
   // Handle edit click
   const handleEditClick = (record: Category) => {
     setSelectedCategory(record)
-    editForm.setFieldsValue({
-      code: record.code,
-      name: record.name,
-      description: record.description,
-      image: record.image,
-      isActive: record.isActive,
-    })
     setIsEditModalOpen(true)
   }
 
@@ -454,50 +470,11 @@ function CategoriesContent() {
         cancelText="Hủy"
         width={600}
       >
-        <Form form={addForm} layout="vertical" onFinish={handleSubmitAdd}>
-          <Form.Item
-            label="Mã danh mục"
-            name="code"
-            rules={[
-              { required: true, message: "Vui lòng nhập mã danh mục" },
-              { max: 20, message: "Mã danh mục không quá 20 ký tự" },
-              { pattern: /^[A-Z0-9_]+$/, message: "Mã chỉ chứa chữ hoa, số và _" },
-            ]}
-          >
-            <Input placeholder="VD: MAIN_DISH" />
-          </Form.Item>
-
-          <Form.Item
-            label="Tên danh mục"
-            name="name"
-            rules={[
-              { required: true, message: "Vui lòng nhập tên danh mục" },
-              { max: 100, message: "Tên danh mục không quá 100 ký tự" },
-            ]}
-          >
-            <Input placeholder="VD: Món chính" />
-          </Form.Item>
-
-          <Form.Item label="Mô tả" name="description">
-            <Input.TextArea rows={3} placeholder="Mô tả về danh mục..." />
-          </Form.Item>
-
-          <Form.Item label="URL hình ảnh" name="image">
-            <Input placeholder="https://example.com/image.jpg" />
-          </Form.Item>
-
-          <Form.Item 
-            label="Trạng thái" 
-            name="isActive" 
-            initialValue={true} 
-            valuePropName="checked"
-          >
-            <Switch 
-              checkedChildren="Đang hiển thị" 
-              unCheckedChildren="Đã ẩn"
-            />
-          </Form.Item>
-        </Form>
+        <CategoriesForm
+          form={addForm}
+          onFinish={handleSubmitAdd}
+          isEdit={false}
+        />
       </Modal>
 
       {/* Edit Modal */}
@@ -513,49 +490,12 @@ function CategoriesContent() {
         cancelText="Hủy"
         width={600}
       >
-        <Form form={editForm} layout="vertical" onFinish={handleSubmitEdit}>
-          <Form.Item
-            label="Mã danh mục"
-            name="code"
-            rules={[
-              { required: true, message: "Vui lòng nhập mã danh mục" },
-              { max: 20, message: "Mã danh mục không quá 20 ký tự" },
-              { pattern: /^[A-Z0-9_]+$/, message: "Mã chỉ chứa chữ hoa, số và _" },
-            ]}
-          >
-            <Input placeholder="VD: MAIN_DISH" />
-          </Form.Item>
-
-          <Form.Item
-            label="Tên danh mục"
-            name="name"
-            rules={[
-              { required: true, message: "Vui lòng nhập tên danh mục" },
-              { max: 100, message: "Tên danh mục không quá 100 ký tự" },
-            ]}
-          >
-            <Input placeholder="VD: Món chính" />
-          </Form.Item>
-
-          <Form.Item label="Mô tả" name="description">
-            <Input.TextArea rows={3} placeholder="Mô tả về danh mục..." />
-          </Form.Item>
-
-          <Form.Item label="URL hình ảnh" name="image">
-            <Input placeholder="https://example.com/image.jpg" />
-          </Form.Item>
-
-          <Form.Item 
-            label="Trạng thái" 
-            name="isActive" 
-            valuePropName="checked"
-          >
-            <Switch 
-              checkedChildren="Đang hiển thị" 
-              unCheckedChildren="Đã ẩn"
-            />
-          </Form.Item>
-        </Form>
+        <CategoriesForm
+          form={editForm}
+          onFinish={handleSubmitEdit}
+          isEdit={true}
+          selectedCategory={selectedCategory}
+        />
       </Modal>
     </div>
   )

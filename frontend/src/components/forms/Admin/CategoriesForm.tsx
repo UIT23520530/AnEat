@@ -1,97 +1,80 @@
-"use client";
+"use client"
 
-import { Form, Input, Upload, Button, App } from "antd";
-import { UploadOutlined } from "@ant-design/icons";
-import { useEffect } from "react";
-import type { UploadFile } from "antd";
+import { Form, Input, Switch } from "antd"
+import { useEffect } from "react"
+import { Category } from "@/services/admin-category.service"
 
 interface CategoriesFormProps {
-  onSubmit: (values: any) => void;
-  initialValues?: any;
-  isEdit?: boolean;
+  form: any
+  onFinish: (values: any) => void
+  isEdit?: boolean
+  selectedCategory?: Category | null
 }
 
 export default function CategoriesForm({
-  onSubmit,
-  initialValues,
+  form,
+  onFinish,
   isEdit = false,
+  selectedCategory,
 }: CategoriesFormProps) {
-  const [form] = Form.useForm();
-  const { message } = App.useApp();
-
   useEffect(() => {
-    if (initialValues) {
-      form.setFieldsValue(initialValues);
+    if (isEdit && selectedCategory) {
+      form.setFieldsValue({
+        code: selectedCategory.code,
+        name: selectedCategory.name,
+        description: selectedCategory.description,
+        image: selectedCategory.image,
+        isActive: selectedCategory.isActive,
+      })
+    } else if (!isEdit) {
+      form.resetFields()
+      form.setFieldsValue({ isActive: true })
     }
-  }, [initialValues, form]);
-
-  const handleFinish = (values: any) => {
-    onSubmit(values);
-    if (!isEdit) {
-      form.resetFields();
-    }
-  };
-
-  const normFile = (e: any) => {
-    if (Array.isArray(e)) {
-      return e;
-    }
-    return e?.fileList;
-  };
+  }, [isEdit, selectedCategory, form])
 
   return (
-    <Form
-      form={form}
-      layout="vertical"
-      onFinish={handleFinish}
-      initialValues={initialValues}
-      style={{ marginTop: "24px" }}
-    >
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
-        <Form.Item
-          label="Category Name"
-          name="name"
-          rules={[
-            { required: true, message: "Please enter category name" },
-            { min: 2, message: "Name must be at least 2 characters" },
-          ]}
-        >
-          <Input placeholder="e.g., Main Course, Beverages" size="large" />
-        </Form.Item>
-
-        <Form.Item
-          label="Category Image"
-          name="image"
-          valuePropName="fileList"
-          getValueFromEvent={normFile}
-        >
-          <Upload
-            listType="picture"
-            maxCount={1}
-            beforeUpload={() => false}
-          >
-            <Button icon={<UploadOutlined />} size="large">
-              Upload Image
-            </Button>
-          </Upload>
-        </Form.Item>
-      </div>
-
+    <Form form={form} layout="vertical" onFinish={onFinish}>
       <Form.Item
-        label="Description"
-        name="description"
+        label="Mã danh mục"
+        name="code"
         rules={[
-          { required: true, message: "Please enter description" },
+          { required: true, message: "Vui lòng nhập mã danh mục" },
+          { max: 20, message: "Mã danh mục không quá 20 ký tự" },
+          { pattern: /^[A-Z0-9_]+$/, message: "Mã chỉ chứa chữ hoa, số và _" },
         ]}
       >
-        <Input.TextArea
-          placeholder="Enter category description"
-          rows={4}
-          size="large"
-        />
+        <Input placeholder="VD: MAIN_DISH" />
       </Form.Item>
 
-      <button type="submit" style={{ display: "none" }} />
+      <Form.Item
+        label="Tên danh mục"
+        name="name"
+        rules={[
+          { required: true, message: "Vui lòng nhập tên danh mục" },
+          { max: 100, message: "Tên danh mục không quá 100 ký tự" },
+        ]}
+      >
+        <Input placeholder="VD: Món chính" />
+      </Form.Item>
+
+      <Form.Item label="Mô tả" name="description">
+        <Input.TextArea rows={3} placeholder="Mô tả về danh mục..." />
+      </Form.Item>
+
+      <Form.Item label="URL hình ảnh" name="image">
+        <Input placeholder="https://example.com/image.jpg" />
+      </Form.Item>
+
+      <Form.Item 
+        label="Trạng thái" 
+        name="isActive" 
+        valuePropName="checked"
+      >
+        <Switch 
+          checkedChildren="Đang hiển thị" 
+          unCheckedChildren="Đã ẩn"
+        />
+      </Form.Item>
     </Form>
-  );
+  )
 }

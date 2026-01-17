@@ -30,7 +30,7 @@ const managerNavItems: NavItem[] = [
   { href: "/manager/warehouse", icon: Warehouse, label: "Quản lý kho hàng" },
   { href: "/manager/promotions", icon: Ticket, label: "Chương trình khuyến mãi" },
   { href: "/manager/invoices", icon: FileText, label: "Quản lý hóa đơn" },
-  { href: "/manager/templates", icon: FileCode, label: "Cài đặt mẫu hoá đơn" },
+  { href: "/manager/templates", icon: FileCode, label: "Quản lý mẫu in hoá đơn" },
   { href: "/manager/settings", icon: Settings, label: "Thiết lập cửa hàng" },
 ]
 

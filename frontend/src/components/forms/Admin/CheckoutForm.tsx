@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { useCart } from "@/contexts/CartProvider";
+import { useCart } from "@/contexts/cart-context";
 import { Button } from "@/components/ui/button";
 import {
   Card,
