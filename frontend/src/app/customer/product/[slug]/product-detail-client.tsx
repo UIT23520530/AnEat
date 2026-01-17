@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { PublicLayout } from "@/components/layouts/public-layout"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -44,6 +45,7 @@ interface ProductDetailClientProps {
 
 export function ProductDetailClient({ product }: ProductDetailClientProps) {
   const [quantity, setQuantity] = useState(1)
+  const router = useRouter()
   const { addToCart } = useCart()
   const { toast } = useToast()
 
@@ -196,6 +198,11 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
     });
   };
 
+  const handleBuyNow = () => {
+    handleAddToCart();
+    router.push("/customer/checkout");
+  };
+
   const totalPrice =
     product.basePrice * quantity +
     selectedAddons.reduce((sum, id) => sum + (allOptions.find((a) => a.id === id)?.price || 0) * quantity, 0)
@@ -345,15 +352,14 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
                   <ShoppingCart className="mr-2 h-5 w-5" />
                   Add to Cart
                 </Button>
-                <Link href="/customer/checkout" className="flex-1">
-                  <Button 
-                    variant="outline" 
-                    size="lg" 
-                    className="w-full border-orange-500 text-orange-500 hover:bg-orange-50 hover:text-orange-600 bg-white"
-                  >
-                    Buy Now
-                  </Button>
-                </Link>
+                <Button 
+                  variant="outline" 
+                  size="lg" 
+                  onClick={handleBuyNow}
+                  className="flex-1 border-orange-500 text-orange-500 hover:bg-orange-50 hover:text-orange-600 bg-white"
+                >
+                  Buy Now
+                </Button>
               </div>
             </div>
           </div>

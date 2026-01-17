@@ -60,11 +60,18 @@ export default function StoresPage() {
   const filteredBranches = branches.filter((branch) => {
     if (!search.trim()) return true;
     
-    const searchSlug = createSlug(search.trim());
-    const nameSlug = createSlug(branch.name);
-    const addressSlug = createSlug(branch.address);
+    // Normalize both for better matching
+    const normSearch = createSlug(search.trim().toLowerCase());
+    const normName = createSlug(branch.name.toLowerCase());
+    const normAddress = createSlug(branch.address.toLowerCase());
     
-    return nameSlug.includes(searchSlug) || addressSlug.includes(searchSlug);
+    // Check both hyphenated and non-hyphenated versions for better accuracy
+    return (
+      normName.includes(normSearch) || 
+      normAddress.includes(normSearch) ||
+      normName.replace(/-/g, "").includes(normSearch.replace(/-/g, "")) ||
+      normAddress.replace(/-/g, "").includes(normSearch.replace(/-/g, ""))
+    );
   });
 
   const handleSelectBranch = (branch: Branch) => {
@@ -74,7 +81,8 @@ export default function StoresPage() {
 
   return (
     <PublicLayout>
-      <div className="container mx-auto px-4 py-16">
+      <div className="min-h-screen bg-slate-50/50 py-12">
+        <div className="container mx-auto px-4">
         <div className="max-w-6xl mx-auto">
           <h1 className="text-4xl font-bold mb-2 text-center">Cửa hàng</h1>
           <p className="text-lg text-muted-foreground text-center mb-8">
@@ -82,14 +90,16 @@ export default function StoresPage() {
           </p>
 
           {/* Search */}
-          <div className="max-w-md mx-auto mb-8">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+          <div className="max-w-xl mx-auto mb-8">
+            <div className="relative group">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <Search className="h-5 w-5 text-gray-400 group-focus-within:text-orange-500 transition-colors" />
+              </div>
               <Input
-                placeholder="Tìm kiếm cửa hàng..."
+                placeholder="Tìm cửa hàng AnEat (tên đường, quận, thành phố)..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="pl-10"
+                className="pl-10 pr-4 py-6 bg-white border-gray-200 focus:border-orange-500 focus:ring-orange-500 rounded-2xl shadow-sm hover:shadow-md transition-all text-gray-700"
               />
             </div>
           </div>
@@ -181,6 +191,7 @@ export default function StoresPage() {
           )}
         </div>
       </div>
+    </div>
     </PublicLayout>
   );
 }

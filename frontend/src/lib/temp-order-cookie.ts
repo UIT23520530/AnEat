@@ -18,12 +18,10 @@ interface TempOrderData {
       optionPrice: number; // cent
     }>;
   }>;
+  deliveryAddress?: string;
+  deliveryPhone?: string;
+  orderType?: "DELIVERY" | "PICKUP";
   notes?: string;
-  customerInfo?: {
-    name?: string;
-    phone?: string;
-    address?: string;
-  };
   promotionCode?: string;
   createdAt: string;
 }
@@ -38,10 +36,10 @@ export function saveTempOrderToCookie(data: TempOrderData): void {
     const jsonData = JSON.stringify(data);
     const expiryDate = new Date();
     expiryDate.setDate(expiryDate.getDate() + COOKIE_EXPIRY_DAYS);
-    
+
     // Encode để tránh lỗi với ký tự đặc biệt
     const encodedData = encodeURIComponent(jsonData);
-    
+
     document.cookie = `${TEMP_ORDER_COOKIE_NAME}=${encodedData}; path=/; expires=${expiryDate.toUTCString()}; SameSite=Lax`;
   } catch (error) {
     console.error("Error saving temp order to cookie:", error);
@@ -72,7 +70,7 @@ export function getTempOrderFromCookie(): TempOrderData | null {
     const createdAt = new Date(data.createdAt);
     const now = new Date();
     const daysDiff = (now.getTime() - createdAt.getTime()) / (1000 * 60 * 60 * 24);
-    
+
     if (daysDiff > COOKIE_EXPIRY_DAYS) {
       // Cookie đã hết hạn, xóa nó
       clearTempOrderCookie();

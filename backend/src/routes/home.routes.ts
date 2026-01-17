@@ -14,6 +14,7 @@ import {
   trackOrder,
   getAboutUs,
   getPublicBranches,
+  getPublicBranchById,
 } from '../controllers/shared/home.controller';
 
 const router = Router();
@@ -226,6 +227,20 @@ router.get(
   ],
   validate,
   getPublicBranches
+);
+
+/**
+ * @route   GET /api/v1/home/branches/:id
+ * @desc    Get single branch by ID (public)
+ * @access  Public
+ */
+router.get(
+  '/branches/:id',
+  [
+    param('id').notEmpty().withMessage('Branch ID is required'),
+  ],
+  validate,
+  getPublicBranchById
 );
 
 export default router;

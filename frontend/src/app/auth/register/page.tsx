@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import Link from "next/link"
-import { User, Mail, Phone, Lock } from "lucide-react"
+import { User, Mail, Phone, Lock, Eye, EyeOff } from "lucide-react"
 import apiClient from "@/lib/api-client"
 import { setCurrentUser } from "@/lib/auth"
 import { ROLE_ROUTES } from "@/constants/roles"
@@ -26,6 +26,8 @@ export default function RegisterPage() {
     password: "",
     confirmPassword: "",
   })
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -130,15 +132,13 @@ export default function RegisterPage() {
           {/* Left side - Brand */}
           <div className="hidden md:flex flex-col items-center justify-center bg-gradient-to-br from-orange-50 to-amber-50 p-8">
             <div className="text-center">
-              <div className="mb-8 rounded-2xl overflow-hidden shadow-lg">
+              <div className="mb-8">
                 <img 
-                  src="https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=400&h=400&fit=crop" 
-                  alt="Satisfy Your Cravings" 
-                  className="w-64 h-64 object-cover"
+                  src="/icons/AnEat.svg" 
+                  alt="Thỏa mãn cơn thèm của bạn" 
+                  className="w-96 h-96"
                 />
               </div>
-              <h1 className="text-4xl font-bold text-slate-900 mb-4">Satisfy Your Cravings</h1>
-              <p className="text-lg text-slate-600">The best fast food delivered hot to your doorstep.</p>
             </div>
           </div>
 
@@ -219,12 +219,19 @@ export default function RegisterPage() {
                     <Lock className="absolute left-3 top-3.5 w-5 h-5 text-slate-400" />
                     <Input
                       id="password"
-                      type="password"
+                      type={showPassword ? "text" : "password"}
                       placeholder="Tạo mật khẩu"
                       value={formData.password}
                       onChange={handleChange}
-                      className={`pl-10 py-6 bg-slate-50 border-0 rounded-lg focus:ring-2 focus:ring-orange-500 text-slate-900 placeholder:text-slate-400 ${errors.password ? "ring-2 ring-red-500" : ""}`}
+                      className={`pl-10 pr-12 py-6 bg-slate-50 border-0 rounded-lg focus:ring-2 focus:ring-orange-500 text-slate-900 placeholder:text-slate-400 ${errors.password ? "ring-2 ring-red-500" : ""}`}
                     />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-3.5 text-slate-400 hover:text-slate-600 focus:outline-none"
+                    >
+                      {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                    </button>
                   </div>
                   {errors.password && <p className="text-sm text-red-600">{errors.password}</p>}
                 </div>
@@ -238,12 +245,19 @@ export default function RegisterPage() {
                     <Lock className="absolute left-3 top-3.5 w-5 h-5 text-slate-400" />
                     <Input
                       id="confirmPassword"
-                      type="password"
+                      type={showConfirmPassword ? "text" : "password"}
                       placeholder="Xác nhận mật khẩu"
                       value={formData.confirmPassword}
                       onChange={handleChange}
-                      className={`pl-10 py-6 bg-slate-50 border-0 rounded-lg focus:ring-2 focus:ring-orange-500 text-slate-900 placeholder:text-slate-400 ${errors.confirmPassword ? "ring-2 ring-red-500" : ""}`}
+                      className={`pl-10 pr-12 py-6 bg-slate-50 border-0 rounded-lg focus:ring-2 focus:ring-orange-500 text-slate-900 placeholder:text-slate-400 ${errors.confirmPassword ? "ring-2 ring-red-500" : ""}`}
                     />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      className="absolute right-3 top-3.5 text-slate-400 hover:text-slate-600 focus:outline-none"
+                    >
+                      {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                    </button>
                   </div>
                   {errors.confirmPassword && <p className="text-sm text-red-600">{errors.confirmPassword}</p>}
                 </div>
@@ -268,7 +282,7 @@ export default function RegisterPage() {
               {/* Register Link */}
               <div className="text-center text-slate-600">
                 Đã có tài khoản?{" "}
-                <Link href="/login" className="text-orange-500 hover:text-orange-600 font-semibold">
+                <Link href="/auth/login" className="text-orange-500 hover:text-orange-600 font-semibold">
                   Đăng nhập ở đây
                 </Link>
               </div>

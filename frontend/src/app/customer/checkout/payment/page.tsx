@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import { createMoMoPayment } from "@/services/payment.service";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { PublicLayout } from "@/components/layouts/public-layout";
 import { useCheckout } from "@/contexts/checkout-context";
 import { useBranch } from "@/contexts/branch-context";
@@ -11,24 +11,14 @@ import { CheckoutProgress } from "@/components/checkout/checkout-progress";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { DollarSign, Wallet, CreditCard, Image as ImageIcon } from "lucide-react";
-import Image from "next/image";
+import { DollarSign, Wallet, Image as ImageIcon, MapPin } from "lucide-react";
 import apiClient from "@/lib/api-client";
 import { getCurrentUser } from "@/lib/auth";
 import { clearTempOrderCookie } from "@/lib/temp-order-cookie";
-
-const mockStores = [
-  {
-    id: "1",
-    name: "Bcons City - Thắp Green Topaz",
-    address: "Đường Tôn Thất Tùng, Đông Hòa, Dĩ An, Bình Dương",
-  },
-  {
-    id: "2",
-    name: "AnEat - Gò Dầu",
-    address: "Gò Dầu, Thủ Dầu Một, Bình Dương",
-  },
-];
+import { homeService, Branch } from "@/services/home.service";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { createMoMoPayment } from "@/services/payment.service";
 
 export default function CheckoutPaymentPage() {
   const router = useRouter();
@@ -44,11 +34,33 @@ export default function CheckoutPaymentPage() {
     subtotal,
     total,
     handleApplyDiscount,
+    deliveryAddress,
+    phoneNumber,
+    orderType,
   } = useCheckout();
   const { selectedBranch } = useBranch();
   const { cartItems, removeFromCart } = useCart();
 
   const [isLoading, setIsLoading] = useState(false);
+  const [branchDetail, setBranchDetail] = useState<Branch | null>(null);
+
+  // Fetch branch details
+  useEffect(() => {
+    const fetchBranch = async () => {
+      if (store) {
+        try {
+          const response = await homeService.getBranchById(store);
+          if (response.success) {
+            setBranchDetail(response.data);
+          }
+        } catch (error) {
+          console.error("Error fetching branch details:", error);
+        }
+      }
+    };
+
+    fetchBranch();
+  }, [store]);
 
   const paymentMethods = [
     {
@@ -66,7 +78,6 @@ export default function CheckoutPaymentPage() {
   ];
 
   const handlePayment = async () => {
-    // Kiểm tra user đã đăng nhập chưa
     const currentUser = getCurrentUser();
     if (!currentUser) {
       alert("Vui lòng đăng nhập để đặt hàng!");
@@ -74,33 +85,43 @@ export default function CheckoutPaymentPage() {
       return;
     }
 
-    // Kiểm tra branch đã chọn chưa
-    if (!selectedBranch?.id) {
+    if (!store) {
       alert("Vui lòng chọn cửa hàng!");
       return;
     }
 
-    // Kiểm tra có sản phẩm trong giỏ hàng không
-    if (cartItems.length === 0) {
+    if (items.length === 0) {
       alert("Giỏ hàng trống!");
+      return;
+    }
+
+    const isAddressValid = orderType === "PICKUP" || (orderType === "DELIVERY" && deliveryAddress);
+    if (!isAddressValid || !phoneNumber) {
+      alert("Vui lòng nhập đầy đủ thông tin nhận hàng!");
       return;
     }
 
     setIsLoading(true);
     try {
-      // Tạo order trong database
       const orderData = {
-        branchId: selectedBranch.id,
-        items: cartItems.map((item) => ({
-          productId: item.id, // id trong cart là productId
-          quantity: item.quantity,
-          price: item.price * 100, // Convert VND sang cent (đã bao gồm options)
-          options: item.options?.map((opt) => ({
-            optionId: opt.id,
-            optionName: opt.name,
-            optionPrice: opt.price * 100, // Convert VND sang cent
-          })) || [],
-        })),
+        branchId: store,
+        items: items.map((item) => {
+          const cartItem = cartItems.find((ci) => ci.id === item.id);
+          return {
+            productId: item.id,
+            quantity: item.quantity,
+            price: item.price * 100,
+            options: cartItem?.options?.map((opt) => ({
+              optionId: opt.id,
+              optionName: opt.name,
+              optionPrice: opt.price * 100,
+            })) || [],
+          };
+        }),
+        deliveryAddress: orderType === "DELIVERY" ? deliveryAddress : "Lấy tại cửa hàng",
+        deliveryPhone: phoneNumber,
+        orderType,
+        paymentMethod,
         notes: notes || undefined,
       };
 
@@ -113,16 +134,14 @@ export default function CheckoutPaymentPage() {
       const createdOrder = orderResponse.data.data.order;
       const orderNumber = createdOrder.orderNumber;
 
-      // Xóa giỏ hàng sau khi tạo order thành công
-      cartItems.forEach((item) => {
+      // Xóa giỏ hàng
+      items.forEach((item) => {
         removeFromCart(item.id);
       });
 
-      // Xóa temp order cookie sau khi thanh toán thành công
       clearTempOrderCookie();
 
       if (paymentMethod === "e-wallet") {
-        // Gọi API backend để lấy link MoMo
         const data = await createMoMoPayment({
           amount: total,
           orderInfo: `Thanh toán đơn hàng tại AnEat - ${orderNumber}`,
@@ -134,7 +153,6 @@ export default function CheckoutPaymentPage() {
           alert("Không lấy được link thanh toán MoMo!");
         }
       } else {
-        // Thanh toán tiền mặt/thẻ: chuyển sang trang thành công
         router.push(`/customer/checkout/success?orderId=${orderNumber}&total=${total}`);
       }
     } catch (error: any) {
@@ -160,14 +178,43 @@ export default function CheckoutPaymentPage() {
                   <div className="w-6 h-6 rounded-full bg-orange-500 text-white flex items-center justify-center text-xs">
                     1
                   </div>
-                  Địa chỉ giao hàng
+                  Thông tin nhận hàng
                 </h3>
-                <div className="pl-8">
-                  <p className="text-sm font-semibold">{mockStores.find((s) => s.id === store)?.name}</p>
-                  <p className="text-xs text-gray-600">{mockStores.find((s) => s.id === store)?.address}</p>
+                <div className="pl-8 space-y-3">
+                  <div className="flex items-center gap-2 mb-4">
+                    <Badge variant="outline" className="border-orange-200 text-orange-600 bg-orange-50 px-3 py-1 text-xs">
+                      {orderType === "DELIVERY" ? "Giao hàng tận nơi" : "Đến lấy tại cửa hàng"}
+                    </Badge>
+                  </div>
+
+                  <div className="grid md:grid-cols-2 gap-4 text-white">
+                    {orderType === "DELIVERY" && (
+                      <div>
+                        <p className="text-xs font-bold text-orange-600 uppercase mb-1">Địa chỉ nhận hàng</p>
+                        <p className="text-sm text-gray-800 font-medium">{deliveryAddress || "Chưa nhập địa chỉ"}</p>
+                      </div>
+                    )}
+                    <div>
+                      <p className="text-xs font-bold text-orange-600 uppercase mb-1">Số điện thoại</p>
+                      <p className="text-sm text-gray-800 font-medium">{phoneNumber || "Chưa nhập số điện thoại"}</p>
+                    </div>
+                  </div>
+                  
+                  <div className="pt-2 border-t border-dashed border-gray-100">
+                    <p className="text-xs font-bold text-orange-600 uppercase mb-1">Cửa hàng phục vụ</p>
+                    {branchDetail ? (
+                      <>
+                        <p className="text-sm font-semibold text-gray-700">{branchDetail.name}</p>
+                        <p className="text-[11px] text-gray-500">{branchDetail.address}</p>
+                      </>
+                    ) : (
+                      <Skeleton className="h-4 w-1/2" />
+                    )}
+                  </div>
+
                   {notes && (
                     <div className="mt-2 pt-2 border-t">
-                      <p className="text-xs text-gray-600">Ghi chú: {notes}</p>
+                      <p className="text-xs text-gray-600 italic">Ghi chú: {notes}</p>
                     </div>
                   )}
                 </div>

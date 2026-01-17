@@ -187,7 +187,7 @@ export const getPublicProducts = async (req: Request, res: Response, next: NextF
 
     // Verify branch exists (not soft deleted)
     const branch = await prisma.branch.findFirst({
-      where: { 
+      where: {
         id: branchId as string,
         deletedAt: null, // Soft delete
       } as any,
@@ -273,7 +273,7 @@ export const getProductBySlug = async (req: Request, res: Response, next: NextFu
 
     // Verify branch exists
     const branch = await prisma.branch.findFirst({
-      where: { 
+      where: {
         id: branchId as string,
         deletedAt: null,
       } as any,
@@ -542,146 +542,146 @@ export const createTempOrder = async (req: Request, res: Response, next: NextFun
   try {
     // Start transaction for concurrency control
     const transaction = await prisma.$transaction(async (tx) => {
-    const { branchId, items, customerInfo, promotionCode, notes } = req.body;
+      const { branchId, items, customerInfo, promotionCode, notes } = req.body;
 
-    // Validate branchId
-    if (!branchId) {
-      throw new ValidationError('Branch ID is required');
-    }
+      // Validate branchId
+      if (!branchId) {
+        throw new ValidationError('Branch ID is required');
+      }
 
-    // Validate items
-    if (!items || !Array.isArray(items) || items.length === 0) {
-      throw new ValidationError('Order must have at least one item');
-    }
+      // Validate items
+      if (!items || !Array.isArray(items) || items.length === 0) {
+        throw new ValidationError('Order must have at least one item');
+      }
 
-    // Verify branch exists (not soft deleted)
-    const branch = await tx.branch.findFirst({
-      where: { 
-        id: branchId,
-        deletedAt: null, // Soft delete
-      } as any,
-    });
+      // Verify branch exists (not soft deleted)
+      const branch = await tx.branch.findFirst({
+        where: {
+          id: branchId,
+          deletedAt: null, // Soft delete
+        } as any,
+      });
 
-    if (!branch) {
-      throw new NotFoundError('Branch not found');
-    }
+      if (!branch) {
+        throw new NotFoundError('Branch not found');
+      }
 
-    // Get products and calculate total with LOCKING
-    let subtotal = 0;
-    const orderItems = [];
+      // Get products and calculate total with LOCKING
+      let subtotal = 0;
+      const orderItems = [];
 
-    for (const item of items) {
-      // LOCKING: Use raw query for FOR UPDATE to prevent race conditions
-      // Prisma doesn't support FOR UPDATE directly, so we use raw query
-      const productResult = await tx.$queryRaw<Array<{
-        id: string;
-        code: string;
-        name: string;
-        description: string | null;
-        price: number;
-        image: string | null;
-        quantity: number;
-        isAvailable: boolean;
-        branchId: string;
-        categoryId: string | null;
-        deletedAt: Date | null;
-      }>>`
+      for (const item of items) {
+        // LOCKING: Use raw query for FOR UPDATE to prevent race conditions
+        // Prisma doesn't support FOR UPDATE directly, so we use raw query
+        const productResult = await tx.$queryRaw<Array<{
+          id: string;
+          code: string;
+          name: string;
+          description: string | null;
+          price: number;
+          image: string | null;
+          quantity: number;
+          isAvailable: boolean;
+          branchId: string;
+          categoryId: string | null;
+          deletedAt: Date | null;
+        }>>`
         SELECT * FROM "Product" 
         WHERE id = ${item.productId}
         AND "deletedAt" IS NULL
         FOR UPDATE
       `;
 
-      if (!productResult || productResult.length === 0) {
-        throw new NotFoundError(`Product ${item.productId} not found`);
-      }
+        if (!productResult || productResult.length === 0) {
+          throw new NotFoundError(`Product ${item.productId} not found`);
+        }
 
-      const product = productResult[0];
+        const product = productResult[0];
 
-      if (product.branchId !== branchId) {
-        throw new ValidationError(`Product ${product.name} does not belong to selected branch`);
-      }
+        if (product.branchId !== branchId) {
+          throw new ValidationError(`Product ${product.name} does not belong to selected branch`);
+        }
 
-      // Validate stock with locked data
-      if (!product.isAvailable || product.quantity < item.quantity) {
-        throw new ValidationError(
-          `Product ${product.name} is ${product.quantity === 0 ? 'out of stock' : `only ${product.quantity} available`}`
-        );
-      }
+        // Validate stock with locked data
+        if (!product.isAvailable || product.quantity < item.quantity) {
+          throw new ValidationError(
+            `Product ${product.name} is ${product.quantity === 0 ? 'out of stock' : `only ${product.quantity} available`}`
+          );
+        }
 
-      // Get category info
-      const category = product.categoryId
-        ? await tx.productCategory.findUnique({
+        // Get category info
+        const category = product.categoryId
+          ? await tx.productCategory.findUnique({
             where: { id: product.categoryId },
             select: { id: true, name: true },
           })
-        : null;
+          : null;
 
-      const itemPrice = product.price;
-      const itemTotal = itemPrice * item.quantity;
-      subtotal += itemTotal;
+        const itemPrice = product.price;
+        const itemTotal = itemPrice * item.quantity;
+        subtotal += itemTotal;
 
-      orderItems.push({
-        productId: product.id,
-        productName: product.name,
-        productImage: product.image,
-        quantity: item.quantity,
-        price: itemPrice,
-        total: itemTotal,
-        category: category,
-      });
-    }
+        orderItems.push({
+          productId: product.id,
+          productName: product.name,
+          productImage: product.image,
+          quantity: item.quantity,
+          price: itemPrice,
+          total: itemTotal,
+          category: category,
+        });
+      }
 
-    // Apply promotion if provided
-    let discountAmount = 0;
-    let promotion = null;
+      // Apply promotion if provided
+      let discountAmount = 0;
+      let promotion = null;
 
-    if (promotionCode) {
-      promotion = await PromotionService.findByCode(promotionCode);
-      if (promotion) {
-        if (promotion.minOrderAmount && subtotal < promotion.minOrderAmount) {
-          throw new ValidationError(`Minimum order amount is ${promotion.minOrderAmount}`);
-        }
+      if (promotionCode) {
+        promotion = await PromotionService.findByCode(promotionCode);
+        if (promotion) {
+          if (promotion.minOrderAmount && subtotal < promotion.minOrderAmount) {
+            throw new ValidationError(`Minimum order amount is ${promotion.minOrderAmount}`);
+          }
 
-        if (promotion.type === 'PERCENTAGE') {
-          discountAmount = Math.floor((subtotal * promotion.value) / 100);
-        } else {
-          discountAmount = promotion.value;
+          if (promotion.type === 'PERCENTAGE') {
+            discountAmount = Math.floor((subtotal * promotion.value) / 100);
+          } else {
+            discountAmount = promotion.value;
+          }
         }
       }
-    }
 
-    const total = subtotal - discountAmount;
+      const total = subtotal - discountAmount;
 
-    // Create temporary order object (not saved to DB)
-    // Transaction will commit automatically if no errors
-    return {
-      orderNumber: `TEMP-${Date.now()}`,
-      branchId,
-      branch: {
-        id: branch.id,
-        name: branch.name,
-        address: branch.address,
-        phone: branch.phone,
-      },
-      items: orderItems,
-      customerInfo: customerInfo || null,
-      promotionCode: promotionCode || null,
-      promotion: promotion
-        ? {
+      // Create temporary order object (not saved to DB)
+      // Transaction will commit automatically if no errors
+      return {
+        orderNumber: `TEMP-${Date.now()}`,
+        branchId,
+        branch: {
+          id: branch.id,
+          name: branch.name,
+          address: branch.address,
+          phone: branch.phone,
+        },
+        items: orderItems,
+        customerInfo: customerInfo || null,
+        promotionCode: promotionCode || null,
+        promotion: promotion
+          ? {
             code: promotion.code,
             type: promotion.type,
             value: promotion.value,
           }
-        : null,
-      subtotal,
-      discountAmount,
-      total,
-      notes: notes || null,
-      status: 'DRAFT',
-      createdAt: new Date().toISOString(),
-    };
-  });
+          : null,
+        subtotal,
+        discountAmount,
+        total,
+        notes: notes || null,
+        status: 'DRAFT',
+        createdAt: new Date().toISOString(),
+      };
+    });
 
     // Transaction completed successfully
     res.status(200).json({
@@ -729,6 +729,12 @@ export const trackOrder = async (req: Request, res: Response, next: NextFunction
             phone: true,
           },
         },
+        customer: {
+          select: {
+            name: true,
+            phone: true,
+          },
+        },
       },
     });
 
@@ -756,6 +762,10 @@ export const trackOrder = async (req: Request, res: Response, next: NextFunction
         total: order.total,
         items: order.items,
         branch: order.branch,
+        customer: order.customer,
+        deliveryAddress: order.deliveryAddress,
+        deliveryPhone: order.deliveryPhone,
+        orderType: order.orderType,
         createdAt: order.createdAt,
         updatedAt: order.updatedAt,
         completedAt: order.completedAt,
@@ -868,6 +878,45 @@ export const getPublicBranches = async (req: Request, res: Response, next: NextF
         limit: Number(limit),
         totalItems: total,
       },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Get single branch by ID (public)
+ * GET /api/v1/home/branches/:id
+ */
+export const getPublicBranchById = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const { id } = req.params;
+
+    const branch = await prisma.branch.findFirst({
+      where: {
+        id,
+        deletedAt: null,
+      } as any,
+      select: {
+        id: true,
+        code: true,
+        name: true,
+        address: true,
+        phone: true,
+        email: true,
+        createdAt: true,
+      },
+    });
+
+    if (!branch) {
+      throw new NotFoundError('Branch not found');
+    }
+
+    res.status(200).json({
+      success: true,
+      code: 200,
+      message: 'Branch retrieved successfully',
+      data: branch,
     });
   } catch (error) {
     next(error);

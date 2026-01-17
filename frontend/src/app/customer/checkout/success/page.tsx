@@ -55,7 +55,7 @@ export default function CheckoutSuccessPage() {
                 Đơn hàng của bạn đã được xác nhận. Bạn sẽ nhận được thông báo
                 cập nhật trạng thái.
               </p>
-
+            <div className="flex justify-center gap-4"> 
               <Link href="/customer/orders" className="block">
                 <Button className="w-full bg-orange-500 hover:bg-orange-600 text-white py-6 rounded-lg text-lg font-bold">
                   Xem đơn hàng
@@ -70,7 +70,8 @@ export default function CheckoutSuccessPage() {
                   Tiếp tục mua sắm
                 </Button>
               </Link>
-            </CardContent>
+            </div>
+            </CardContent>  
           </Card>
         </div>
       </div>

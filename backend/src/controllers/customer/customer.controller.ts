@@ -210,7 +210,7 @@ export const createOrder = async (req: Request, res: Response): Promise<void> =>
       return;
     }
 
-    const { branchId, items, tableId, notes } = req.body;
+    const { branchId, items, tableId, notes, deliveryAddress, deliveryPhone, orderType, paymentMethod } = req.body;
 
     // Validate branchId
     if (!branchId) {
@@ -256,7 +256,7 @@ export const createOrder = async (req: Request, res: Response): Promise<void> =>
         });
         return;
       }
-      
+
       // Verify product exists
       const product = await prisma.product.findUnique({
         where: { id: item.productId },
@@ -269,7 +269,7 @@ export const createOrder = async (req: Request, res: Response): Promise<void> =>
         });
         return;
       }
-      
+
       totalAmount += item.price * item.quantity; // price đã là cent
     }
 
@@ -284,17 +284,17 @@ export const createOrder = async (req: Request, res: Response): Promise<void> =>
       const day = String(now.getDate()).padStart(2, '0');
       const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
       orderNumber = `ORD-${year}${month}${day}-${random}`;
-      
+
       const existing = await prisma.order.findUnique({
         where: { orderNumber },
       });
-      
+
       if (!existing) {
         isUnique = true;
       }
       attempts++;
     }
-    
+
     if (!isUnique || !orderNumber) {
       res.status(500).json({
         success: false,
@@ -320,8 +320,11 @@ export const createOrder = async (req: Request, res: Response): Promise<void> =>
         notes: notes || null,
         orderNumber,
         total: totalAmount,
-        paymentMethod: 'CASH', // Mặc định tiền mặt, có thể update sau
+        paymentMethod: paymentMethod ? (paymentMethod.toUpperCase().replace('-', '_') as any) : 'CASH',
         paymentStatus: 'PENDING',
+        orderType: orderType || 'DELIVERY',
+        deliveryAddress: deliveryAddress || null,
+        deliveryPhone: deliveryPhone || null,
         items: {
           create: items.map((item: any) => {
             const orderItemData: any = {
@@ -396,7 +399,7 @@ export const createOrder = async (req: Request, res: Response): Promise<void> =>
       meta: error.meta,
       stack: error.stack,
     });
-    
+
     // Handle Prisma unique constraint error
     if (error.code === 'P2002') {
       res.status(400).json({
@@ -406,7 +409,7 @@ export const createOrder = async (req: Request, res: Response): Promise<void> =>
       });
       return;
     }
-    
+
     // Handle Prisma foreign key error
     if (error.code === 'P2003') {
       res.status(400).json({
@@ -416,7 +419,7 @@ export const createOrder = async (req: Request, res: Response): Promise<void> =>
       });
       return;
     }
-    
+
     res.status(500).json({
       success: false,
       code: 500,

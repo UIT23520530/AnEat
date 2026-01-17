@@ -13,13 +13,14 @@ import { ROLE_ROUTES } from "@/constants/roles"
 import type { User, UserRole } from "@/types"
 import Link from "next/link"
 import apiClient from "@/lib/api-client"
-import { Mail, Lock } from "lucide-react"
+import { Mail, Lock, Eye, EyeOff } from "lucide-react"
 
 export default function LoginPage() {
   const router = useRouter()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [loading, setLoading] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState("")
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -77,11 +78,11 @@ export default function LoginPage() {
           {/* Left side - Brand */}
           <div className="hidden md:flex flex-col items-center justify-center bg-gradient-to-br from-orange-50 to-amber-50 p-8">
             <div className="text-center">
-              <div className="mb-8 rounded-2xl overflow-hidden shadow-lg">
+              <div className="mb-8">
                 <img 
-                  src="https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=400&h=400&fit=crop" 
+                  src="/icons/AnEat.svg" 
                   alt="Thỏa mãn cơn thèm của bạn" 
-                  className="w-64 h-64 object-cover"
+                  className="w-96 h-96"
                 />
               </div>
               {/* <h1 className="text-4xl font-bold text-slate-900 mb-4">Đa dạng về menu</h1> */}
@@ -124,7 +125,7 @@ export default function LoginPage() {
                     <Label htmlFor="password" className="text-slate-700 font-semibold">
                       Mật khẩu
                     </Label>
-                    <Link href="/forgot-password" className="text-sm text-orange-500 hover:text-orange-600 font-medium">
+                    <Link href="/auth/forgot-password" className="text-sm text-orange-500 hover:text-orange-600 font-medium">
                       Quên mật khẩu?
                     </Link>
                   </div>
@@ -132,13 +133,20 @@ export default function LoginPage() {
                     <Lock className="absolute left-3 top-3.5 w-5 h-5 text-slate-400" />
                     <Input
                       id="password"
-                      type="password"
+                      type={showPassword ? "text" : "password"}
                       placeholder="Nhập mật khẩu của bạn"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       required
-                      className="pl-10 py-6 bg-slate-50 border-0 rounded-lg focus:ring-2 focus:ring-orange-500 text-slate-900 placeholder:text-slate-400"
+                      className="pl-10 pr-12 py-6 bg-slate-50 border-0 rounded-lg focus:ring-2 focus:ring-orange-500 text-slate-900 placeholder:text-slate-400"
                     />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-3.5 text-slate-400 hover:text-slate-600 focus:outline-none"
+                    >
+                      {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                    </button>
                   </div>
                 </div>
 
@@ -196,7 +204,7 @@ export default function LoginPage() {
               {/* Register Link */}
               <div className="text-center text-slate-600">
                 Chưa có tài khoản?{" "}
-                <Link href="/register" className="text-orange-500 hover:text-orange-600 font-semibold">
+                <Link href="/auth/register" className="text-orange-500 hover:text-orange-600 font-semibold">
                   Tạo tài khoản AnEat của bạn!
                 </Link>
               </div>
