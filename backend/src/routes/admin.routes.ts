@@ -36,6 +36,19 @@ import {
   deleteProduct,
   getProductStats,
 } from '../controllers/admin/product.controller';
+import {
+  getAllCustomers as getAdminCustomers,
+  getCustomerById as getAdminCustomerById,
+  getCustomerStatistics as getAdminCustomerStatistics,
+  updateCustomer as updateAdminCustomer,
+  adjustCustomerPoints as adjustAdminCustomerPoints,
+  updateCustomerTier as updateAdminCustomerTier,
+  getCustomerOrders as getAdminCustomerOrders,
+  searchCustomers as searchAdminCustomers,
+  createCustomer as createAdminCustomer,
+  getCustomerStats as getAdminCustomerStats,
+  deleteCustomer as deleteAdminCustomer,
+} from '../controllers/admin/customer.controller';
 import { authenticate, isAdmin, validate } from '../middleware';
 
 const router = Router();
@@ -349,6 +362,174 @@ router.delete(
   param('id').notEmpty().withMessage('ID sản phẩm không được bỏ trống'),
   validate,
   deleteProduct
+);
+
+/**
+ * ==================== QUẢN LÝ KHÁCH HÀNG ====================
+ */
+
+/**
+ * @route   GET /api/v1/admin/customers
+ * @desc    Lấy danh sách tất cả khách hàng (hỗ trợ phân trang, tìm kiếm, lọc theo tier/branch)
+ * @access  Admin only
+ */
+router.get('/customers', getAdminCustomers);
+
+/**
+ * @route   GET /api/v1/admin/customers/statistics
+ * @desc    Lấy thống kê khách hàng (toàn hệ thống hoặc theo chi nhánh)
+ * @access  Admin only
+ */
+router.get('/customers/statistics', getAdminCustomerStatistics);
+
+/**
+ * @route   GET /api/v1/admin/customers/stats
+ * @desc    Lấy thống kê khách hàng chi tiết
+ * @access  Admin only
+ */
+router.get('/customers/stats', getAdminCustomerStats);
+
+/**
+ * @route   GET /api/v1/admin/customers/search
+ * @desc    Tìm kiếm khách hàng
+ * @access  Admin only
+ */
+router.get(
+  '/customers/search',
+  [body('q').notEmpty().withMessage('Search query is required'), validate],
+  searchAdminCustomers
+);
+
+/**
+ * @route   GET /api/v1/admin/customers/:id
+ * @desc    Lấy thông tin chi tiết một khách hàng
+ * @access  Admin only
+ */
+router.get(
+  '/customers/:id',
+  param('id').notEmpty().withMessage('ID khách hàng không được bỏ trống'),
+  validate,
+  getAdminCustomerById
+);
+
+/**
+ * @route   POST /api/v1/admin/customers
+ * @desc    Tạo mới khách hàng
+ * @access  Admin only
+ */
+router.post(
+  '/customers',
+  [
+    body('phone')
+      .notEmpty()
+      .withMessage('Phone is required')
+      .matches(/^[0-9]{10}$/)
+      .withMessage('Phone must be 10 digits'),
+    body('name').notEmpty().withMessage('Name is required').trim(),
+    body('email').optional().isEmail().withMessage('Invalid email format'),
+    body('tier')
+      .optional()
+      .isIn(['BRONZE', 'SILVER', 'GOLD', 'VIP'])
+      .withMessage('Invalid tier value'),
+    validate,
+  ],
+  createAdminCustomer
+);
+
+/**
+ * @route   PATCH /api/v1/admin/customers/:id
+ * @desc    Cập nhật thông tin khách hàng
+ * @access  Admin only
+ */
+router.patch(
+  '/customers/:id',
+  [
+    param('id').notEmpty().withMessage('ID khách hàng không được bỏ trống'),
+    body('name').optional().trim().notEmpty().withMessage('Name cannot be empty'),
+    body('phone')
+      .optional()
+      .matches(/^[0-9]{10}$/)
+      .withMessage('Phone must be 10 digits'),
+    body('email').optional().isEmail().withMessage('Invalid email format'),
+    body('tier')
+      .optional()
+      .isIn(['BRONZE', 'SILVER', 'GOLD', 'VIP'])
+      .withMessage('Invalid tier value'),
+    body('points').optional().isInt().withMessage('Points must be an integer'),
+    validate,
+  ],
+  updateAdminCustomer
+);
+
+/**
+ * @route   POST /api/v1/admin/customers/:id/adjust-points
+ * @desc    Điều chỉnh điểm tích lũy khách hàng
+ * @access  Admin only
+ */
+router.post(
+  '/customers/:id/adjust-points',
+  [
+    param('id').notEmpty().withMessage('ID khách hàng không được bỏ trống'),
+    body('points')
+      .notEmpty()
+      .withMessage('Points adjustment amount is required')
+      .isInt()
+      .withMessage('Points must be an integer')
+      .custom((value) => value !== 0)
+      .withMessage('Points cannot be zero'),
+    body('reason')
+      .notEmpty()
+      .withMessage('Reason is required')
+      .trim()
+      .isLength({ min: 5 })
+      .withMessage('Reason must be at least 5 characters'),
+    validate,
+  ],
+  adjustAdminCustomerPoints
+);
+
+/**
+ * @route   PATCH /api/v1/admin/customers/:id/tier
+ * @desc    Cập nhật hạng thành viên khách hàng
+ * @access  Admin only
+ */
+router.patch(
+  '/customers/:id/tier',
+  [
+    param('id').notEmpty().withMessage('ID khách hàng không được bỏ trống'),
+    body('tier')
+      .notEmpty()
+      .withMessage('Tier is required')
+      .isIn(['BRONZE', 'SILVER', 'GOLD', 'VIP'])
+      .withMessage('Invalid tier value'),
+    body('reason').optional().trim(),
+    validate,
+  ],
+  updateAdminCustomerTier
+);
+
+/**
+ * @route   GET /api/v1/admin/customers/:id/orders
+ * @desc    Lấy lịch sử đơn hàng của khách hàng
+ * @access  Admin only
+ */
+router.get(
+  '/customers/:id/orders',
+  param('id').notEmpty().withMessage('ID khách hàng không được bỏ trống'),
+  validate,
+  getAdminCustomerOrders
+);
+
+/**
+ * @route   DELETE /api/v1/admin/customers/:id
+ * @desc    Xóa khách hàng
+ * @access  Admin only
+ */
+router.delete(
+  '/customers/:id',
+  param('id').notEmpty().withMessage('ID khách hàng không được bỏ trống'),
+  validate,
+  deleteAdminCustomer
 );
 
 export default router;

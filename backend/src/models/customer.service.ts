@@ -8,6 +8,7 @@ interface CustomerQueryParams {
   order: 'asc' | 'desc';
   search?: string;
   tier?: CustomerTier;
+  branchId?: string; // For admin to filter by branch
 }
 
 interface CustomerUpdateData {
@@ -39,7 +40,7 @@ export class CustomerService {
    * Find all customers with pagination, sorting, and filtering
    */
   static async findAll(params: CustomerQueryParams) {
-    const { page, limit, sort, order, search, tier } = params;
+    const { page, limit, sort, order, search, tier, branchId } = params;
     const skip = (page - 1) * limit;
 
     const where: Prisma.CustomerWhereInput = {};
@@ -54,6 +55,15 @@ export class CustomerService {
 
     if (tier) {
       where.tier = tier;
+    }
+
+    // Filter by branch - customers who have orders from this branch
+    if (branchId) {
+      where.orders = {
+        some: {
+          branchId: branchId,
+        },
+      };
     }
 
     const orderBy: Prisma.CustomerOrderByWithRelationInput = {
@@ -275,20 +285,36 @@ export class CustomerService {
   /**
    * Get customer statistics
    */
-  static async getStatistics() {
-    const [totalCustomers, tierDistribution, topCustomers, recentCustomers] =
+  static async getStatistics(branchId?: string) {
+    // Build where clause for branch filtering
+    const where: Prisma.CustomerWhereInput = branchId
+      ? {
+          orders: {
+            some: {
+              branchId: branchId,
+            },
+          },
+        }
+      : {};
+
+    // Build where clause for orders
+    const orderWhere: any = branchId ? { branchId } : {};
+
+    const [totalCustomers, tierDistribution, topCustomers, recentCustomers, totalOrders] =
       await Promise.all([
         // Total customers
-        prisma.customer.count(),
+        prisma.customer.count({ where }),
 
         // Distribution by tier
         prisma.customer.groupBy({
           by: ['tier'],
+          where,
           _count: true,
         }),
 
         // Top customers by spending
         prisma.customer.findMany({
+          where,
           take: 10,
           orderBy: { totalSpent: 'desc' },
           select: {
@@ -306,6 +332,7 @@ export class CustomerService {
 
         // Recent customers
         prisma.customer.findMany({
+          where,
           take: 5,
           orderBy: { createdAt: 'desc' },
           select: {
@@ -316,15 +343,20 @@ export class CustomerService {
             createdAt: true,
           },
         }),
+
+        // Total orders
+        prisma.order.count({ where: orderWhere }),
       ]);
 
     // Calculate average spending
     const avgSpent = await prisma.customer.aggregate({
+      where,
       _avg: { totalSpent: true },
     });
 
     return {
       totalCustomers,
+      totalOrders,
       tierDistribution: tierDistribution.reduce(
         (acc, item) => {
           acc[item.tier] = item._count;
