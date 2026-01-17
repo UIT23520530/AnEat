@@ -49,6 +49,14 @@ import {
   getCustomerStats as getAdminCustomerStats,
   deleteCustomer as deleteAdminCustomer,
 } from '../controllers/admin/customer.controller';
+import {
+  getAllBills as getAdminBills,
+  getBillById as getAdminBillById,
+  getBillStats as getAdminBillStats,
+  updateBill as updateAdminBill,
+  printBill as printAdminBill,
+  getBillHistory as getAdminBillHistory,
+} from '../controllers/admin/bill.controller';
 import { authenticate, isAdmin, validate } from '../middleware';
 
 const router = Router();
@@ -530,6 +538,71 @@ router.delete(
   param('id').notEmpty().withMessage('ID khách hàng không được bỏ trống'),
   validate,
   deleteAdminCustomer
+);
+
+// ==================== BILL MANAGEMENT ROUTES ====================
+
+/**
+ * @route   GET /api/v1/admin/bills/stats
+ * @desc    Lấy thống kê hóa đơn (system-wide hoặc theo chi nhánh)
+ * @access  Admin only
+ */
+router.get('/bills/stats', getAdminBillStats);
+
+/**
+ * @route   GET /api/v1/admin/bills
+ * @desc    Lấy danh sách tất cả hóa đơn (system-wide)
+ * @access  Admin only
+ */
+router.get('/bills', getAdminBills);
+
+/**
+ * @route   GET /api/v1/admin/bills/:id
+ * @desc    Lấy chi tiết hóa đơn
+ * @access  Admin only
+ */
+router.get(
+  '/bills/:id',
+  param('id').notEmpty().withMessage('ID hóa đơn không được bỏ trống'),
+  validate,
+  getAdminBillById
+);
+
+/**
+ * @route   PUT /api/v1/admin/bills/:id
+ * @desc    Cập nhật hóa đơn
+ * @access  Admin only
+ */
+router.put(
+  '/bills/:id',
+  param('id').notEmpty().withMessage('ID hóa đơn không được bỏ trống'),
+  body('editReason').notEmpty().withMessage('Lý do chỉnh sửa là bắt buộc'),
+  validate,
+  updateAdminBill
+);
+
+/**
+ * @route   GET /api/v1/admin/bills/:id/history
+ * @desc    Lấy lịch sử chỉnh sửa hóa đơn
+ * @access  Admin only
+ */
+router.get(
+  '/bills/:id/history',
+  param('id').notEmpty().withMessage('ID hóa đơn không được bỏ trống'),
+  validate,
+  getAdminBillHistory
+);
+
+/**
+ * @route   POST /api/v1/admin/bills/:id/print
+ * @desc    Đánh dấu hóa đơn đã in
+ * @access  Admin only
+ */
+router.post(
+  '/bills/:id/print',
+  param('id').notEmpty().withMessage('ID hóa đơn không được bỏ trống'),
+  validate,
+  printAdminBill
 );
 
 export default router;

@@ -23,6 +23,7 @@ interface ReceiptProps {
   branchAddress?: string;
   customerName: string;
   customerPhone: string;
+  customerAddress?: string;
   items: ReceiptItem[];
   subtotal: number;
   tax: number;
@@ -44,6 +45,7 @@ const ThermalPrintReceipt: React.FC<ReceiptProps> = ({
   branchAddress = 'Địa chỉ chi nhánh',
   customerName,
   customerPhone,
+  customerAddress,
   items,
   subtotal,
   tax,
@@ -113,6 +115,12 @@ const ThermalPrintReceipt: React.FC<ReceiptProps> = ({
           <span>SĐT:</span>
           <span>{customerPhone}</span>
         </div>
+        {customerAddress && (
+          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+            <span>Địa chỉ:</span>
+            <span style={{ textAlign: 'right', maxWidth: '60%' }}>{customerAddress}</span>
+          </div>
+        )}
       </div>
 
       {/* Divider */}

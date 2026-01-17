@@ -33,6 +33,7 @@ export function AntdProvider({ children }: { children: React.ReactNode }) {
         message.includes('not connected to any Form element') ||
         message.includes('Delete failed') ||
         message.includes('Update failed') ||
+        message.includes('Failed to update bill') ||
         message.includes('AxiosError') ||
         message.includes('Request failed')
       ) {

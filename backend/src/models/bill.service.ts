@@ -25,6 +25,7 @@ export interface BillDTO {
   paidAmount: number;
   changeAmount: number;
   notes: string | null;
+  internalNotes: string | null;
   isEdited: boolean;
   editCount: number;
   lastEditedAt: Date | null;
@@ -55,6 +56,7 @@ export interface BillHistoryDTO {
   paidAmount: number;
   changeAmount: number;
   notes: string | null;
+  internalNotes: string | null;
   editReason: string;
   changedFields: string;
   editedBy: UserSummaryDTO;
@@ -84,6 +86,7 @@ interface BranchSummaryDTO {
   id: string;
   code: string;
   name: string;
+  address: string;
 }
 
 interface UserSummaryDTO {
@@ -121,6 +124,15 @@ export interface UpdateBillInput {
   paidAmount?: number;
   notes?: string;
   internalNotes?: string;
+  items?: Array<{
+    productId: string;
+    quantity: number;
+    unitPrice: number;
+  }>;
+  discount?: number;
+  subtotal?: number;
+  tax?: number;
+  totalAmount?: number;
   editReason: string; // Required for audit trail
   editedById: string;
 }
@@ -131,6 +143,7 @@ export interface BillQueryParams {
   sort?: string;
   status?: BillStatus;
   paymentStatus?: PaymentStatus;
+  paymentMethod?: PaymentMethod;
   search?: string;
   branchId?: string;
   dateFrom?: Date;
@@ -157,6 +170,7 @@ const mapBillToDTO = (bill: any): BillDTO => {
     paidAmount: bill.paidAmount,
     changeAmount: bill.changeAmount,
     notes: bill.notes,
+    internalNotes: bill.internalNotes,
     isEdited: bill.isEdited,
     editCount: bill.editCount,
     lastEditedAt: bill.lastEditedAt,
@@ -187,6 +201,7 @@ const mapBillToDTO = (bill: any): BillDTO => {
         id: bill.branch.id,
         code: bill.branch.code,
         name: bill.branch.name,
+        address: bill.branch.address,
       },
     }),
     ...(bill.issuedBy && {
@@ -218,6 +233,7 @@ const mapBillHistoryToDTO = (history: any): BillHistoryDTO => {
     paidAmount: history.paidAmount,
     changeAmount: history.changeAmount,
     notes: history.notes,
+    internalNotes: history.internalNotes,
     editReason: history.editReason,
     changedFields: history.changedFields,
     editedBy: {
@@ -329,6 +345,44 @@ export class BillService {
   }
 
   /**
+   * Get bill statistics (system-wide or by branch)
+   */
+  static async getBillStats(branchId?: string, dateFrom?: Date, dateTo?: Date) {
+    const where: any = {};
+
+    if (branchId) {
+      where.branchId = branchId;
+    }
+
+    if (dateFrom || dateTo) {
+      where.createdAt = {};
+      if (dateFrom) where.createdAt.gte = dateFrom;
+      if (dateTo) where.createdAt.lte = dateTo;
+    }
+
+    const [totalBills, paidBills, pendingBills, cancelledBills, refundedBills, totalRevenue] = await Promise.all([
+      prisma.bill.count({ where }),
+      prisma.bill.count({ where: { ...where, paymentStatus: 'PAID' } }),
+      prisma.bill.count({ where: { ...where, paymentStatus: 'PENDING' } }),
+      prisma.bill.count({ where: { ...where, status: 'CANCELLED' } }),
+      prisma.bill.count({ where: { ...where, paymentStatus: 'REFUNDED' } }),
+      prisma.bill.aggregate({
+        where: { ...where, paymentStatus: 'PAID' },
+        _sum: { total: true },
+      }),
+    ]);
+
+    return {
+      totalBills,
+      paidBills,
+      pendingBills,
+      cancelledBills,
+      refundedBills,
+      totalRevenue: totalRevenue._sum.total || 0,
+    };
+  }
+
+  /**
    * Get bill list with filters, pagination and sorting
    */
   static async getBillList(params: BillQueryParams) {
@@ -345,6 +399,10 @@ export class BillService {
 
     if (params.paymentStatus) {
       where.paymentStatus = params.paymentStatus;
+    }
+
+    if (params.paymentMethod) {
+      where.paymentMethod = params.paymentMethod;
     }
 
     if (params.branchId) {
@@ -470,55 +528,87 @@ export class BillService {
       const version = currentBill.editCount + 1;
       const changedFields: string[] = [];
 
+      // If items provided, recompute financials to ensure consistency
+      let recalculatedSubtotal = currentBill.subtotal;
+      if (data.items && data.items.length > 0) {
+        recalculatedSubtotal = data.items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
+      }
+      const incomingSubtotal = data.subtotal !== undefined ? data.subtotal : recalculatedSubtotal;
+      const incomingDiscount = data.discount !== undefined ? data.discount : currentBill.discountAmount;
+      const incomingTax = data.tax !== undefined ? data.tax : incomingSubtotal * 0.1;
+      const incomingTotal = data.totalAmount !== undefined ? data.totalAmount : incomingSubtotal + incomingTax - incomingDiscount;
+
       // Track changed fields
-      if (data.status && data.status !== currentBill.status) {
+      if (data.status !== undefined && data.status !== currentBill.status) {
         changedFields.push('status');
       }
-      if (data.customerName && data.customerName !== currentBill.customerName) {
+      if (data.customerName !== undefined && data.customerName !== currentBill.customerName) {
         changedFields.push('customerName');
       }
-      if (data.customerPhone && data.customerPhone !== currentBill.customerPhone) {
+      if (data.customerPhone !== undefined && data.customerPhone !== currentBill.customerPhone) {
         changedFields.push('customerPhone');
       }
-      if (data.customerEmail && data.customerEmail !== currentBill.customerEmail) {
+      if (data.customerEmail !== undefined && data.customerEmail !== currentBill.customerEmail) {
         changedFields.push('customerEmail');
       }
-      if (data.customerAddress && data.customerAddress !== currentBill.customerAddress) {
+      if (data.customerAddress !== undefined && data.customerAddress !== currentBill.customerAddress) {
         changedFields.push('customerAddress');
       }
-      if (data.paymentMethod && data.paymentMethod !== currentBill.paymentMethod) {
+      if (data.paymentMethod !== undefined && data.paymentMethod !== currentBill.paymentMethod) {
         changedFields.push('paymentMethod');
       }
-      if (data.paymentStatus && data.paymentStatus !== currentBill.paymentStatus) {
+      if (data.paymentStatus !== undefined && data.paymentStatus !== currentBill.paymentStatus) {
         changedFields.push('paymentStatus');
       }
       if (data.paidAmount !== undefined && data.paidAmount !== currentBill.paidAmount) {
         changedFields.push('paidAmount');
       }
-      if (data.notes && data.notes !== currentBill.notes) {
+      if (data.notes !== undefined && data.notes !== currentBill.notes) {
         changedFields.push('notes');
       }
+      if (data.internalNotes !== undefined && data.internalNotes !== currentBill.internalNotes) {
+        changedFields.push('internalNotes');
+      }
+      if (incomingDiscount !== currentBill.discountAmount) {
+        changedFields.push('discountAmount');
+      }
+      if (incomingSubtotal !== currentBill.subtotal) {
+        changedFields.push('subtotal');
+      }
+      if (incomingTax !== currentBill.taxAmount) {
+        changedFields.push('taxAmount');
+      }
+      if (incomingTotal !== currentBill.total) {
+        changedFields.push('total');
+      }
+      if (data.items && data.items.length > 0) {
+        changedFields.push('items');
+      }
 
-      // Create history record
+      // Create history record with NEW values (not old values)
       await tx.billHistory.create({
         data: {
           version,
           billNumber: currentBill.billNumber,
-          status: currentBill.status,
-          subtotal: currentBill.subtotal,
-          taxAmount: currentBill.taxAmount,
-          discountAmount: currentBill.discountAmount,
-          total: currentBill.total,
-          customerName: currentBill.customerName,
-          customerPhone: currentBill.customerPhone,
-          customerEmail: currentBill.customerEmail,
-          customerAddress: currentBill.customerAddress,
-          paymentMethod: currentBill.paymentMethod,
-          paymentStatus: currentBill.paymentStatus,
-          paidAmount: currentBill.paidAmount,
-          changeAmount: currentBill.changeAmount,
-          notes: currentBill.notes,
-          internalNotes: currentBill.internalNotes,
+          status: data.status !== undefined ? data.status : currentBill.status,
+          subtotal: incomingSubtotal,
+          taxAmount: incomingTax,
+          discountAmount: incomingDiscount,
+          total: incomingTotal,
+          customerName: data.customerName !== undefined ? data.customerName : currentBill.customerName,
+          customerPhone: data.customerPhone !== undefined ? data.customerPhone : currentBill.customerPhone,
+          customerEmail: data.customerEmail !== undefined ? data.customerEmail : currentBill.customerEmail,
+          customerAddress: data.customerAddress !== undefined ? data.customerAddress : currentBill.customerAddress,
+          paymentMethod: data.paymentMethod !== undefined ? data.paymentMethod : currentBill.paymentMethod,
+          paymentStatus: data.paymentStatus !== undefined ? data.paymentStatus : currentBill.paymentStatus,
+          paidAmount: data.paidAmount !== undefined ? data.paidAmount : currentBill.paidAmount,
+          changeAmount: data.paidAmount !== undefined 
+            ? (data.paidAmount > incomingTotal 
+              ? data.paidAmount - incomingTotal
+              : 0)
+            : currentBill.changeAmount,
+          notes: data.notes !== undefined ? data.notes : currentBill.notes,
+          internalNotes: data.internalNotes !== undefined ? data.internalNotes : currentBill.internalNotes,
           editReason: data.editReason,
           changedFields: JSON.stringify(changedFields),
           billId: currentBill.id,
@@ -534,29 +624,69 @@ export class BillService {
           : 0;
       }
 
+      // Update order items if provided
+      if (data.items && data.items.length > 0 && currentBill.orderId) {
+        // Delete existing order items
+        await tx.orderItem.deleteMany({
+          where: { orderId: currentBill.orderId },
+        });
+
+        // Create new order items
+        for (const item of data.items) {
+          await tx.orderItem.create({
+            data: {
+              orderId: currentBill.orderId,
+              productId: item.productId,
+              quantity: item.quantity,
+              price: item.unitPrice,
+            },
+          });
+        }
+
+        // Update order total to match recalculated subtotal
+        await tx.order.update({
+          where: { id: currentBill.orderId },
+          data: {
+            total: incomingSubtotal,
+          },
+        });
+      }
+
       // Update bill
       const updatedBill = await tx.bill.update({
         where: { id: billId },
         data: {
-          ...(data.status && { status: data.status }),
-          ...(data.customerName && { customerName: data.customerName }),
-          ...(data.customerPhone && { customerPhone: data.customerPhone }),
-          ...(data.customerEmail && { customerEmail: data.customerEmail }),
-          ...(data.customerAddress && { customerAddress: data.customerAddress }),
-          ...(data.paymentMethod && { paymentMethod: data.paymentMethod }),
-          ...(data.paymentStatus && { paymentStatus: data.paymentStatus }),
+          ...(data.status !== undefined && { status: data.status }),
+          ...(data.customerName !== undefined && { customerName: data.customerName }),
+          ...(data.customerPhone !== undefined && { customerPhone: data.customerPhone }),
+          ...(data.customerEmail !== undefined && { customerEmail: data.customerEmail }),
+          ...(data.customerAddress !== undefined && { customerAddress: data.customerAddress }),
+          ...(data.paymentMethod !== undefined && { paymentMethod: data.paymentMethod }),
+          ...(data.paymentStatus !== undefined && { paymentStatus: data.paymentStatus }),
           ...(data.paidAmount !== undefined && { 
             paidAmount: data.paidAmount,
-            changeAmount,
+            changeAmount: data.paidAmount > incomingTotal ? data.paidAmount - incomingTotal : 0,
           }),
-          ...(data.notes && { notes: data.notes }),
-          ...(data.internalNotes && { internalNotes: data.internalNotes }),
+          ...(data.notes !== undefined && { notes: data.notes }),
+          ...(data.internalNotes !== undefined && { internalNotes: data.internalNotes }),
+          discountAmount: incomingDiscount,
+          subtotal: incomingSubtotal,
+          taxAmount: incomingTax,
+          total: incomingTotal,
           isEdited: true,
           editCount: version,
           lastEditedAt: new Date(),
         },
         include: {
-          order: true,
+          order: {
+            include: {
+              items: {
+                include: {
+                  product: true,
+                },
+              },
+            },
+          },
           branch: true,
           issuedBy: true,
         },
@@ -564,6 +694,48 @@ export class BillService {
 
       return mapBillToDTO(updatedBill);
     });
+  }
+
+  /**
+   * Print bill (increment print counter)
+   */
+  static async printBill(billId: string) {
+    const bill = await prisma.bill.findUnique({
+      where: { id: billId },
+    });
+
+    if (!bill) {
+      throw new Error('Bill not found');
+    }
+
+    const updatedBill = await prisma.bill.update({
+      where: { id: billId },
+      data: {
+        printedCount: { increment: 1 },
+        lastPrintedAt: new Date(),
+      },
+      include: {
+        order: {
+          include: {
+            items: {
+              include: {
+                product: true,
+              },
+            },
+          },
+        },
+        branch: true,
+        issuedBy: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+      },
+    });
+
+    return mapBillToDTO(updatedBill);
   }
 
   /**

@@ -97,6 +97,7 @@ export interface BillQueryParams {
   search?: string;
   dateFrom?: string;
   dateTo?: string;
+  branchId?: string;
 }
 
 class BillService {
@@ -130,6 +131,7 @@ class BillService {
       if (params?.search) queryParams.append('search', params.search);
       if (params?.dateFrom) queryParams.append('dateFrom', params.dateFrom);
       if (params?.dateTo) queryParams.append('dateTo', params.dateTo);
+      if (params?.branchId) queryParams.append('branchId', params.branchId);
 
       const url = `${API_URL}/manager/bills${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
       
