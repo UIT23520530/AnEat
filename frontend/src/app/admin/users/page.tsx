@@ -568,8 +568,8 @@ function UsersContent() {
             </div>
           </CardHeader>
 
+          {/* Table */}
           <CardContent>
-            {/* Table */}
             <Table
               columns={columns}
               dataSource={users}
@@ -586,6 +586,7 @@ function UsersContent() {
                 },
               }}
               bordered={false}
+              scroll={{ x: 1400 }}
               className="ant-table-custom"
             />
           </CardContent>

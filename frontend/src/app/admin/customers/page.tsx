@@ -513,6 +513,7 @@ function CustomersContent() {
                 },
               }}
               bordered={false}
+              scroll={{ x: 1400 }}
               className="ant-table-custom"
             />
           </CardContent>
