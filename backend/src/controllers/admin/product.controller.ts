@@ -102,7 +102,14 @@ export const getAllProducts = async (req: Request, res: Response): Promise<void>
  */
 export const getProductStats = async (req: Request, res: Response): Promise<void> => {
   try {
-    console.log('📊 Get product stats request');
+    const { branchId } = req.query;
+    console.log('📊 Get product stats request', { branchId });
+
+    // Build where clause for branch filtering
+    const whereClause: any = {};
+    if (branchId && branchId !== 'null') {
+      whereClause.branchId = branchId as string;
+    }
 
     const [
       totalProducts,
@@ -111,22 +118,25 @@ export const getProductStats = async (req: Request, res: Response): Promise<void
       productsByCategory,
     ] = await Promise.all([
       // Total products
-      prisma.product.count(),
+      prisma.product.count({ where: whereClause }),
       // Available products
       prisma.product.count({
         where: {
+          ...whereClause,
           isAvailable: true,
         },
       }),
       // Unavailable products
       prisma.product.count({
         where: {
+          ...whereClause,
           isAvailable: false,
         },
       }),
       // Products grouped by category
       prisma.product.groupBy({
         by: ['categoryId'],
+        where: whereClause,
         _count: {
           id: true,
         },
