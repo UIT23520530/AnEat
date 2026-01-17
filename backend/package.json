@@ -22,7 +22,17 @@
     "lint:fix": "eslint . --ext .ts --fix",
     "format": "prettier --write \"src/**/*.ts\"",
     "generate-tokens": "ts-node scripts/generate-tokens.ts",
-    "quick-login": "ts-node scripts/quick-login.ts"
+    "quick-login": "ts-node scripts/quick-login.ts",
+    "import:menu": "ts-node prisma/import-menu-from-excel.ts",
+    "import:menu:md": "ts-node prisma/import-menu-from-markdown.ts",
+    "cleanup:products": "ts-node prisma/cleanup-products.ts",
+    "check:products": "ts-node prisma/check-products.ts",
+    "copy:products": "ts-node prisma/copy-products-to-all-branches.ts",
+    "copy:images": "ts-node prisma/copy-product-images.ts",
+    "update:images": "ts-node prisma/update-product-images.ts",
+    "force:update-4mieng-ga": "ts-node prisma/force-update-4-mieng-ga.ts",
+    "cleanup:categories": "ts-node prisma/cleanup-categories.ts",
+    "fix:drink-options": "ts-node prisma/fix-drink-options.ts"
   },
   "keywords": [
     "api",
@@ -36,6 +46,7 @@
   "license": "ISC",
   "dependencies": {
     "@prisma/client": "^5.7.0",
+    "axios": "^1.13.2",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",

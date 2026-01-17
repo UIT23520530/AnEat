@@ -1,16 +1,21 @@
 import { Router } from 'express';
 import { body } from 'express-validator';
+
+
 import {
   getOrderHistory,
   createOrder,
   getMenu,
   getProfile,
+  initiateMoMoPayment,
 } from '../controllers/customer/customer.controller';
+
 import { authenticate, isCustomer, validate } from '../middleware';
 
 const router = Router();
 
-// All routes require customer authentication
+router.post('/payment', initiateMoMoPayment); 
+
 router.use(authenticate);
 
 /**

@@ -1,13 +1,20 @@
 "use client";
 
-import React, { createContext, useContext, useState, ReactNode } from "react";
+import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
 
-interface CartItem {
+export interface CartItemOption {
   id: string;
   name: string;
-  price: number;
+  price: number; // Price in VND
+}
+
+export interface CartItem {
+  id: string;
+  name: string;
+  price: number; // Total price including options (VND)
   quantity: number;
   image: string;
+  options?: CartItemOption[]; // Selected options
 }
 
 interface CartContextType {
@@ -18,6 +25,8 @@ interface CartContextType {
   isCartOpen: boolean;
   openCart: () => void;
   closeCart: () => void;
+  totalItems: number;
+  totalPrice: number;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -30,9 +39,33 @@ export const useCart = () => {
   return context;
 };
 
+const CART_STORAGE_KEY = "shoppingCart";
+
 export const CartProvider = ({ children }: { children: ReactNode }) => {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
+
+  // Khôi phục giỏ hàng từ localStorage khi load trang
+  useEffect(() => {
+    try {
+      const storedCart = localStorage.getItem(CART_STORAGE_KEY);
+      if (storedCart) {
+        const parsedCart = JSON.parse(storedCart) as CartItem[];
+        setCartItems(parsedCart);
+      }
+    } catch (error) {
+      console.error("Failed to load cart from localStorage:", error);
+    }
+  }, []);
+
+  // Lưu giỏ hàng vào localStorage mỗi khi có thay đổi
+  useEffect(() => {
+    try {
+      localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cartItems));
+    } catch (error) {
+      console.error("Failed to save cart to localStorage:", error);
+    }
+  }, [cartItems]);
 
   const addToCart = (item: CartItem) => {
     setCartItems((prevItems) => {
@@ -63,6 +96,10 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
   const openCart = () => setIsCartOpen(true);
   const closeCart = () => setIsCartOpen(false);
 
+  // Tính toán totalItems và totalPrice
+  const totalItems = cartItems.reduce((sum, item) => sum + item.quantity, 0);
+  const totalPrice = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+
   return (
     <CartContext.Provider
       value={{
@@ -73,6 +110,8 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
         isCartOpen,
         openCart,
         closeCart,
+        totalItems,
+        totalPrice,
       }}
     >
       {children}

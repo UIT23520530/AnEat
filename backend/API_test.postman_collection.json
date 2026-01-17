@@ -1,0 +1,533 @@
+{
+	"info": {
+		"_postman_id": "aneat-home-api-collection",
+		"name": "AnEat - Home API Collection",
+		"description": "Collection các API public cho trang chủ, thực đơn, khuyến mãi và đơn hàng",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Xác thực",
+			"item": [
+				{
+					"name": "Đăng ký khách hàng",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"customer@example.com\",\n  \"password\": \"password123\",\n  \"name\": \"Nguyễn Văn A\",\n  \"phone\": \"0901234567\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/auth/register",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"auth",
+								"register"
+							]
+						},
+						"description": "Đăng ký tài khoản khách hàng mới. Tự động tạo User với role CUSTOMER và Customer record với tier BRONZE, points 0."
+					},
+					"response": []
+				},
+				{
+					"name": "Đăng nhập khách hàng",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"customer@example.com\",\n  \"password\": \"password123\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/auth/login",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"auth",
+								"login"
+							]
+						},
+						"description": "Đăng nhập bằng email và password. Trả về token JWT và thông tin user. Nếu role CUSTOMER thì cũng trả về thông tin customer (points, tier, totalSpent)."
+					},
+					"response": []
+				},
+				{
+					"name": "Lấy thông tin user hiện tại",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text",
+								"description": "Token JWT từ đăng nhập"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/auth/me",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"auth",
+								"me"
+							]
+						},
+						"description": "Lấy thông tin user hiện tại (cần đăng nhập)"
+					},
+					"response": []
+				},
+				{
+					"name": "Đăng xuất",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/auth/logout",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"auth",
+								"logout"
+							]
+						},
+						"description": "Đăng xuất (client-side sẽ xóa token)"
+					},
+					"response": []
+				}
+			],
+			"description": "Các API xác thực (đăng ký, đăng nhập, đăng xuất)"
+		},
+		{
+			"name": "Trang chủ",
+			"item": [
+				{
+					"name": "Lấy danh sách banner",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/home/banners",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"home",
+								"banners"
+							]
+						},
+						"description": "Lấy danh sách banner đang active cho trang chủ"
+					},
+					"response": []
+				},
+				{
+					"name": "Lấy món ăn nổi trội",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/home/featured-products?limit=10&branchId={{branchId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"home",
+								"featured-products"
+							],
+							"query": [
+								{
+									"key": "limit",
+									"value": "10",
+									"description": "Số lượng sản phẩm (optional, default 10, max 50)"
+								},
+								{
+									"key": "branchId",
+									"value": "{{branchId}}",
+									"description": "ID chi nhánh (optional)"
+								}
+							]
+						},
+						"description": "Lấy danh sách món ăn nổi trội (top selling trong 30 ngày)"
+					},
+					"response": []
+				}
+			],
+			"description": "Các API cho trang chủ"
+		},
+		{
+			"name": "Thực đơn",
+			"item": [
+				{
+					"name": "Lấy danh sách danh mục",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/home/categories",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"home",
+								"categories"
+							]
+						},
+						"description": "Lấy danh sách tất cả danh mục đang active"
+					},
+					"response": []
+				},
+				{
+					"name": "Lấy danh sách món ăn",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/home/products?branchId={{branchId}}&categoryId=&search=&page=1&limit=50",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"home",
+								"products"
+							],
+							"query": [
+								{
+									"key": "branchId",
+									"value": "{{branchId}}",
+									"description": "ID chi nhánh (required)"
+								},
+								{
+									"key": "categoryId",
+									"value": "",
+									"description": "ID danh mục (optional)"
+								},
+								{
+									"key": "search",
+									"value": "",
+									"description": "Từ khóa tìm kiếm (optional)"
+								},
+								{
+									"key": "page",
+									"value": "1",
+									"description": "Trang (optional, default 1)"
+								},
+								{
+									"key": "limit",
+									"value": "50",
+									"description": "Số lượng mỗi trang (optional, default 50, max 100)"
+								}
+							]
+						},
+						"description": "Lấy danh sách món ăn. Yêu cầu branchId. Mỗi product có stockStatus và canOrder."
+					},
+					"response": []
+				}
+			],
+			"description": "Các API cho thực đơn"
+		},
+		{
+			"name": "Khuyến mãi",
+			"item": [
+				{
+					"name": "Lấy danh sách khuyến mãi",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/home/promotions?page=1&limit=20",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"home",
+								"promotions"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "1",
+									"description": "Trang (optional, default 1)"
+								},
+								{
+									"key": "limit",
+									"value": "20",
+									"description": "Số lượng mỗi trang (optional, default 20, max 50)"
+								}
+							]
+						},
+						"description": "Lấy danh sách khuyến mãi đang active (tự động lọc hết hạn và hết lượt)"
+					},
+					"response": []
+				}
+			],
+			"description": "Các API cho khuyến mãi"
+		},
+		{
+			"name": "Đơn hàng",
+			"item": [
+				{
+					"name": "Lấy danh sách đơn hàng",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text",
+								"description": "Token (optional - nếu không có thì cần orderNumber)"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/home/orders?orderNumber={{orderNumber}}&status=&page=1&limit=10",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"home",
+								"orders"
+							],
+							"query": [
+								{
+									"key": "orderNumber",
+									"value": "{{orderNumber}}",
+									"description": "Mã đơn hàng (required nếu chưa đăng nhập)"
+								},
+								{
+									"key": "status",
+									"value": "",
+									"description": "Lọc theo status: PENDING, PREPARING, READY, COMPLETED, CANCELLED (optional)"
+								},
+								{
+									"key": "page",
+									"value": "1",
+									"description": "Trang (optional, default 1)"
+								},
+								{
+									"key": "limit",
+									"value": "10",
+									"description": "Số lượng mỗi trang (optional, default 10, max 50)"
+								}
+							]
+						},
+						"description": "Lấy danh sách đơn hàng. Nếu đã đăng nhập thì lấy theo user, nếu chưa thì cần orderNumber."
+					},
+					"response": []
+				},
+				{
+					"name": "Tạo đơn hàng tạm",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"branchId\": \"{{branchId}}\",\n  \"items\": [\n    {\n      \"productId\": \"{{productId}}\",\n      \"quantity\": 2\n    },\n    {\n      \"productId\": \"{{productId2}}\",\n      \"quantity\": 1\n    }\n  ],\n  \"customerInfo\": {\n    \"name\": \"Nguyễn Văn A\",\n    \"phone\": \"0901234567\",\n    \"email\": \"customer@example.com\",\n    \"address\": \"123 Đường ABC, Quận 1, TP.HCM\"\n  },\n  \"promotionCode\": \"PROMO10\",\n  \"notes\": \"Giao hàng trước 12h\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/home/orders/temp",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"home",
+								"orders",
+								"temp"
+							]
+						},
+						"description": "Tạo đơn hàng tạm (không lưu vào DB, trả về JSON để lưu vào localStorage/cookie)"
+					},
+					"response": []
+				},
+				{
+					"name": "Tracking đơn hàng",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/home/orders/{{orderNumber}}/tracking",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"home",
+								"orders",
+								"{{orderNumber}}",
+								"tracking"
+							]
+						},
+						"description": "Tracking status đơn hàng theo orderNumber. Trả về status, items, branch, estimatedTime."
+					},
+					"response": []
+				}
+			],
+			"description": "Các API cho đơn hàng"
+		},
+		{
+			"name": "Về chúng tôi",
+			"item": [
+				{
+					"name": "Lấy thông tin về chúng tôi",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/home/about-us",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"home",
+								"about-us"
+							]
+						},
+						"description": "Lấy thông tin về câu chuyện cửa hàng"
+					},
+					"response": []
+				}
+			],
+			"description": "Các API về chúng tôi"
+		},
+		{
+			"name": "Cửa hàng",
+			"item": [
+				{
+					"name": "Lấy danh sách cửa hàng",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/home/branches?page=1&limit=50&search=",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"home",
+								"branches"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "1",
+									"description": "Trang (optional, default 1)"
+								},
+								{
+									"key": "limit",
+									"value": "50",
+									"description": "Số lượng mỗi trang (optional, default 50, max 100)"
+								},
+								{
+									"key": "search",
+									"value": "",
+									"description": "Tìm kiếm theo tên, mã, địa chỉ (optional)"
+								}
+							]
+						},
+						"description": "Lấy danh sách tất cả cửa hàng (public)"
+					},
+					"response": []
+				}
+			],
+			"description": "Các API cho cửa hàng"
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:3001",
+			"type": "string"
+		},
+		{
+			"key": "branchId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "productId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "productId2",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "orderNumber",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "token",
+			"value": "",
+			"type": "string"
+		}
+	]
+}

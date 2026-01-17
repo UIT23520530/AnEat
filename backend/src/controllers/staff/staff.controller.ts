@@ -1,5 +1,92 @@
 import { Request, Response } from 'express';
 import { prisma } from '../../db';
+import axios from 'axios';
+import crypto from 'crypto';
+
+/**
+ * MoMo POS payment for staff (quầy thanh toán)
+ */
+export const momoPosPayment = async (req: Request, res: Response): Promise<void> => {
+  try {
+    // Lấy thông tin từ body
+    const { amount, orderInfo, paymentCode } = req.body;
+    if (!amount || !orderInfo || !paymentCode) {
+      res.status(400).json({
+        status: 'error',
+        message: 'amount, orderInfo, paymentCode are required',
+      });
+      return;
+    }
+
+    // MoMo config từ env
+    const accessKey = process.env.MOMO_ACCESS_KEY!;
+    const secretKey = process.env.MOMO_SECRET_KEY!;
+    const partnerCode = process.env.MOMO_PARTNER_CODE!;
+    const redirectUrl = process.env.MOMO_REDIRECT_URL!;
+    const ipnUrl = process.env.MOMO_IPN_URL!;
+    const requestType = process.env.MOMO_REQUEST_TYPE!;
+    const orderId = partnerCode + new Date().getTime();
+    const requestId = orderId;
+    const extraData = '';
+    const orderGroupId = '';
+    const autoCapture = true;
+    const lang = 'vi';
+
+    // Build raw signature string cho POS
+    const rawSignature =
+      `accessKey=${accessKey}` +
+      `&amount=${amount}` +
+      `&extraData=${extraData}` +
+      `&ipnUrl=${ipnUrl}` +
+      `&orderId=${orderId}` +
+      `&orderInfo=${orderInfo}` +
+      `&partnerCode=${partnerCode}` +
+      `&redirectUrl=${redirectUrl}` +
+      `&requestId=${requestId}` +
+      `&requestType=${requestType}`;
+
+    // Create signature
+    const signature = crypto.createHmac('sha256', secretKey)
+      .update(rawSignature)
+      .digest('hex');
+
+    // Prepare request body
+    const requestBody = {
+      partnerCode,
+      partnerName: 'AnEat',
+      storeId: 'AnEatStore',
+      requestId,
+      amount,
+      orderId,
+      orderInfo,
+      redirectUrl,
+      ipnUrl,
+      lang,
+      autoCapture,
+      extraData,
+      paymentCode,
+      orderGroupId,
+      signature,
+    };
+
+    // Gửi request tới MoMo POS endpoint
+    const momoRes = await axios.post('https://test-payment.momo.vn/v2/gateway/api/pos', requestBody, {
+      headers: { 'Content-Type': 'application/json' },
+    });
+
+    res.status(200).json({
+      status: 'success',
+      data: momoRes.data,
+    });
+  } catch (error: any) {
+    console.error('MoMo POS payment error:', error);
+    res.status(500).json({
+      status: 'error',
+      message: error?.response?.data?.message || error.message || 'Failed to initiate POS payment',
+    });
+  }
+};
+
 
 /**
  * Get assigned orders for staff

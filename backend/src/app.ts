@@ -12,13 +12,56 @@ dotenv.config();
 const app = express();
 
 // Security middleware
-app.use(helmet());
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" },
+  crossOriginEmbedderPolicy: false,
+}));
 
 // CORS configuration
-app.use(cors({
-  origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
+const corsOptions = {
+  origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) {
+      return callback(null, true);
+    }
+
+    // In development, allow all localhost and local network IPs
+    if (process.env.NODE_ENV === 'development') {
+      // Allow localhost with any port
+      if (origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:')) {
+        return callback(null, true);
+      }
+      
+      // Allow local network IPs (10.x.x.x, 192.168.x.x, 172.16-31.x.x)
+      const localNetworkPattern = /^http:\/\/(10\.|192\.168\.|172\.(1[6-9]|2[0-9]|3[01])\.)/;
+      if (localNetworkPattern.test(origin)) {
+        return callback(null, true);
+      }
+      
+      // Also check CORS_ORIGIN env variable
+      if (process.env.CORS_ORIGIN) {
+        const allowedOrigins = process.env.CORS_ORIGIN.split(',');
+        if (allowedOrigins.includes(origin)) {
+          return callback(null, true);
+        }
+      }
+    }
+
+    // In production, use CORS_ORIGIN env variable
+    const allowedOrigin = process.env.CORS_ORIGIN || 'http://localhost:3000';
+    if (origin === allowedOrigin || allowedOrigin === '*') {
+      return callback(null, true);
+    }
+
+    callback(new Error('Not allowed by CORS'));
+  },
   credentials: true,
-}));
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  exposedHeaders: ['Content-Range', 'X-Content-Range'],
+};
+
+app.use(cors(corsOptions));
 
 // Body parsing middleware
 app.use(express.json());
@@ -87,6 +130,7 @@ import managerCustomerRoutes from './routes/manager-customer.routes';
 import dashboardRoutes from './routes/dashboard.routes';
 import templateRoutes from './routes/template.routes';
 import logisticsStaffRoutes from './routes/logistics-staff.routes';
+import homeRoutes from './routes/home.routes';
 
 // Mount routes
 app.use('/api/v1/auth', authRoutes);
@@ -105,6 +149,7 @@ app.use('/api/v1/categories', categoryRoutes);
 app.use('/api/v1/products', productRoutes);
 app.use('/api/v1/stock-requests', stockRequestRoutes);
 app.use('/api/v1/promotions', promotionRoutes);
+app.use('/api/v1/home', homeRoutes);
 
 // ==================== ERROR HANDLING ====================
 
@@ -119,10 +164,29 @@ app.use((req: Request, res: Response) => {
 
 // Global error handler
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
-  console.error('Error:', err);
-  
+  // Log error details (always log for debugging)
+  console.error('Error:', {
+    message: err.message,
+    stack: err.stack,
+    path: req.originalUrl,
+    method: req.method,
+  });
+
+  // Handle AppError (Operational Errors - 4xx)
+  if (err instanceof Error && 'statusCode' in err && 'isOperational' in err) {
+    const appError = err as any;
+    return res.status(appError.statusCode).json({
+      success: false,
+      code: appError.statusCode,
+      message: appError.message,
+      ...(appError.errors && { errors: appError.errors }),
+    });
+  }
+
+  // Handle System Errors (5xx)
   res.status(500).json({
-    status: 'error',
+    success: false,
+    code: 500,
     message: process.env.NODE_ENV === 'production' 
       ? 'Internal server error' 
       : err.message,

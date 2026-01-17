@@ -95,7 +95,6 @@ export function StaffForm({ staff, onSuccess, onSubmit }: StaffFormProps) {
             <Input 
               placeholder="example@aneat.com" 
               size="large"
-              disabled={isEditing} // Email không thể thay đổi khi edit
             />
           </Form.Item>
         </Col>

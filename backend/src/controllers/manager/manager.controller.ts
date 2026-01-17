@@ -288,7 +288,7 @@ export const updateStaff = async (req: Request, res: Response): Promise<void> =>
     }
 
     const { id } = req.params;
-    const { name, phone, role, isActive } = req.body;
+    const { name, email, phone, role, isActive } = req.body;
 
     // Check if staff exists
     const existingStaff = await StaffService.findById(id);
@@ -312,20 +312,34 @@ export const updateStaff = async (req: Request, res: Response): Promise<void> =>
       return;
     }
 
-    // Update staff
-    const staff = await StaffService.update(id, {
-      name,
-      phone,
-      role,
-      isActive,
-    });
+    try {
+      // Update staff
+      const staff = await StaffService.update(id, {
+        name,
+        email,
+        phone,
+        role,
+        isActive,
+      });
 
-    res.status(200).json({
-      success: true,
-      code: 200,
-      message: 'Staff updated successfully',
-      data: staff,
-    });
+      res.status(200).json({
+        success: true,
+        code: 200,
+        message: 'Staff updated successfully',
+        data: staff,
+      });
+    } catch (error: any) {
+      // Handle email duplicate error
+      if (error.message === 'Email already exists') {
+        res.status(400).json({
+          success: false,
+          code: 400,
+          message: 'Email already exists',
+        });
+        return;
+      }
+      throw error;
+    }
   } catch (error) {
     console.error('Update staff error:', error);
     res.status(500).json({

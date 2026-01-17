@@ -50,6 +50,18 @@ const config: Config = {
           "4": "hsl(var(--chart-4))",
           "5": "hsl(var(--chart-5))",
         },
+        orange: {
+          50: "#FFF9F2",
+          100: "#FFF0E0",
+          200: "#FFE0C2",
+          300: "#FFC999",
+          400: "#FFB070",
+          500: "#FF8C42",
+          600: "#E67A2F",
+          700: "#CC6821",
+          800: "#B35618",
+          900: "#99440F",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",
@@ -58,7 +70,7 @@ const config: Config = {
       },
       fontFamily: {
         sans: [
-          "Inter",
+          "Be Vietnam Pro",
           "-apple-system",
           "BlinkMacSystemFont",
           "Segoe UI",
