@@ -66,61 +66,62 @@ export const getFeaturedProducts = async (req: Request, res: Response, next: Nex
       take: limitNum,
     });
 
-    // If no products found, return empty array
+    // If no products found from order items, fallback to random available products
+    let products: any[];
+    let featuredProducts: any[];
+
     if (topProducts.length === 0) {
-      res.status(200).json({
-        success: true,
-        code: 200,
-        message: 'No featured products found',
-        data: [],
-      });
-      return;
-    }
-
-    // Get product details
-    const productIds = topProducts.map((item) => item.productId);
-    const products = await prisma.product.findMany({
-      where: {
-        id: { in: productIds },
+      // Fallback: Get random available products
+      const productWhereClause: any = {
         isAvailable: true,
-        deletedAt: null, // Soft delete
-      } as any,
-      include: {
-        category: {
-          select: {
-            id: true,
-            name: true,
-            code: true,
-          },
-        },
-        branch: {
-          select: {
-            id: true,
-            name: true,
-            code: true,
-          },
-        },
-        options: {
-          where: { isAvailable: true },
-          orderBy: { order: 'asc' },
-          select: {
-            id: true,
-            name: true,
-            description: true,
-            price: true,
-            type: true,
-            isRequired: true,
-            isAvailable: true,
-            order: true,
-          },
-        },
-      },
-    });
+        deletedAt: null,
+        quantity: { gt: 0 },
+      };
 
-    // Map products with sales data
-    const featuredProducts = products.map((product: any) => {
-      const salesData = topProducts.find((item) => item.productId === product.id);
-      return {
+      if (branchId) {
+        productWhereClause.branchId = branchId as string;
+      }
+
+      products = await prisma.product.findMany({
+        where: productWhereClause,
+        take: limitNum,
+        orderBy: {
+          createdAt: 'desc', // Show newest products first as fallback
+        },
+        include: {
+          category: {
+            select: {
+              id: true,
+              name: true,
+              code: true,
+            },
+          },
+          branch: {
+            select: {
+              id: true,
+              name: true,
+              code: true,
+            },
+          },
+          options: {
+            where: { isAvailable: true },
+            orderBy: { order: 'asc' },
+            select: {
+              id: true,
+              name: true,
+              description: true,
+              price: true,
+              type: true,
+              isRequired: true,
+              isAvailable: true,
+              order: true,
+            },
+          },
+        },
+      });
+
+      // Map products without sales data
+      featuredProducts = products.map((product: any) => ({
         id: product.id,
         code: product.code,
         name: product.name,
@@ -132,9 +133,68 @@ export const getFeaturedProducts = async (req: Request, res: Response, next: Nex
         category: product.category,
         branch: product.branch,
         options: product.options || [],
-        unitsSold: salesData?._sum.quantity || 0,
-      };
-    });
+        unitsSold: 0, // No sales data available
+      }));
+    } else {
+      // Get product details for top selling products
+      const productIds = topProducts.map((item) => item.productId);
+      products = await prisma.product.findMany({
+        where: {
+          id: { in: productIds },
+          isAvailable: true,
+          deletedAt: null, // Soft delete
+        } as any,
+        include: {
+          category: {
+            select: {
+              id: true,
+              name: true,
+              code: true,
+            },
+          },
+          branch: {
+            select: {
+              id: true,
+              name: true,
+              code: true,
+            },
+          },
+          options: {
+            where: { isAvailable: true },
+            orderBy: { order: 'asc' },
+            select: {
+              id: true,
+              name: true,
+              description: true,
+              price: true,
+              type: true,
+              isRequired: true,
+              isAvailable: true,
+              order: true,
+            },
+          },
+        },
+      });
+
+      // Map products with sales data
+      featuredProducts = products.map((product: any) => {
+        const salesData = topProducts.find((item) => item.productId === product.id);
+        return {
+          id: product.id,
+          code: product.code,
+          name: product.name,
+          description: product.description,
+          price: product.price,
+          image: product.image,
+          quantity: product.quantity,
+          isAvailable: product.isAvailable && product.quantity > 0,
+          category: product.category,
+          branch: product.branch,
+          options: product.options || [],
+          unitsSold: salesData?._sum.quantity || 0,
+        };
+      });
+    }
 
     res.status(200).json({
       success: true,

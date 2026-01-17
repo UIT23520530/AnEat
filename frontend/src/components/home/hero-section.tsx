@@ -6,6 +6,9 @@ import Image from "next/image";
 import { ChevronLeft, ChevronRight, Package, Truck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import apiClient from "@/lib/api-client";
+import { useRouter } from "next/navigation";
+import { useBranch } from "@/contexts/branch-context";
+import { BranchSelectorDialog } from "@/components/branch/branch-selector-dialog";
 
 interface Banner {
   id: string;
@@ -27,6 +30,8 @@ interface BannerResponse {
 }
 
 export function HeroSection() {
+  const router = useRouter();
+  const { openBranchSelector } = useBranch();
   const [currentSlide, setCurrentSlide] = useState(0);
   const [banners, setBanners] = useState<Banner[]>([]);
   const [loading, setLoading] = useState(true);
@@ -143,6 +148,24 @@ export function HeroSection() {
     setCurrentSlide((prev) => (prev + 1) % displayBanners.length);
   };
 
+  // Handle Pickup - Open branch selector and set order type
+  const handlePickup = () => {
+    // Save order type to localStorage for menu page
+    if (typeof window !== "undefined") {
+      localStorage.setItem("orderType", "PICKUP");
+    }
+    openBranchSelector();
+  };
+
+  // Handle Delivery - Navigate to menu and set order type
+  const handleDelivery = () => {
+    // Save order type to localStorage for menu page
+    if (typeof window !== "undefined") {
+      localStorage.setItem("orderType", "DELIVERY");
+    }
+    router.push("/customer/menu");
+  };
+
   // Show loading state
   if (loading) {
     return (
@@ -237,6 +260,7 @@ export function HeroSection() {
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
           <Button
             size="lg"
+            onClick={handlePickup}
             className="w-full sm:w-auto bg-orange-500 text-white rounded-full hover:bg-white hover:text-orange-500 hover:border-orange-500 border border-orange-500 px-[52.8px] py-[26.4px] text-[19.8px] font-bold shadow-lg hover:shadow-xl transition-colors duration-200"
           >
             <Package className="mr-2 h-5 w-5" />
@@ -244,12 +268,16 @@ export function HeroSection() {
           </Button>
           <Button
             size="lg"
+            onClick={handleDelivery}
             className="w-full sm:w-auto bg-orange-500 text-white rounded-full hover:bg-white hover:text-orange-500 hover:border-orange-500 border border-orange-500 px-[52.8px] py-[26.4px] text-[19.8px] font-bold shadow-lg hover:shadow-xl transition-colors duration-200"
           >
             <Truck className="mr-2 h-5 w-5" />
             Giao tận nơi
           </Button>
         </div>
+
+        {/* Branch Selector Dialog */}
+        <BranchSelectorDialog />
       </div>
     </section>
   );

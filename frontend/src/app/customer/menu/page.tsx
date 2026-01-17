@@ -231,6 +231,8 @@ export default function MenuPage() {
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [deliveryAddress, setDeliveryAddress] = useState("");
+  const [orderType, setOrderType] = useState<"DELIVERY" | "PICKUP">("PICKUP");
+  const [showAddressPrompt, setShowAddressPrompt] = useState(false);
   const [sortOption, setSortOption] = useState<SortOption>("newest");
   const [categories, setCategories] = useState<Category[]>(fallbackCategories);
   const [categoriesLoading, setCategoriesLoading] = useState(true);
@@ -239,6 +241,28 @@ export default function MenuPage() {
   const [productsError, setProductsError] = useState<string | null>(null);
   const { addToCart } = useCart();
   const { toast } = useToast();
+
+  // Load order type from localStorage on mount
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const savedOrderType = localStorage.getItem("orderType") as "DELIVERY" | "PICKUP" | null;
+      if (savedOrderType) {
+        setOrderType(savedOrderType);
+        // Show address prompt for delivery
+        if (savedOrderType === "DELIVERY" && !deliveryAddress) {
+          setShowAddressPrompt(true);
+          // Show toast to remind user to enter address
+          toast({
+            title: "Vui lòng nhập địa chỉ giao hàng",
+            description: "Nhập địa chỉ để chúng tôi giao hàng đến bạn",
+            className: "bg-blue-50 border-blue-200",
+          });
+        }
+        // Clear from localStorage after reading
+        localStorage.removeItem("orderType");
+      }
+    }
+  }, [toast]);
 
   // Auto-select first branch if none selected
   useEffect(() => {
@@ -461,42 +485,44 @@ export default function MenuPage() {
   return (
     <PublicLayout>
       <div className="min-h-screen bg-orange-50">
-        {/* Delivery Address Input - Sticky */}
-        <div className="sticky top-16 z-40 bg-white border-b border-gray-200 shadow-sm">
-          <div className="container mx-auto px-4 py-4">
-            <div className="flex justify-center">
-              <div className="bg-white rounded-xl shadow-md p-4 w-full max-w-4xl">
-                <div className="flex items-center gap-4">
-                  <div className="flex items-center gap-2 text-orange-500">
-                    <Truck className="h-5 w-5" />
-                    <span className="font-semibold">Giao đến:</span>
+        {/* Delivery Address Input - Sticky - Only show for DELIVERY */}
+        {orderType === "DELIVERY" && (
+          <div className="sticky top-16 z-40 bg-white border-b border-gray-200 shadow-sm">
+            <div className="container mx-auto px-4 py-4">
+              <div className="flex justify-center">
+                <div className="bg-white rounded-xl shadow-md p-4 w-full max-w-4xl">
+                  <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2 text-orange-500">
+                      <Truck className="h-5 w-5" />
+                      <span className="font-semibold">Giao đến:</span>
+                    </div>
+                    <div className="flex-1 relative">
+                      <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                      <Input
+                        type="text"
+                        placeholder="Nhập địa chỉ giao hàng của bạn..."
+                        value={deliveryAddress}
+                        onChange={(e) => setDeliveryAddress(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            handleConfirmAddress();
+                          }
+                        }}
+                        className="pl-10 pr-4 py-2 rounded-lg border-gray-300 focus:border-orange-500 focus:ring-orange-500 w-full"
+                      />
+                    </div>
+                    <Button
+                      onClick={handleConfirmAddress}
+                      className="bg-orange-500 text-white hover:bg-orange-600 rounded-lg px-6 py-2 font-semibold uppercase whitespace-nowrap"
+                    >
+                      Xác nhận
+                    </Button>
                   </div>
-                  <div className="flex-1 relative">
-                    <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-                    <Input
-                      type="text"
-                      placeholder="Nhập địa chỉ giao hàng của bạn..."
-                      value={deliveryAddress}
-                      onChange={(e) => setDeliveryAddress(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          handleConfirmAddress();
-                        }
-                      }}
-                      className="pl-10 pr-4 py-2 rounded-lg border-gray-300 focus:border-orange-500 focus:ring-orange-500 w-full"
-                    />
-                  </div>
-                  <Button
-                    onClick={handleConfirmAddress}
-                    className="bg-orange-500 text-white hover:bg-orange-600 rounded-lg px-6 py-2 font-semibold uppercase whitespace-nowrap"
-                  >
-                    Xác nhận
-                  </Button>
                 </div>
               </div>
             </div>
           </div>
-        </div>
+        )}
 
         <div className="container mx-auto px-4 py-8 max-w-7xl">
           {/* Categories - Sticky */}

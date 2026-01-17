@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,6 +20,7 @@ interface Branch {
 }
 
 export function BranchSelectorDialog() {
+  const router = useRouter();
   const { isBranchSelectorOpen, closeBranchSelector, selectedBranch, setSelectedBranch } = useBranch();
   const [branches, setBranches] = useState<Branch[]>([]);
   const [loading, setLoading] = useState(false);
@@ -85,6 +87,15 @@ export function BranchSelectorDialog() {
   const handleSelectBranch = (branch: Branch) => {
     setSelectedBranch(branch);
     closeBranchSelector();
+    
+    // Check if user came from home page with pickup order
+    if (typeof window !== "undefined") {
+      const orderType = localStorage.getItem("orderType");
+      if (orderType === "PICKUP") {
+        // Navigate to menu page (keep orderType for menu to read)
+        router.push("/customer/menu");
+      }
+    }
   };
 
   return (
