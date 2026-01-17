@@ -133,7 +133,10 @@ export const createBill = async (req: Request, res: Response): Promise<void> => 
  */
 export const getBillList = async (req: Request, res: Response): Promise<void> => {
   try {
-    if (!req.user?.branchId) {
+    // Only ADMIN_SYSTEM can view all branches
+    const isSystemAdmin = req.user?.role === 'ADMIN_SYSTEM';
+    
+    if (!req.user?.branchId && !isSystemAdmin) {
       sendError(res, 400, 'User is not assigned to any branch');
       return;
     }
@@ -146,7 +149,7 @@ export const getBillList = async (req: Request, res: Response): Promise<void> =>
       status: req.query.status as BillStatus,
       paymentStatus: req.query.paymentStatus as PaymentStatus,
       search: req.query.search as string,
-      branchId: req.user.branchId, // Filter by user's branch
+      branchId: isSystemAdmin ? (req.query.branchId as string) : (req.user!.branchId || undefined), // Only ADMIN_SYSTEM can filter or see all, others restricted to their branch
       dateFrom: req.query.dateFrom ? new Date(req.query.dateFrom as string) : undefined,
       dateTo: req.query.dateTo ? new Date(req.query.dateTo as string) : undefined,
     };
@@ -177,8 +180,21 @@ export const getBillById = async (req: Request, res: Response): Promise<void> =>
 
     const bill = await BillService.getBillById(id);
 
+    // Debug logging
+    console.log('getBillById - User:', {
+      userId: req.user?.id,
+      role: req.user?.role,
+      branchId: req.user?.branchId,
+    });
+    console.log('getBillById - Bill:', {
+      billId: bill.id,
+      billNumber: bill.billNumber,
+      branchId: bill.branch?.id,
+    });
+
     // Check if bill belongs to user's branch
     if (bill.branch?.id !== req.user?.branchId && req.user?.role !== 'ADMIN_SYSTEM') {
+      console.log('Access denied: bill.branch.id !== user.branchId');
       sendError(res, 403, 'Access denied to this bill');
       return;
     }
@@ -335,16 +351,35 @@ export const printBill = async (req: Request, res: Response): Promise<void> => {
  */
 export const getBillStats = async (req: Request, res: Response): Promise<void> => {
   try {
-    if (!req.user?.branchId) {
+    const isAdmin = req.user?.role === 'ADMIN_SYSTEM' || req.user?.role === 'ADMIN_BRAND';
+    
+    if (!req.user?.branchId && !isAdmin) {
       sendError(res, 400, 'User is not assigned to any branch');
       return;
     }
 
     const dateFrom = req.query.dateFrom ? new Date(req.query.dateFrom as string) : undefined;
     const dateTo = req.query.dateTo ? new Date(req.query.dateTo as string) : undefined;
+    const branchId = isAdmin ? (req.query.branchId as string) : req.user!.branchId;
+
+    // If admin and no branch filter, we might want global stats, 
+    // but for now, if no branchId for admin, we might skip or let service handle it (if it supports undefined/null)
+    // Assuming getBranchBillStats requires branchId, we'll return empty if not provided for admin
+    if (!branchId && isAdmin) { 
+        // TODO: Implement getGlobalBillStats if needed
+        // For now, return zero stats or error
+        sendSuccess(res, 200, 'Global stats not implemented yet', {
+            totalBills: 0,
+            paidBills: 0,
+            pendingBills: 0,
+            totalRevenue: 0,
+            averageBillAmount: 0
+        });
+        return;
+    }
 
     const stats = await BillService.getBranchBillStats(
-      req.user.branchId,
+      branchId!,
       dateFrom,
       dateTo
     );

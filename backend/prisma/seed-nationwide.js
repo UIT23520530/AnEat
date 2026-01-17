@@ -96,17 +96,17 @@ async function seedNationwideData() {
 
     // ==================== Dữ liệu 10+ chi nhánh toàn quốc ====================
     const branchesData = [
-      { code: 'BR001', name: 'AnEat - Hoàn Kiếm (Hà Nội)', address: '123 Phố Cổ, Hoàn Kiếm, Hà Nội', phone: '0243001001', email: 'hoankiem@aneat.com', manager: 'Trần Quản Lý 1' },
-      { code: 'BR002', name: 'AnEat - Tây Hồ (Hà Nội)', address: '456 Thụy Khuê, Tây Hồ, Hà Nội', phone: '0243001002', email: 'tayho@aneat.com', manager: 'Phạm Quản Lý 2' },
-      { code: 'BR003', name: 'AnEat - Ngô Quyền (Hải Phòng)', address: '789 Phố Nối, Ngô Quyền, Hải Phòng', phone: '0331001003', email: 'ngoquyen@aneat.com', manager: 'Võ Quản Lý 3' },
-      { code: 'BR004', name: 'AnEat - Thanh Khê (Đà Nẵng)', address: '321 Nguyễn Văn Linh, Thanh Khê, Đà Nẵng', phone: '0362001004', email: 'thanhkhe@aneat.com', manager: 'Bùi Quản Lý 4' },
-      { code: 'BR005', name: 'AnEat - Hai Bà Trưng (Huế)', address: '654 Lê Lợi, Hai Bà Trưng, Huế', phone: '0343001005', email: 'haibatrung@aneat.com', manager: 'Nông Quản Lý 5' },
-      { code: 'BR006', name: 'AnEat - Quận 1 (Hồ Chí Minh)', address: '987 Đường Nguyễn Huệ, Quận 1, TPHCM', phone: '0283001006', email: 'quan1@aneat.com', manager: 'Lê Quản Lý 6' },
-      { code: 'BR007', name: 'AnEat - Quận 7 (Hồ Chí Minh)', address: '111 Phạm Văn Đồng, Quận 7, TPHCM', phone: '0283001007', email: 'quan7@aneat.com', manager: 'Hoàng Quản Lý 7' },
-      { code: 'BR008', name: 'AnEat - Biên Hòa (Đồng Nai)', address: '222 Tôn Đức Thắng, Biên Hòa, Đồng Nai', phone: '0613001008', email: 'bienhoa@aneat.com', manager: 'Dương Quản Lý 8' },
-      { code: 'BR009', name: 'AnEat - Cần Thơ', address: '333 Cách Mạng Tháng Tám, Ninh Kiều, Cần Thơ', phone: '0292001009', email: 'cantho@aneat.com', manager: 'Trương Quản Lý 9' },
-      { code: 'BR010', name: 'AnEat - Quy Nhơn (Bình Định)', address: '444 Trần Hưng Đạo, Quy Nhơn, Bình Định', phone: '0256001010', email: 'quynhon@aneat.com', manager: 'Lý Quản Lý 10' },
-      { code: 'BR011', name: 'AnEat - Nha Trang (Khánh Hòa)', address: '555 Trần Phú, Nha Trang, Khánh Hòa', phone: '0583001011', email: 'nhatrang@aneat.com', manager: 'Tạ Quản Lý 11' }
+      { code: 'BR001', name: 'AnEat - Hoàn Kiếm (Hà Nội)', address: '123 Phố Cổ, Hoàn Kiếm, Hà Nội', phone: '0243001001', email: 'hoankiem@aneat.com', manager: 'Trần Quản Lý 1', isActive: true },
+      { code: 'BR002', name: 'AnEat - Tây Hồ (Hà Nội)', address: '456 Thụy Khuê, Tây Hồ, Hà Nội', phone: '0243001002', email: 'tayho@aneat.com', manager: 'Phạm Quản Lý 2', isActive: true },
+      { code: 'BR003', name: 'AnEat - Ngô Quyền (Hải Phòng)', address: '789 Phố Nối, Ngô Quyền, Hải Phòng', phone: '0331001003', email: 'ngoquyen@aneat.com', manager: 'Võ Quản Lý 3', isActive: false },
+      { code: 'BR004', name: 'AnEat - Thanh Khê (Đà Nẵng)', address: '321 Nguyễn Văn Linh, Thanh Khê, Đà Nẵng', phone: '0362001004', email: 'thanhkhe@aneat.com', manager: 'Bùi Quản Lý 4', isActive: true },
+      { code: 'BR005', name: 'AnEat - Hai Bà Trưng (Huế)', address: '654 Lê Lợi, Hai Bà Trưng, Huế', phone: '0343001005', email: 'haibatrung@aneat.com', manager: 'Nông Quản Lý 5', isActive: true },
+      { code: 'BR006', name: 'AnEat - Quận 1 (Hồ Chí Minh)', address: '987 Đường Nguyễn Huệ, Quận 1, TPHCM', phone: '0283001006', email: 'quan1@aneat.com', manager: 'Lê Quản Lý 6', isActive: true },
+      { code: 'BR007', name: 'AnEat - Quận 7 (Hồ Chí Minh)', address: '111 Phạm Văn Đồng, Quận 7, TPHCM', phone: '0283001007', email: 'quan7@aneat.com', manager: 'Hoàng Quản Lý 7', isActive: false },
+      { code: 'BR008', name: 'AnEat - Biên Hòa (Đồng Nai)', address: '222 Tôn Đức Thắng, Biên Hòa, Đồng Nai', phone: '0613001008', email: 'bienhoa@aneat.com', manager: 'Dương Quản Lý 8', isActive: true },
+      { code: 'BR009', name: 'AnEat - Cần Thơ', address: '333 Cách Mạng Tháng Tám, Ninh Kiều, Cần Thơ', phone: '0292001009', email: 'cantho@aneat.com', manager: 'Trương Quản Lý 9', isActive: true },
+      { code: 'BR010', name: 'AnEat - Quy Nhơn (Bình Định)', address: '444 Trần Hưng Đạo, Quy Nhơn, Bình Định', phone: '0256001010', email: 'quynhon@aneat.com', manager: 'Lý Quản Lý 10', isActive: true },
+      { code: 'BR011', name: 'AnEat - Nha Trang (Khánh Hòa)', address: '555 Trần Phú, Nha Trang, Khánh Hòa', phone: '0583001011', email: 'nhatrang@aneat.com', manager: 'Tạ Quản Lý 11', isActive: true }
     ]
 
     const branches = []
@@ -139,6 +139,7 @@ async function seedNationwideData() {
           address: b.address,
           phone: b.phone,
           email: b.email,
+          isActive: b.isActive,
           managerId: manager.id
         }
       })

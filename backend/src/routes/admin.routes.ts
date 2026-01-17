@@ -1,12 +1,62 @@
 import { Router } from 'express';
-import { body } from 'express-validator';
+import { body, param } from 'express-validator';
 import {
   getDashboardStats,
   getAllBranches,
+  getBranchById,
   createBranch,
   updateBranch,
   deleteBranch,
+  assignManager,
+  getBranchStats,
+  getBranchesOverviewStats,
+  getAvailableManagers,
 } from '../controllers/admin/admin.controller';
+import {
+  getAllUsers,
+  getUserById,
+  // createUser, // Removed - Admin cannot create users directly
+  updateUser,
+  deleteUser,
+  getUsersStats,
+} from '../controllers/admin/user.controller';
+import {
+  getAllCategories,
+  getCategoryById,
+  createCategory,
+  updateCategory,
+  deleteCategory,
+  getCategoryStats,
+} from '../controllers/admin/category.controller';
+import {
+  getAllProducts,
+  getProductById,
+  createProduct,
+  updateProduct,
+  deleteProduct,
+  getProductStats,
+} from '../controllers/admin/product.controller';
+import {
+  getAllCustomers as getAdminCustomers,
+  getCustomerById as getAdminCustomerById,
+  getCustomerStatistics as getAdminCustomerStatistics,
+  updateCustomer as updateAdminCustomer,
+  adjustCustomerPoints as adjustAdminCustomerPoints,
+  updateCustomerTier as updateAdminCustomerTier,
+  getCustomerOrders as getAdminCustomerOrders,
+  searchCustomers as searchAdminCustomers,
+  createCustomer as createAdminCustomer,
+  getCustomerStats as getAdminCustomerStats,
+  deleteCustomer as deleteAdminCustomer,
+} from '../controllers/admin/customer.controller';
+import {
+  getAllBills as getAdminBills,
+  getBillById as getAdminBillById,
+  getBillStats as getAdminBillStats,
+  updateBill as updateAdminBill,
+  printBill as printAdminBill,
+  getBillHistory as getAdminBillHistory,
+} from '../controllers/admin/bill.controller';
 import { authenticate, isAdmin, validate } from '../middleware';
 
 const router = Router();
@@ -17,30 +67,60 @@ router.use(isAdmin);
 
 /**
  * @route   GET /api/v1/admin/dashboard
- * @desc    Get dashboard statistics
+ * @desc    Trang tổng quan hệ thống
  * @access  Admin only
  */
 router.get('/dashboard', getDashboardStats);
 
 /**
+ * ==================== QUẢN LÝ CHI NHÁNH ====================
+ */
+
+/**
  * @route   GET /api/v1/admin/branches
- * @desc    Get all branches
+ * @desc    Lấy danh sách tất cả chi nhánh (hỗ trợ phân trang, tìm kiếm, sắp xếp)
  * @access  Admin only
  */
 router.get('/branches', getAllBranches);
 
 /**
+ * @route   GET /api/v1/admin/branches/overview-stats
+ * @desc    Lấy thống kê tổng quan tất cả chi nhánh
+ * @access  Admin only
+ */
+router.get('/branches/overview-stats', getBranchesOverviewStats);
+
+/**
+ * @route   GET /api/v1/admin/branches/available-managers
+ * @desc    Lấy danh sách quản lý có thể gán (không quản lý chi nhánh nào)
+ * @access  Admin only
+ */
+router.get('/branches/available-managers', getAvailableManagers);
+
+/**
+ * @route   GET /api/v1/admin/branches/:id
+ * @desc    Lấy thông tin chi tiết một chi nhánh
+ * @access  Admin only
+ */
+router.get(
+  '/branches/:id',
+  param('id').notEmpty().withMessage('ID chi nhánh không được bỏ trống'),
+  validate,
+  getBranchById
+);
+
+/**
  * @route   POST /api/v1/admin/branches
- * @desc    Create new branch
+ * @desc    Tạo mới chi nhánh
  * @access  Admin only
  */
 router.post(
   '/branches',
   [
-    body('code').notEmpty().withMessage('Branch code is required'),
-    body('name').notEmpty().withMessage('Branch name is required'),
-    body('address').notEmpty().withMessage('Address is required'),
-    body('phone').notEmpty().withMessage('Phone is required'),
+    body('name').notEmpty().withMessage('Tên chi nhánh là bắt buộc'),
+    body('address').notEmpty().withMessage('Địa chỉ là bắt buộc'),
+    body('phone').notEmpty().withMessage('Số điện thoại là bắt buộc'),
+    body('email').notEmpty().isEmail().withMessage('Email là bắt buộc và phải hợp lệ'),
   ],
   validate,
   createBranch
@@ -48,16 +128,481 @@ router.post(
 
 /**
  * @route   PUT /api/v1/admin/branches/:id
- * @desc    Update branch
+ * @desc    Cập nhật thông tin chi nhánh
  * @access  Admin only
  */
-router.put('/branches/:id', updateBranch);
+router.put(
+  '/branches/:id',
+  param('id').notEmpty().withMessage('ID chi nhánh không được bỏ trống'),
+  validate,
+  updateBranch
+);
 
 /**
  * @route   DELETE /api/v1/admin/branches/:id
- * @desc    Delete branch
+ * @desc    Xóa chi nhánh
  * @access  Admin only
  */
-router.delete('/branches/:id', deleteBranch);
+router.delete(
+  '/branches/:id',
+  param('id').notEmpty().withMessage('ID chi nhánh không được bỏ trống'),
+  validate,
+  deleteBranch
+);
+
+/**
+ * @route   PUT /api/v1/admin/branches/:id/assign-manager
+ * @desc    Gán quản lý cho chi nhánh
+ * @access  Admin only
+ */
+router.put(
+  '/branches/:id/assign-manager',
+  param('id').notEmpty().withMessage('ID chi nhánh không được bỏ trống'),
+  validate,
+  assignManager
+);
+
+/**
+ * @route   GET /api/v1/admin/branches/:id/stats
+ * @desc    Lấy thống kê chi nhánh (nhân viên, sản phẩm, đơn hàng, doanh thu)
+ * @access  Admin only
+ */
+router.get(
+  '/branches/:id/stats',
+  param('id').notEmpty().withMessage('ID chi nhánh không được bỏ trống'),
+  validate,
+  getBranchStats
+);
+
+/**
+ * ==================== QUẢN LÝ NGƯỜI DÙNG ====================
+ */
+
+/**
+ * @route   GET /api/v1/admin/users
+ * @desc    Lấy danh sách tất cả người dùng (hỗ trợ phân trang, tìm kiếm, lọc theo role/isActive)
+ * @access  Admin only
+ */
+router.get('/users', getAllUsers);
+
+/**
+ * @route   GET /api/v1/admin/users/stats
+ * @desc    Lấy thống kê người dùng
+ * @access  Admin only
+ */
+router.get('/users/stats', getUsersStats);
+
+/**
+ * @route   GET /api/v1/admin/users/:id
+ * @desc    Lấy thông tin chi tiết một người dùng
+ * @access  Admin only
+ */
+router.get(
+  '/users/:id',
+  param('id').notEmpty().withMessage('ID người dùng không được bỏ trống'),
+  validate,
+  getUserById
+);
+
+// POST /users route removed - Admin cannot create users directly
+// Users can only register themselves or be created through other means
+
+/**
+ * @route   PUT /api/v1/admin/users/:id
+ * @desc    Cập nhật thông tin người dùng (chỉ role, status, branch assignment)
+ * @access  Admin only
+ */
+router.put(
+  '/users/:id',
+  param('id').notEmpty().withMessage('ID người dùng không được bỏ trống'),
+  validate,
+  updateUser
+);
+
+/**
+ * @route   DELETE /api/v1/admin/users/:id
+ * @desc    Xóa người dùng (soft delete)
+ * @access  Admin only
+ */
+router.delete(
+  '/users/:id',
+  param('id').notEmpty().withMessage('ID người dùng không được bỏ trống'),
+  validate,
+  deleteUser
+);
+
+/**
+ * ==================== QUẢN LÝ DANH MỤC ====================
+ */
+
+/**
+ * @route   GET /api/v1/admin/categories
+ * @desc    Lấy danh sách tất cả danh mục (hỗ trợ phân trang, tìm kiếm, lọc)
+ * @access  Admin only
+ */
+router.get('/categories', getAllCategories);
+
+/**
+ * @route   GET /api/v1/admin/categories/stats
+ * @desc    Lấy thống kê danh mục
+ * @access  Admin only
+ */
+router.get('/categories/stats', getCategoryStats);
+
+/**
+ * @route   GET /api/v1/admin/categories/:id
+ * @desc    Lấy thông tin chi tiết một danh mục
+ * @access  Admin only
+ */
+router.get(
+  '/categories/:id',
+  param('id').notEmpty().withMessage('ID danh mục không được bỏ trống'),
+  validate,
+  getCategoryById
+);
+
+/**
+ * @route   POST /api/v1/admin/categories
+ * @desc    Tạo mới danh mục
+ * @access  Admin only
+ */
+router.post(
+  '/categories',
+  [
+    body('name').notEmpty().withMessage('Tên danh mục là bắt buộc'),
+    body('displayOrder').optional().isInt({ min: 0 }).withMessage('Thứ tự hiển thị phải là số nguyên không âm'),
+    body('isActive').optional().isBoolean().withMessage('Trạng thái phải là boolean'),
+  ],
+  validate,
+  createCategory
+);
+
+/**
+ * @route   PUT /api/v1/admin/categories/:id
+ * @desc    Cập nhật thông tin danh mục
+ * @access  Admin only
+ */
+router.put(
+  '/categories/:id',
+  param('id').notEmpty().withMessage('ID danh mục không được bỏ trống'),
+  validate,
+  updateCategory
+);
+
+/**
+ * @route   DELETE /api/v1/admin/categories/:id
+ * @desc    Xóa danh mục (soft delete)
+ * @access  Admin only
+ */
+router.delete(
+  '/categories/:id',
+  param('id').notEmpty().withMessage('ID danh mục không được bỏ trống'),
+  validate,
+  deleteCategory
+);
+
+/**
+ * ==================== QUẢN LÝ SẢN PHẨM ====================
+ */
+
+/**
+ * @route   GET /api/v1/admin/products
+ * @desc    Lấy danh sách tất cả sản phẩm (hỗ trợ phân trang, tìm kiếm, lọc)
+ * @access  Admin only
+ */
+router.get('/products', getAllProducts);
+
+/**
+ * @route   GET /api/v1/admin/products/stats
+ * @desc    Lấy thống kê sản phẩm
+ * @access  Admin only
+ */
+router.get('/products/stats', getProductStats);
+
+/**
+ * @route   GET /api/v1/admin/products/:id
+ * @desc    Lấy thông tin chi tiết một sản phẩm
+ * @access  Admin only
+ */
+router.get(
+  '/products/:id',
+  param('id').notEmpty().withMessage('ID sản phẩm không được bỏ trống'),
+  validate,
+  getProductById
+);
+
+/**
+ * @route   POST /api/v1/admin/products
+ * @desc    Tạo mới sản phẩm
+ * @access  Admin only
+ */
+router.post(
+  '/products',
+  [
+    body('name').notEmpty().withMessage('Tên sản phẩm là bắt buộc'),
+    body('price').isFloat({ min: 0 }).withMessage('Giá sản phẩm phải là số không âm'),
+    body('categoryId').notEmpty().withMessage('Danh mục là bắt buộc'),
+    body('isAvailable').optional().isBoolean().withMessage('Trạng thái phải là boolean'),
+  ],
+  validate,
+  createProduct
+);
+
+/**
+ * @route   PUT /api/v1/admin/products/:id
+ * @desc    Cập nhật thông tin sản phẩm
+ * @access  Admin only
+ */
+router.put(
+  '/products/:id',
+  param('id').notEmpty().withMessage('ID sản phẩm không được bỏ trống'),
+  validate,
+  updateProduct
+);
+
+/**
+ * @route   DELETE /api/v1/admin/products/:id
+ * @desc    Xóa sản phẩm (soft delete)
+ * @access  Admin only
+ */
+router.delete(
+  '/products/:id',
+  param('id').notEmpty().withMessage('ID sản phẩm không được bỏ trống'),
+  validate,
+  deleteProduct
+);
+
+/**
+ * ==================== QUẢN LÝ KHÁCH HÀNG ====================
+ */
+
+/**
+ * @route   GET /api/v1/admin/customers
+ * @desc    Lấy danh sách tất cả khách hàng (hỗ trợ phân trang, tìm kiếm, lọc theo tier/branch)
+ * @access  Admin only
+ */
+router.get('/customers', getAdminCustomers);
+
+/**
+ * @route   GET /api/v1/admin/customers/statistics
+ * @desc    Lấy thống kê khách hàng (toàn hệ thống hoặc theo chi nhánh)
+ * @access  Admin only
+ */
+router.get('/customers/statistics', getAdminCustomerStatistics);
+
+/**
+ * @route   GET /api/v1/admin/customers/stats
+ * @desc    Lấy thống kê khách hàng chi tiết
+ * @access  Admin only
+ */
+router.get('/customers/stats', getAdminCustomerStats);
+
+/**
+ * @route   GET /api/v1/admin/customers/search
+ * @desc    Tìm kiếm khách hàng
+ * @access  Admin only
+ */
+router.get(
+  '/customers/search',
+  [body('q').notEmpty().withMessage('Search query is required'), validate],
+  searchAdminCustomers
+);
+
+/**
+ * @route   GET /api/v1/admin/customers/:id
+ * @desc    Lấy thông tin chi tiết một khách hàng
+ * @access  Admin only
+ */
+router.get(
+  '/customers/:id',
+  param('id').notEmpty().withMessage('ID khách hàng không được bỏ trống'),
+  validate,
+  getAdminCustomerById
+);
+
+/**
+ * @route   POST /api/v1/admin/customers
+ * @desc    Tạo mới khách hàng
+ * @access  Admin only
+ */
+router.post(
+  '/customers',
+  [
+    body('phone')
+      .notEmpty()
+      .withMessage('Phone is required')
+      .matches(/^[0-9]{10}$/)
+      .withMessage('Phone must be 10 digits'),
+    body('name').notEmpty().withMessage('Name is required').trim(),
+    body('email').optional().isEmail().withMessage('Invalid email format'),
+    body('tier')
+      .optional()
+      .isIn(['BRONZE', 'SILVER', 'GOLD', 'VIP'])
+      .withMessage('Invalid tier value'),
+    validate,
+  ],
+  createAdminCustomer
+);
+
+/**
+ * @route   PATCH /api/v1/admin/customers/:id
+ * @desc    Cập nhật thông tin khách hàng
+ * @access  Admin only
+ */
+router.patch(
+  '/customers/:id',
+  [
+    param('id').notEmpty().withMessage('ID khách hàng không được bỏ trống'),
+    body('name').optional().trim().notEmpty().withMessage('Name cannot be empty'),
+    body('phone')
+      .optional()
+      .matches(/^[0-9]{10}$/)
+      .withMessage('Phone must be 10 digits'),
+    body('email').optional().isEmail().withMessage('Invalid email format'),
+    body('tier')
+      .optional()
+      .isIn(['BRONZE', 'SILVER', 'GOLD', 'VIP'])
+      .withMessage('Invalid tier value'),
+    body('points').optional().isInt().withMessage('Points must be an integer'),
+    validate,
+  ],
+  updateAdminCustomer
+);
+
+/**
+ * @route   POST /api/v1/admin/customers/:id/adjust-points
+ * @desc    Điều chỉnh điểm tích lũy khách hàng
+ * @access  Admin only
+ */
+router.post(
+  '/customers/:id/adjust-points',
+  [
+    param('id').notEmpty().withMessage('ID khách hàng không được bỏ trống'),
+    body('points')
+      .notEmpty()
+      .withMessage('Points adjustment amount is required')
+      .isInt()
+      .withMessage('Points must be an integer')
+      .custom((value) => value !== 0)
+      .withMessage('Points cannot be zero'),
+    body('reason')
+      .notEmpty()
+      .withMessage('Reason is required')
+      .trim()
+      .isLength({ min: 5 })
+      .withMessage('Reason must be at least 5 characters'),
+    validate,
+  ],
+  adjustAdminCustomerPoints
+);
+
+/**
+ * @route   PATCH /api/v1/admin/customers/:id/tier
+ * @desc    Cập nhật hạng thành viên khách hàng
+ * @access  Admin only
+ */
+router.patch(
+  '/customers/:id/tier',
+  [
+    param('id').notEmpty().withMessage('ID khách hàng không được bỏ trống'),
+    body('tier')
+      .notEmpty()
+      .withMessage('Tier is required')
+      .isIn(['BRONZE', 'SILVER', 'GOLD', 'VIP'])
+      .withMessage('Invalid tier value'),
+    body('reason').optional().trim(),
+    validate,
+  ],
+  updateAdminCustomerTier
+);
+
+/**
+ * @route   GET /api/v1/admin/customers/:id/orders
+ * @desc    Lấy lịch sử đơn hàng của khách hàng
+ * @access  Admin only
+ */
+router.get(
+  '/customers/:id/orders',
+  param('id').notEmpty().withMessage('ID khách hàng không được bỏ trống'),
+  validate,
+  getAdminCustomerOrders
+);
+
+/**
+ * @route   DELETE /api/v1/admin/customers/:id
+ * @desc    Xóa khách hàng
+ * @access  Admin only
+ */
+router.delete(
+  '/customers/:id',
+  param('id').notEmpty().withMessage('ID khách hàng không được bỏ trống'),
+  validate,
+  deleteAdminCustomer
+);
+
+// ==================== BILL MANAGEMENT ROUTES ====================
+
+/**
+ * @route   GET /api/v1/admin/bills/stats
+ * @desc    Lấy thống kê hóa đơn (system-wide hoặc theo chi nhánh)
+ * @access  Admin only
+ */
+router.get('/bills/stats', getAdminBillStats);
+
+/**
+ * @route   GET /api/v1/admin/bills
+ * @desc    Lấy danh sách tất cả hóa đơn (system-wide)
+ * @access  Admin only
+ */
+router.get('/bills', getAdminBills);
+
+/**
+ * @route   GET /api/v1/admin/bills/:id
+ * @desc    Lấy chi tiết hóa đơn
+ * @access  Admin only
+ */
+router.get(
+  '/bills/:id',
+  param('id').notEmpty().withMessage('ID hóa đơn không được bỏ trống'),
+  validate,
+  getAdminBillById
+);
+
+/**
+ * @route   PUT /api/v1/admin/bills/:id
+ * @desc    Cập nhật hóa đơn
+ * @access  Admin only
+ */
+router.put(
+  '/bills/:id',
+  param('id').notEmpty().withMessage('ID hóa đơn không được bỏ trống'),
+  body('editReason').notEmpty().withMessage('Lý do chỉnh sửa là bắt buộc'),
+  validate,
+  updateAdminBill
+);
+
+/**
+ * @route   GET /api/v1/admin/bills/:id/history
+ * @desc    Lấy lịch sử chỉnh sửa hóa đơn
+ * @access  Admin only
+ */
+router.get(
+  '/bills/:id/history',
+  param('id').notEmpty().withMessage('ID hóa đơn không được bỏ trống'),
+  validate,
+  getAdminBillHistory
+);
+
+/**
+ * @route   POST /api/v1/admin/bills/:id/print
+ * @desc    Đánh dấu hóa đơn đã in
+ * @access  Admin only
+ */
+router.post(
+  '/bills/:id/print',
+  param('id').notEmpty().withMessage('ID hóa đơn không được bỏ trống'),
+  validate,
+  printAdminBill
+);
 
 export default router;

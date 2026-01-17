@@ -1,7 +1,7 @@
 -- CreateEnum
 CREATE TYPE "BillStatus" AS ENUM ('DRAFT', 'ISSUED', 'PAID', 'CANCELLED', 'REFUNDED');
 
--- DropIndex (with IF EXISTS to avoid errors in shadow database)
+-- DropIndex
 DROP INDEX IF EXISTS "StockRequest_branchId_idx";
 
 -- DropIndex

@@ -1,11 +1,18 @@
 import { Router } from 'express';
-import { getAllUsers, getUserById, updateUser, deleteUser } from '../controllers/admin/user.controller';
+import { getAllUsers, getUserById, createUser, updateUser, deleteUser, getUsersStats } from '../controllers/admin/user.controller';
 import { authenticate, isAdmin } from '../middleware';
 
 const router = Router();
 
 // All routes require authentication
 router.use(authenticate);
+
+/**
+ * @route   GET /api/v1/users/stats
+ * @desc    Get users statistics
+ * @access  Admin only
+ */
+router.get('/stats', isAdmin, getUsersStats);
 
 /**
  * @route   GET /api/v1/users
@@ -20,6 +27,13 @@ router.get('/', isAdmin, getAllUsers);
  * @access  Admin only
  */
 router.get('/:id', isAdmin, getUserById);
+
+/**
+ * @route   POST /api/v1/users
+ * @desc    Create new user
+ * @access  Admin only
+ */
+router.post('/', isAdmin, createUser);
 
 /**
  * @route   PUT /api/v1/users/:id

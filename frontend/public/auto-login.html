@@ -208,9 +208,17 @@
                 
                 renderUsers(users);
             } catch (error) {
+                console.error('Error loading tokens:', error);
                 document.getElementById('content').innerHTML = `
                     <div class="loading">
-                        <p style="color: #f5576c;">⚠️ Không thể kết nối với backend. Vui lòng khởi động server backend trước.</p>
+                        <p style="color: #f5576c;">⚠️ Không thể tải tokens.json</p>
+                        <p style="font-size: 14px; margin-top: 10px;">
+                            Vui lòng chạy lệnh trong backend:<br/>
+                            <code style="background: #f0f0f0; padding: 5px 10px; border-radius: 4px; display: inline-block; margin-top: 5px;">
+                                npm run generate-tokens
+                            </code><br/>
+                            Sau đó copy file tokens.json vào frontend/public/
+                        </p>
                     </div>
                 `;
             }
@@ -241,7 +249,15 @@
                     const roleClass = role.toLowerCase().replace('_', '-');
                     if (user.token) {
                         html += `
-                            <button class="user-card ${roleClass}" onclick="autoLoginByToken('${user.token}', '${user.name}', '${user.email}', '${role}')">
+                            <button class="user-card ${roleClass}" onclick='autoLoginByToken(${JSON.stringify({
+                                token: user.token,
+                                id: user.userId,
+                                name: user.name,
+                                email: user.email,
+                                role: role,
+                                branchId: user.branchId,
+                                branchName: user.branch
+                            })})'>
                                 <div class="user-name">${user.name}</div>
                                 <div class="user-email">${user.email}</div>
                                 ${user.branch ? `<div class=\"user-branch\">🏪 ${user.branch}</div>` : ''}
@@ -299,12 +315,34 @@
                 
                 if (data.status === 'success' && data.data.token) {
                     localStorage.setItem('token', data.data.token);
-                    localStorage.setItem('user', JSON.stringify(data.data.user));
                     
-                    alert(`✅ Đăng nhập thành công!\n\n👤 ${data.data.user.name}\n📧 ${data.data.user.email}\n🔑 ${data.data.user.role}`);
+                    // Lưu user info vào currentUser (localStorage) và user (cookie)
+                    const userInfo = {
+                        id: data.data.user.id,
+                        name: data.data.user.name,
+                        email: data.data.user.email,
+                        phone: data.data.user.phone,
+                        role: data.data.user.role,
+                        branchId: data.data.user.branchId,
+                        branchName: data.data.user.branchName,
+                    };
+                    localStorage.setItem('currentUser', JSON.stringify(userInfo));
+                    document.cookie = `user=${JSON.stringify(userInfo)}; path=/; max-age=86400`;
+                    
+                    // Redirect theo role
+                    const roleRoutes = {
+                        'ADMIN_SYSTEM': '/admin/dashboard',
+                        'ADMIN_BRAND': '/manager/dashboard',
+                        'STAFF': '/staff/dashboard',
+                        'LOGISTICS_STAFF': '/logistics/dashboard',
+                    };
+                    
+                    const redirectUrl = roleRoutes[data.data.user.role] || '/';
+                    
+                    alert(`✅ Đăng nhập thành công!\n\n👤 ${data.data.user.name}\n📧 ${data.data.user.email}\n🔑 ${data.data.user.role}\n\n🔄 Chuyển đến: ${redirectUrl}`);
                     
                     // Redirect to dashboard
-                    window.location.href = '/';
+                    window.location.href = redirectUrl;
                 } else {
                     alert('❌ Đăng nhập thất bại: ' + (data.message || 'Unknown error'));
                 }

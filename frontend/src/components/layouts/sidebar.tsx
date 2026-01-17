@@ -93,8 +93,8 @@ export function Sidebar({
         className
       )}
     >
-      <div className="flex h-full max-h-screen flex-col">
-        <div className="flex h-20 items-center justify-center px-6 border-b border-gray-100">
+      <div className="flex h-screen max-h-screen flex-col">
+        <div className="flex h-20 items-center justify-center px-6 border-b border-gray-100 flex-shrink-0">
           <Link
             href="/"
             className={cn(
@@ -116,8 +116,9 @@ export function Sidebar({
           </Link>
         </div>
 
-        <ScrollArea className="flex-1">
-          <nav className="grid items-start gap-1 px-3 py-2 text-sm">
+        <div className="flex-1 overflow-hidden">
+          <ScrollArea className="h-full">
+            <nav className="grid items-start gap-1 px-3 py-2 text-sm pb-4">
             {navItems.map((item) => {
               const isActive = pathname === item.href || (pathname.startsWith(item.href) && pathname.charAt(item.href.length) === '/')
               return (
@@ -136,9 +137,10 @@ export function Sidebar({
                 </Link>
               )
             })}
-          </nav>
-        </ScrollArea>
-        <div className="mt-auto border-t border-gray-100">
+            </nav>
+          </ScrollArea>
+        </div>
+        <div className="flex-shrink-0 border-t border-gray-100">
           {currentUser && (
             <div className={cn(
               "p-4 mx-3 my-3 bg-gradient-to-br from-orange-50 to-green-50 rounded-xl border border-orange-100",
