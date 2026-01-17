@@ -91,8 +91,9 @@ class AdminUserService {
     return response.data
   }
 
-  async getUsersStats() {
-    const response = await apiClient.get(`${this.baseUrl}/stats`)
+  async getUsersStats(branchId?: string) {
+    const params = branchId ? { branchId } : undefined
+    const response = await apiClient.get(`${this.baseUrl}/stats`, { params })
     return response.data
   }
 }

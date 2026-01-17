@@ -558,14 +558,26 @@ export const createUser = async (req: Request, res: Response): Promise<void> => 
  */
 export const getUsersStats = async (req: Request, res: Response): Promise<void> => {
   try {
-    console.log('📊 Get users stats request');
+    const { branchId } = req.query;
+    
+    console.log('📊 Get users stats request', branchId ? `for branch: ${branchId}` : '(all branches)');
+
+    // Build where clause for branch filtering
+    const where: any = { deletedAt: null };
+    
+    if (branchId) {
+      where.OR = [
+        { branchId: branchId as string },
+        { managedBranches: { id: branchId as string } },
+      ];
+    }
 
     const [totalUsers, activeUsers, usersByRole] = await Promise.all([
-      prisma.user.count({ where: { deletedAt: null } }),
-      prisma.user.count({ where: { deletedAt: null, isActive: true } }),
+      prisma.user.count({ where }),
+      prisma.user.count({ where: { ...where, isActive: true } }),
       prisma.user.groupBy({
         by: ['role'],
-        where: { deletedAt: null },
+        where,
         _count: true,
       }),
     ]);

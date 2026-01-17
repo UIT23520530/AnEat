@@ -105,9 +105,13 @@ function UsersContent() {
   // Load data on mount
   useEffect(() => {
     loadUsers()
-    loadStatistics()
     loadBranches()
   }, [searchQuery, roleFilter, statusFilter, branchFilter])
+
+  // Re-load statistics when branch filter changes
+  useEffect(() => {
+    loadStatistics()
+  }, [branchFilter])
 
   // Load users
   const loadUsers = async () => {
@@ -156,7 +160,7 @@ function UsersContent() {
   // Load statistics
   const loadStatistics = async () => {
     try {
-      const response = await adminUserService.getUsersStats()
+      const response = await adminUserService.getUsersStats(branchFilter || undefined)
       console.log("📊 Statistics loaded:", response.data)
       setStatistics(response.data)
     } catch (error: any) {
