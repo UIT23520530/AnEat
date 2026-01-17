@@ -21,6 +21,17 @@ interface Template {
   lastUpdated: string;
 }
 
+// Search normalization helper
+const normalizeSearchString = (str: string) => {
+  return str
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/g, "d")
+    .replace(/\s+/g, "-")
+    .trim()
+}
+
 function TemplatesContent() {
   const { message, modal } = App.useApp();
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -95,12 +106,19 @@ function TemplatesContent() {
     });
   };
 
-  const filteredTemplates = mockTemplates.filter(
-    (template) =>
-      template.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      template.type.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      template.category.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredTemplates = mockTemplates.filter((template) => {
+    if (!searchTerm) return true;
+    const normalizedQuery = normalizeSearchString(searchTerm);
+    const normalizedName = normalizeSearchString(template.name);
+    const normalizedType = normalizeSearchString(template.type);
+    const normalizedCategory = normalizeSearchString(template.category);
+    
+    return (
+      normalizedName.includes(normalizedQuery) ||
+      normalizedType.includes(normalizedQuery) ||
+      normalizedCategory.includes(normalizedQuery)
+    );
+  });
 
   const columns: ColumnsType<Template> = [
     {

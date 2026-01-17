@@ -3,6 +3,8 @@
 import { useState, useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { AdminLayout } from "@/components/layouts/admin-layout"
+import UsersForm from "@/components/forms/admin/UsersForm"
+import UsersDetailModal from "@/components/forms/admin/UsersDetailModal"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import {
   Table,
@@ -53,6 +55,17 @@ const roleLabels: Record<UserRole, string> = {
   STAFF: "Nhân viên",
   CUSTOMER: "Khách hàng",
   LOGISTICS_STAFF: "Nhân viên Logistics",
+}
+
+// Search normalization helper
+const normalizeSearchString = (str: string) => {
+  return str
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/g, "d")
+    .replace(/\s+/g, "-")
+    .trim()
 }
 
 const roleColors: Record<UserRole, string> = {
@@ -121,13 +134,29 @@ function UsersContent() {
       const response = await adminUserService.getUsers({
         page: 1,
         limit: 999,
-        search: searchQuery || undefined,
+        // We handle search client-side for better accuracy with normalization
       })
 
-      console.log("📋 Users fetched from API:", response.data.length)
+      console.log("Users fetched from API:", response.data.length)
 
-      // Client-side filter by role, status, and branch
+      // Client-side filter by role, status, branch and search query
       let filteredData = response.data
+
+      if (searchQuery) {
+        const normalizedQuery = normalizeSearchString(searchQuery)
+        filteredData = filteredData.filter((u: User) => {
+          const normalizedName = normalizeSearchString(u.name)
+          const normalizedEmail = normalizeSearchString(u.email)
+          const normalizedPhone = u.phone ? normalizeSearchString(u.phone) : ""
+          
+          return (
+            normalizedName.includes(normalizedQuery) ||
+            normalizedEmail.includes(normalizedQuery) ||
+            normalizedPhone.includes(normalizedQuery)
+          )
+        })
+      }
+
       if (roleFilter !== "all") {
         filteredData = filteredData.filter((u: User) => u.role === roleFilter)
       }
@@ -142,7 +171,7 @@ function UsersContent() {
         )
       }
 
-      console.log("✅ Filtered users:", filteredData.length)
+      console.log("Filtered users:", filteredData.length)
 
       setUsers(filteredData)
       setPagination({
@@ -150,7 +179,7 @@ function UsersContent() {
         total: filteredData.length,
       })
     } catch (error: any) {
-      console.error("❌ Load users error:", error)
+      console.error("Load users error:", error)
       message.error(error.response?.data?.message || "Không thể tải danh sách người dùng")
     } finally {
       setLoading(false)
@@ -161,10 +190,10 @@ function UsersContent() {
   const loadStatistics = async () => {
     try {
       const response = await adminUserService.getUsersStats(branchFilter || undefined)
-      console.log("📊 Statistics loaded:", response.data)
+      console.log("Statistics loaded:", response.data)
       setStatistics(response.data)
     } catch (error: any) {
-      console.error("❌ Load statistics error:", error)
+      console.error("Load statistics error:", error)
     }
   }
 
@@ -172,10 +201,10 @@ function UsersContent() {
   const loadBranches = async () => {
     try {
       const response = await adminBranchService.getBranches({ page: 1, limit: 999 })
-      console.log("🏢 Branches loaded:", response.data.length)
+      console.log("Branches loaded:", response.data.length)
       setBranches(response.data)
     } catch (error) {
-      console.error("❌ Load branches error:", error)
+      console.error("Load branches error:", error)
     }
   }
 
@@ -211,7 +240,7 @@ function UsersContent() {
             Bạn có chắc chắn muốn xóa người dùng <strong>{record.name}</strong>?
           </p>
           <p className="text-red-600 text-sm mt-2">
-            ⚠️ <strong>Lưu ý:</strong> Đây là thao tác xóa mềm. Người dùng sẽ bị vô hiệu hóa và không thể đăng nhập.
+            <strong>Lưu ý:</strong> Đây là thao tác xóa mềm. Người dùng sẽ bị vô hiệu hóa và không thể đăng nhập.
           </p>
         </div>
       ),
@@ -219,7 +248,7 @@ function UsersContent() {
       cancelText: "Hủy",
       okButtonProps: { danger: true },
       onOk: async () => {
-        console.log("🗑️ Deleting user:", { id: record.id, name: record.name })
+        console.log("Deleting user:", { id: record.id, name: record.name })
         try {
           await adminUserService.deleteUser(record.id)
           message.success("Đã xóa người dùng thành công")
@@ -240,7 +269,7 @@ function UsersContent() {
             console.error("Error parsing error response:", e)
           }
           
-          console.error("❌ Delete failed:", errorMessage)
+          console.error("Delete failed:", errorMessage)
           message.error(errorMessage)
         }
       },
@@ -253,6 +282,11 @@ function UsersContent() {
 
     const submitData = { ...values }
     delete submitData._initialIsActive // Remove helper field
+
+    // Filter out empty password if in edit mode
+    if (!submitData.password) {
+      delete submitData.password
+    }
 
     // Logic: Clear branchId only when disabling FROM active state
     const wasActive = values._initialIsActive
@@ -275,7 +309,11 @@ function UsersContent() {
   // Submit add user
   const handleSubmitAdd = async (values: any) => {
     try {
-      const response = await adminUserService.createUser(values)
+      const submitData = { ...values }
+      if (!submitData.password) {
+        delete submitData.password
+      }
+      const response = await adminUserService.createUser(submitData)
       
       // Always show password modal when user is created successfully
       // Use generated password from backend, or the manual password from form
@@ -555,96 +593,11 @@ function UsersContent() {
       </Spin>
 
       {/* Detail Modal */}
-      <Modal
-        title={
-          selectedUser && (
-            <span>
-              Chi tiết người dùng
-            </span>
-          )
-        }
+      <UsersDetailModal
+        user={selectedUser}
         open={isDetailModalOpen}
         onCancel={() => setIsDetailModalOpen(false)}
-        footer={null}
-        width={850}
-      >
-        {selectedUser && (
-          <Descriptions bordered column={2}>
-            <Descriptions.Item label="Họ và tên" span={2}>
-              <Space>
-                <Avatar src={selectedUser.avatar} icon={<UserOutlined />} />
-                <strong>{selectedUser.name}</strong>
-              </Space>
-            </Descriptions.Item>
-            <Descriptions.Item label="Email">
-              <MailOutlined className="mr-2" />
-              {selectedUser.email}
-            </Descriptions.Item>
-            <Descriptions.Item label="Số điện thoại">
-              <PhoneOutlined className="mr-2" />
-              {selectedUser.phone}
-            </Descriptions.Item>
-            <Descriptions.Item label="Vai trò">
-              <Tag color={roleColors[selectedUser.role]}>{roleLabels[selectedUser.role]}</Tag>
-            </Descriptions.Item>
-            <Descriptions.Item label="Trạng thái">
-              <Tag color={selectedUser.isActive ? "success" : "error"}>
-                {selectedUser.isActive ? "Hoạt động" : "Vô hiệu hóa"}
-              </Tag>
-            </Descriptions.Item>
-            <Descriptions.Item label="Chi nhánh làm việc" span={2}>
-              {selectedUser.branch ? (
-                <Space>
-                  <div>
-                    <div className="font-medium">{selectedUser.branch.name}</div>
-                    <div className="text-xs text-slate-500">{selectedUser.branch.code}</div>
-                  </div>
-                  <Button
-                    type="link"
-                    size="small"
-                    icon={<ArrowRightOutlined />}
-                    onClick={() => {
-                      setIsDetailModalOpen(false)
-                      router.push(`/admin/branches?branchId=${selectedUser.branch?.id}`)
-                    }}
-                  >
-                    Xem chi tiết chi nhánh
-                  </Button>
-                </Space>
-              ) : selectedUser.managedBranches ? (
-                <Space>
-                  <Tag color="purple" icon={<ShopOutlined />}>
-                    Quản lý: {selectedUser.managedBranches.name} ({selectedUser.managedBranches.code})
-                  </Tag>
-                  <Button
-                    type="link"
-                    size="small"
-                    icon={<ArrowRightOutlined />}
-                    onClick={() => {
-                      setIsDetailModalOpen(false)
-                      router.push(`/admin/branches?branchId=${selectedUser.managedBranches?.id}`)
-                    }}
-                  >
-                    Xem chi tiết chi nhánh
-                  </Button>
-                </Space>
-              ) : selectedUser.role === "ADMIN_SYSTEM" ? (
-                <span className="text-slate-500 italic">Không yêu cầu chi nhánh</span>
-              ) : (
-                <span className="text-slate-400">Chưa được gán chi nhánh</span>
-              )}
-            </Descriptions.Item>
-            <Descriptions.Item label="Đăng nhập lần cuối">
-              {selectedUser.lastLogin
-                ? new Date(selectedUser.lastLogin).toLocaleString("vi-VN")
-                : "Chưa đăng nhập"}
-            </Descriptions.Item>
-            <Descriptions.Item label="Ngày tạo">
-              {new Date(selectedUser.createdAt).toLocaleDateString("vi-VN")}
-            </Descriptions.Item>
-          </Descriptions>
-        )}
-      </Modal>
+      />
 
       {/* Edit Modal */}
       <Modal
@@ -652,149 +605,18 @@ function UsersContent() {
         open={isEditModalOpen}
         onCancel={() => setIsEditModalOpen(false)}
         onOk={() => editForm.submit()}
-        okText="Lưu"
+        okText="Lưu thay đổi"
         cancelText="Hủy"
-        width={700}
+        width={800}
       >
-        <Form form={editForm} layout="vertical" onFinish={handleSubmitEdit}>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <div className="text-sm font-semibold text-slate-700 mb-3">Thông tin cơ bản</div>
-              <Form.Item label="Email" name="email">
-                <Input disabled />
-              </Form.Item>
-              <Form.Item label="Họ tên" name="name">
-                <Input disabled />
-              </Form.Item>
-              <Form.Item label="Số điện thoại" name="phone">
-                <Input disabled />
-              </Form.Item>
-            </div>
-            <div>
-              <div className="text-sm font-semibold text-slate-700 mb-3">Phân quyền</div>
-              <Form.Item label="Vai trò" name="role" rules={[{ required: true, message: "Vui lòng chọn vai trò" }]}>
-                <Select
-                  options={[
-                    { label: "Quản trị hệ thống", value: "ADMIN_SYSTEM" },
-                    { label: "Quản lý chi nhánh", value: "ADMIN_BRAND" },
-                    { label: "Nhân viên", value: "STAFF" },
-                    { label: "Nhân viên logistics", value: "LOGISTICS_STAFF" },
-                  ]}
-                  onChange={(value) => {
-                    // Khi chuyển sang ADMIN_SYSTEM, xóa branchId
-                    if (value === "ADMIN_SYSTEM") {
-                      editForm.setFieldsValue({ branchId: null })
-                    }
-                  }}
-                />
-              </Form.Item>
-              
-              <Form.Item noStyle shouldUpdate={(prev, curr) => prev.role !== curr.role || prev.isActive !== curr.isActive || prev.branchId !== curr.branchId}>
-                {({ getFieldValue, setFieldsValue }) => {
-                  const currentRole = getFieldValue("role")
-                  const branchId = getFieldValue("branchId")
-                  const isActive = getFieldValue("isActive")
-                  
-                  // Ẩn chi nhánh nếu là ADMIN_SYSTEM
-                  if (currentRole === "ADMIN_SYSTEM") return null
-                  
-                  // Nếu role là MANAGER, chỉ hiện chi nhánh chưa có manager
-                  const availableBranches = currentRole === "ADMIN_BRAND"
-                    ? branches.filter(b => !b.managerId || b.managerId === selectedUser?.id)
-                    : branches
-
-                  return (
-                    <>
-                      <Form.Item name="branchId" label="Chi nhánh">
-                        <Select
-                          showSearch
-                          allowClear
-                          placeholder={currentRole === "ADMIN_BRAND" ? "Chọn chi nhánh quản lý" : "Chọn chi nhánh"}
-                          optionFilterProp="children"
-                          filterOption={(input, option) =>
-                            (option?.label ?? "").toLowerCase().includes(input.toLowerCase())
-                          }
-                          options={availableBranches.map((b) => ({
-                            value: b.id,
-                            label: `${b.name} (${b.code})`,
-                          }))}
-                          notFoundContent={
-                            currentRole === "ADMIN_BRAND" ? (
-                              <div className="text-center text-slate-500 py-2">
-                                <ShopOutlined className="mr-2" />
-                                Tất cả chi nhánh đã có quản lý
-                              </div>
-                            ) : null
-                          }
-                          onChange={(value) => {
-                            const wasActive = getFieldValue("_initialIsActive")
-                            const currentActive = getFieldValue("isActive")
-                            // Chỉ tự động disable khi xóa chi nhánh TỪ trạng thái đang active
-                            if (!value && wasActive && currentActive) {
-                              setFieldsValue({ isActive: false })
-                              message.info("Đã tự động vô hiệu hóa người dùng")
-                            }
-                          }}
-                        />
-                      </Form.Item>
-                      {currentRole === "ADMIN_BRAND" && (
-                        <div className="text-xs text-blue-600 mt-1">
-                          💡 Chỉ hiển thị chi nhánh chưa có quản lý hoặc do người dùng này quản lý
-                        </div>
-                      )}
-                      {!currentRole.includes("ADMIN") && !branchId && (
-                        <div className="text-xs text-slate-500 mt-1">
-                          💡 Xóa chi nhánh khi đang hoạt động sẽ tự động vô hiệu hóa
-                        </div>
-                      )}
-                      {!currentRole.includes("ADMIN") && branchId && !getFieldValue("_initialIsActive") && !isActive && (
-                        <div className="text-xs text-blue-600 mt-1">
-                          💡 Chi nhánh đã được gán, có thể kích hoạt người dùng
-                        </div>
-                      )}
-                    </>
-                  )
-                }}
-              </Form.Item>
-
-              <div className="text-sm font-semibold text-slate-700 mb-3">Trạng thái</div>
-              <Form.Item noStyle shouldUpdate={(prev, curr) => prev.branchId !== curr.branchId || prev.role !== curr.role || prev.isActive !== curr.isActive}>
-                {({ getFieldValue, setFieldsValue }) => {
-                  const currentRole = getFieldValue("role")
-                  const branchId = getFieldValue("branchId")
-                  const isActive = getFieldValue("isActive")
-                  
-                  return (
-                    <>
-                      <Form.Item name="isActive" valuePropName="checked">
-                        <Switch 
-                          checkedChildren="Hoạt động" 
-                          unCheckedChildren="Vô hiệu hóa"
-                          disabled={currentRole !== "ADMIN_SYSTEM" && !branchId}
-                          onChange={(checked) => {
-                            // Validation cho ADMIN_SYSTEM
-                            if (checked && currentRole === "ADMIN_SYSTEM" && !selectedUser?.isActive) {
-                              const activeAdmins = users.filter(u => u.role === "ADMIN_SYSTEM" && u.isActive && u.id !== selectedUser?.id)
-                              if (activeAdmins.length > 0) {
-                                message.error(`Chỉ được phép một Admin Hệ thống hoạt động`)
-                                setFieldsValue({ isActive: false })
-                              }
-                            }
-                          }}
-                        />
-                      </Form.Item>
-                      {currentRole !== "ADMIN_SYSTEM" && !branchId && (
-                        <div className="text-xs text-amber-600 mt-1">
-                          ⚠️ Phải gán chi nhánh trước khi kích hoạt tài khoản
-                        </div>
-                      )}
-                    </>
-                  )
-                }}
-              </Form.Item>
-            </div>
-          </div>
-        </Form>
+        <UsersForm
+          form={editForm}
+          onFinish={handleSubmitEdit}
+          isEdit={true}
+          selectedUser={selectedUser}
+          branches={branches}
+          users={users}
+        />
       </Modal>
 
       {/* Add User Modal */}
@@ -803,169 +625,17 @@ function UsersContent() {
         open={isAddModalOpen}
         onCancel={() => setIsAddModalOpen(false)}
         onOk={() => addForm.submit()}
-        width={700}
-        okText="Tạo"
+        okText="Thêm mới"
         cancelText="Hủy"
+        width={800}
       >
-        <div className="text-blue-600 text-xs mb-4 bg-blue-50 p-2 rounded">
-          💡 Mật khẩu tạm thời sẽ được gửi cho người dùng. Người dùng cần đổi mật khẩu sau khi đăng nhập lần đầu.
-        </div>
-        <Form form={addForm} layout="vertical" onFinish={handleSubmitAdd}>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <div className="text-sm font-semibold text-slate-700 mb-3">Thông tin cơ bản</div>
-              <Form.Item
-                label="Email"
-                name="email"
-                rules={[
-                  { required: true, message: "Vui lòng nhập email" },
-                  { type: "email", message: "Email không hợp lệ" }
-                ]}
-              >
-                <Input placeholder="user@example.com" />
-              </Form.Item>
-              <Form.Item
-                label="Họ tên"
-                name="name"
-                rules={[{ required: true, message: "Vui lòng nhập họ tên" }]}
-              >
-                <Input placeholder="Nguyễn Văn A" />
-              </Form.Item>
-              <Form.Item
-                label="Số điện thoại"
-                name="phone"
-                rules={[
-                  { required: true, message: "Vui lòng nhập số điện thoại" },
-                  { pattern: /^[0-9]{10}$/, message: "Số điện thoại phải có đúng 10 chữ số" }
-                ]}
-              >
-                <Input placeholder="0123456789" maxLength={10} />
-              </Form.Item>
-              <Form.Item
-                label="Mật khẩu (Tùy chọn)"
-                name="password"
-                rules={[
-                  { min: 6, message: "Mật khẩu phải có ít nhất 6 ký tự" }
-                ]}
-              >
-                <Input.Password placeholder="Để trống để tạo tự động" />
-              </Form.Item>
-              <div className="text-xs text-slate-500 mt-[-12px] mb-3">
-                💡 Nếu để trống, hệ thống sẽ tự động tạo mật khẩu
-              </div>
-            </div>
-            <div>
-              <div className="text-sm font-semibold text-slate-700 mb-3">Phân quyền</div>
-              <Form.Item
-                label="Vai trò"
-                name="role"
-                rules={[{ required: true, message: "Vui lòng chọn vai trò" }]}
-                initialValue="STAFF"
-              >
-                <Select placeholder="Chọn vai trò">
-                  <Select.Option value="STAFF">Nhân viên</Select.Option>
-                  <Select.Option value="ADMIN_BRAND">Quản lý chi nhánh</Select.Option>
-                  <Select.Option value="ADMIN_SYSTEM">Quản trị hệ thống</Select.Option>
-                  <Select.Option value="LOGISTICS_STAFF">Nhân viên logistics</Select.Option>
-                </Select>
-              </Form.Item>
-
-              <Form.Item noStyle shouldUpdate={(prev, curr) => prev.role !== curr.role || prev.isActive !== curr.isActive}>
-                {({ getFieldValue, setFieldsValue }) => {
-                  const currentRole = getFieldValue("role")
-                  if (currentRole === "ADMIN_SYSTEM") return null
-                  
-                  // Nếu role là MANAGER, chỉ hiện chi nhánh chưa có manager
-                  const availableBranches = currentRole === "ADMIN_BRAND"
-                    ? branches.filter(b => !b.managerId)
-                    : branches
-
-                  return (
-                    <>
-                      <Form.Item name="branchId">
-                        <Select 
-                          placeholder={currentRole === "ADMIN_BRAND" ? "Chọn chi nhánh quản lý" : "Chọn chi nhánh (tùy chọn)"}
-                          allowClear
-                          showSearch
-                          optionFilterProp="children"
-                          filterOption={(input, option) =>
-                            (option?.label ?? "").toLowerCase().includes(input.toLowerCase())
-                          }
-                          options={availableBranches.map((branch) => ({
-                            value: branch.id,
-                            label: `${branch.name} - ${branch.address}`,
-                          }))}
-                          notFoundContent={
-                            currentRole === "ADMIN_BRAND" ? (
-                              <div className="text-center text-slate-500 py-2">
-                                <ShopOutlined className="mr-2" />
-                                Tất cả chi nhánh đã có quản lý
-                              </div>
-                            ) : null
-                          }
-                          onChange={(value) => {
-                            const currentActive = getFieldValue("isActive")
-                            // Chỉ tự động disable khi xóa chi nhánh và đang active
-                            if (!value && currentActive) {
-                              setFieldsValue({ isActive: false })
-                              message.info("Đã tự động vô hiệu hóa người dùng")
-                            }
-                          }}
-                        />
-                      </Form.Item>
-                      {currentRole === "ADMIN_BRAND" && (
-                        <div className="text-xs text-blue-600 mt-1">
-                          💡 Chỉ hiển thị chi nhánh chưa có quản lý
-                        </div>
-                      )}
-                      {!currentRole.includes("ADMIN") && (
-                        <div className="text-xs text-slate-500 mt-1">
-                          💡 Xóa chi nhánh sẽ tự động vô hiệu hóa người dùng
-                        </div>
-                      )}
-                    </>
-                  )
-                }}
-              </Form.Item>
-
-              <div className="text-sm font-semibold text-slate-700 mb-3">Trạng thái</div>
-              <Form.Item noStyle shouldUpdate={(prev, curr) => prev.branchId !== curr.branchId || prev.role !== curr.role || prev.isActive !== curr.isActive}>
-                {({ getFieldValue, setFieldsValue }) => {
-                  const currentRole = getFieldValue("role")
-                  const branchId = getFieldValue("branchId")
-                  const isActive = getFieldValue("isActive")
-                  
-                  return (
-                    <>
-                      <Form.Item name="isActive" valuePropName="checked" initialValue={false}>
-                        <Switch 
-                          checkedChildren="Hoạt động" 
-                          unCheckedChildren="Vô hiệu hóa"
-                          disabled={currentRole !== "ADMIN_SYSTEM" && !branchId}
-                          onChange={(checked) => {
-                            // Validation cho ADMIN_SYSTEM
-                            if (checked && currentRole === "ADMIN_SYSTEM") {
-                              const activeAdmins = users.filter(u => u.role === "ADMIN_SYSTEM" && u.isActive)
-                              if (activeAdmins.length > 0) {
-                                message.error(`Chỉ được phép một Admin Hệ thống hoạt động`)
-                                setFieldsValue({ isActive: false })
-                              }
-                            }
-                          }}
-                        />
-                      </Form.Item>
-                      {currentRole !== "ADMIN_SYSTEM" && !branchId && (
-                        <div className="text-xs text-amber-600 mt-1">
-                          ⚠️ Phải gán chi nhánh trước khi kích hoạt tài khoản
-                        </div>
-                      )}
-                    </>
-                  )
-                }}
-              </Form.Item>
-            </div>
-          </div>
-        </Form>
+        <UsersForm
+          form={addForm}
+          onFinish={handleSubmitAdd}
+          isEdit={false}
+          branches={branches}
+          users={users}
+        />
       </Modal>
 
       {/* Password Display Modal */}
@@ -1040,7 +710,7 @@ function UsersContent() {
 
 export default function AdminUsersPage() {
   return (
-    <AdminLayout title="Quản lý Người dùng">
+    <AdminLayout title="Quản lý người dùng">
       <App>
         <UsersContent />
       </App>

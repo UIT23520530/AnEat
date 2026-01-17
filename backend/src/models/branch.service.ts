@@ -16,6 +16,7 @@ interface BranchUpdateData {
   phone?: string;
   email?: string;
   managerId?: string | null;
+  isActive?: boolean;
 }
 
 interface BranchCreateData {

@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { AdminLayout } from "@/components/layouts/admin-layout"
 import { Card, CardHeader } from "@/components/ui/card"
+import ProductsForm from "@/components/forms/admin/ProductsForm"
 import {
   Table,
   Button,
@@ -62,6 +63,17 @@ const getStockStatus = (quantity: number, isAvailable: boolean) => {
   if (quantity === 0) return { text: "Hết hàng", color: "error" }
   if (quantity <= 10) return { text: "Sắp hết", color: "warning" }
   return { text: "Đang bán", color: "success" }
+}
+
+// Search normalization helper
+const normalizeSearchString = (str: string) => {
+  return str
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/g, "d")
+    .replace(/\s+/g, "-")
+    .trim()
 }
 
 function ProductsContent() {
@@ -125,8 +137,18 @@ function ProductsContent() {
 
       console.log("📋 Products fetched from API:", response.data.length)
 
-      // Client-side filter by category, branch, and status
+      // Client-side filter
       let filteredData = response.data
+      
+      if (searchQuery) {
+        const normalizedQuery = normalizeSearchString(searchQuery)
+        filteredData = filteredData.filter((p: Product) => {
+          const normalizedName = normalizeSearchString(p.name)
+          const normalizedCode = normalizeSearchString(p.code)
+          return normalizedName.includes(normalizedQuery) || normalizedCode.includes(normalizedQuery)
+        })
+      }
+
       if (categoryFilter !== "all") {
         filteredData = filteredData.filter((p: Product) => p.categoryId === categoryFilter)
       }
@@ -197,18 +219,6 @@ function ProductsContent() {
   // Handle edit click
   const handleEditClick = (record: Product) => {
     setSelectedProduct(record)
-    editForm.setFieldsValue({
-      code: record.code,
-      name: record.name,
-      description: record.description,
-      price: record.price / 100, // Convert cents to dollars
-      image: record.image,
-      categoryId: record.categoryId,
-      branchId: record.branchId || undefined,
-      quantity: record.quantity,
-      prepTime: record.prepTime || undefined,
-      isAvailable: record.isAvailable,
-    })
     setIsEditModalOpen(true)
   }
 
@@ -507,12 +517,12 @@ function ProductsContent() {
               )}
 
               {/* Filters */}
-              <div className="flex justify-between items-center">
+              <div className="flex justify-between items-center gap-2">
                 <Space size="middle">
                   <Input
                     placeholder="Tìm kiếm sản phẩm..."
                     prefix={<SearchOutlined />}
-                    style={{ width: 300 }}
+                    style={{ width: 250 }}
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     allowClear
@@ -608,121 +618,13 @@ function ProductsContent() {
         cancelText="Hủy"
         width={700}
       >
-        <Form form={addForm} layout="vertical" onFinish={handleSubmitAdd}>
-          <Row gutter={16}>
-            <Col span={12}>
-              <Form.Item
-                label="Mã sản phẩm"
-                name="code"
-                rules={[
-                  { required: true, message: "Vui lòng nhập mã sản phẩm" },
-                  { max: 20, message: "Mã không quá 20 ký tự" },
-                  { pattern: /^[A-Z0-9_]+$/, message: "Mã chỉ chứa chữ hoa, số và _" },
-                ]}
-              >
-                <Input placeholder="VD: PHO_BO" />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item
-                label="Tên sản phẩm"
-                name="name"
-                rules={[
-                  { required: true, message: "Vui lòng nhập tên sản phẩm" },
-                  { max: 200, message: "Tên không quá 200 ký tự" },
-                ]}
-              >
-                <Input placeholder="VD: Phở bò" />
-              </Form.Item>
-            </Col>
-          </Row>
-
-          <Form.Item label="Mô tả" name="description">
-            <Input.TextArea rows={3} placeholder="Mô tả về sản phẩm..." />
-          </Form.Item>
-
-          <Row gutter={16}>
-            <Col span={12}>
-              <Form.Item
-                label="Giá (VNĐ)"
-                name="price"
-                rules={[
-                  { required: true, message: "Vui lòng nhập giá" },
-                  { type: "number", min: 0, message: "Giá phải >= 0" },
-                ]}
-              >
-                <InputNumber
-                  style={{ width: "100%" }}
-                  placeholder="50000"
-                  formatter={(value) => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ",")}
-                  parser={(value) => value!.replace(/\$\s?|(,*)/g, "")}
-                />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item
-                label="Danh mục"
-                name="categoryId"
-                rules={[{ required: true, message: "Vui lòng chọn danh mục" }]}
-              >
-                <Select placeholder="Chọn danh mục">
-                  {categories.filter(c => c.isActive).map((cat) => (
-                    <Select.Option key={cat.id} value={cat.id}>
-                      {cat.name}
-                    </Select.Option>
-                  ))}
-                </Select>
-              </Form.Item>
-            </Col>
-          </Row>
-
-          <Row gutter={16}>
-            <Col span={12}>
-              <Form.Item
-                label="Chi nhánh"
-                name="branchId"
-              >
-                <Select placeholder="Chọn chi nhánh (tùy chọn)" allowClear>
-                  {branches.filter(b => b.isActive).map((branch) => (
-                    <Select.Option key={branch.id} value={branch.id}>
-                      {branch.name}
-                    </Select.Option>
-                  ))}
-                </Select>
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item
-                label="Số lượng tồn kho"
-                name="quantity"
-                initialValue={0}
-                rules={[
-                  { required: true, message: "Vui lòng nhập số lượng" },
-                  { type: "number", min: 0, message: "Số lượng phải >= 0" },
-                ]}
-              >
-                <InputNumber style={{ width: "100%" }} placeholder="0" min={0} />
-              </Form.Item>
-            </Col>
-          </Row>
-
-          <Row gutter={16}>
-            <Col span={12}>
-              <Form.Item label="Thời gian chuẩn bị (phút)" name="prepTime">
-                <InputNumber style={{ width: "100%" }} placeholder="15" min={0} />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item label="URL hình ảnh" name="image">
-                <Input placeholder="https://example.com/image.jpg" />
-              </Form.Item>
-            </Col>
-          </Row>
-
-          <Form.Item label="Trạng thái" name="isAvailable" initialValue={true} valuePropName="checked">
-            <Switch checkedChildren="Đang bán" unCheckedChildren="Đã ẩn" />
-          </Form.Item>
-        </Form>
+        <ProductsForm
+          form={addForm}
+          onFinish={handleSubmitAdd}
+          isEdit={false}
+          categories={categories}
+          branches={branches}
+        />
       </Modal>
 
       {/* Edit Modal */}
@@ -738,120 +640,14 @@ function ProductsContent() {
         cancelText="Hủy"
         width={700}
       >
-        <Form form={editForm} layout="vertical" onFinish={handleSubmitEdit}>
-          <Row gutter={16}>
-            <Col span={12}>
-              <Form.Item
-                label="Mã sản phẩm"
-                name="code"
-                rules={[
-                  { required: true, message: "Vui lòng nhập mã sản phẩm" },
-                  { max: 20, message: "Mã không quá 20 ký tự" },
-                  { pattern: /^[A-Z0-9_]+$/, message: "Mã chỉ chứa chữ hoa, số và _" },
-                ]}
-              >
-                <Input placeholder="VD: PHO_BO" />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item
-                label="Tên sản phẩm"
-                name="name"
-                rules={[
-                  { required: true, message: "Vui lòng nhập tên sản phẩm" },
-                  { max: 200, message: "Tên không quá 200 ký tự" },
-                ]}
-              >
-                <Input placeholder="VD: Phở bò" />
-              </Form.Item>
-            </Col>
-          </Row>
-
-          <Form.Item label="Mô tả" name="description">
-            <Input.TextArea rows={3} placeholder="Mô tả về sản phẩm..." />
-          </Form.Item>
-
-          <Row gutter={16}>
-            <Col span={12}>
-              <Form.Item
-                label="Giá (VNĐ)"
-                name="price"
-                rules={[
-                  { required: true, message: "Vui lòng nhập giá" },
-                  { type: "number", min: 0, message: "Giá phải >= 0" },
-                ]}
-              >
-                <InputNumber
-                  style={{ width: "100%" }}
-                  placeholder="50000"
-                  formatter={(value) => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ",")}
-                  parser={(value) => value!.replace(/\$\s?|(,*)/g, "")}
-                />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item
-                label="Số lượng tồn kho"
-                name="quantity"
-                rules={[
-                  { required: true, message: "Vui lòng nhập số lượng" },
-                  { type: "number", min: 0, message: "Số lượng phải >= 0" },
-                ]}
-              >
-                <InputNumber style={{ width: "100%" }} placeholder="100" min={0} />
-              </Form.Item>
-            </Col>
-          </Row>
-
-          <Row gutter={16}>
-            <Col span={12}>
-              <Form.Item
-                label="Danh mục"
-                name="categoryId"
-                rules={[{ required: true, message: "Vui lòng chọn danh mục" }]}
-              >
-                <Select placeholder="Chọn danh mục">
-                  {categories.map((cat) => (
-                    <Select.Option key={cat.id} value={cat.id}>
-                      {cat.name}
-                    </Select.Option>
-                  ))}
-                </Select>
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item
-                label="Chi nhánh"
-                name="branchId"
-              >
-                <Select placeholder="Chọn chi nhánh (tùy chọn)" allowClear>
-                  {branches.map((branch) => (
-                    <Select.Option key={branch.id} value={branch.id}>
-                      {branch.name}
-                    </Select.Option>
-                  ))}
-                </Select>
-              </Form.Item>
-            </Col>
-          </Row>
-
-          <Row gutter={16}>
-            <Col span={12}>
-              <Form.Item label="Thời gian chuẩn bị (phút)" name="prepTime">
-                <InputNumber style={{ width: "100%" }} placeholder="15" min={0} />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item label="URL hình ảnh" name="image">
-                <Input placeholder="https://example.com/image.jpg" />
-              </Form.Item>
-            </Col>
-          </Row>
-
-          <Form.Item label="Trạng thái" name="isAvailable" valuePropName="checked">
-            <Switch checkedChildren="Đang bán" unCheckedChildren="Đã ẩn" />
-          </Form.Item>
-        </Form>
+        <ProductsForm
+          form={editForm}
+          onFinish={handleSubmitEdit}
+          isEdit={true}
+          selectedProduct={selectedProduct}
+          categories={categories}
+          branches={branches}
+        />
       </Modal>
     </div>
   )
