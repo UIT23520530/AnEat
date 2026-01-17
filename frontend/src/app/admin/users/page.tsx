@@ -273,12 +273,15 @@ function UsersContent() {
     try {
       const response = await adminUserService.createUser(values)
       
-      // Show password modal if password was generated
-      if (response.data?.generatedPassword) {
-        setGeneratedPassword(response.data.generatedPassword)
+      // Always show password modal when user is created successfully
+      // Use generated password from backend, or the manual password from form
+      const passwordToShow = response.generatedPassword || values.password
+      
+      if (passwordToShow) {
+        setGeneratedPassword(passwordToShow)
         setCreatedUserInfo({
-          name: response.data.user?.name || values.name,
-          email: response.data.user?.email || values.email,
+          name: response.data?.name || values.name,
+          email: response.data?.email || values.email,
         })
         setIsPasswordModalOpen(true)
       } else {
@@ -647,157 +650,145 @@ function UsersContent() {
         onOk={() => editForm.submit()}
         okText="Lưu"
         cancelText="Hủy"
-        width={600}
+        width={700}
       >
         <Form form={editForm} layout="vertical" onFinish={handleSubmitEdit}>
-          <div className="mb-4">
-            <div className="text-sm font-semibold text-slate-700 mb-3">Thông tin cơ bản</div>
-            <Form.Item label="Email" name="email">
-              <Input disabled />
-            </Form.Item>
-            <Form.Item label="Họ tên" name="name">
-              <Input disabled />
-            </Form.Item>
-            <Form.Item label="Số điện thoại" name="phone">
-              <Input disabled />
-            </Form.Item>
-          </div>
-          <div className="mb-4">
-            <div className="text-sm font-semibold text-slate-700 mb-3">Phân quyền</div>
-            <Form.Item label="Vai trò" name="role" rules={[{ required: true, message: "Vui lòng chọn vai trò" }]}>
-              <Select
-                options={[
-                  { label: "Admin Hệ thống", value: "ADMIN_SYSTEM" },
-                  { label: "Quản lý Chi nhánh", value: "ADMIN_BRAND" },
-                  { label: "Nhân viên", value: "STAFF" },
-                  { label: "NV Logistics", value: "LOGISTICS_STAFF" },
-                ]}
-                onChange={(value) => {
-                  // Khi chuyển sang ADMIN_SYSTEM, xóa branchId
-                  if (value === "ADMIN_SYSTEM") {
-                    editForm.setFieldsValue({ branchId: null })
-                  }
-                }}
-              />
-            </Form.Item>
-            
-            <Form.Item noStyle shouldUpdate={(prev, curr) => prev.role !== curr.role || prev.isActive !== curr.isActive || prev.branchId !== curr.branchId}>
-              {({ getFieldValue, setFieldsValue }) => {
-                const currentRole = getFieldValue("role")
-                const branchId = getFieldValue("branchId")
-                const isActive = getFieldValue("isActive")
-                
-                // Ẩn chi nhánh nếu là ADMIN_SYSTEM
-                if (currentRole === "ADMIN_SYSTEM") return null
-                
-                // Nếu role là MANAGER, chỉ hiện chi nhánh chưa có manager
-                const availableBranches = currentRole === "ADMIN_BRAND"
-                  ? branches.filter(b => !b.managerId || b.managerId === selectedUser?.id)
-                  : branches
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <div className="text-sm font-semibold text-slate-700 mb-3">Thông tin cơ bản</div>
+              <Form.Item label="Email" name="email">
+                <Input disabled />
+              </Form.Item>
+              <Form.Item label="Họ tên" name="name">
+                <Input disabled />
+              </Form.Item>
+              <Form.Item label="Số điện thoại" name="phone">
+                <Input disabled />
+              </Form.Item>
+            </div>
+            <div>
+              <div className="text-sm font-semibold text-slate-700 mb-3">Phân quyền</div>
+              <Form.Item label="Vai trò" name="role" rules={[{ required: true, message: "Vui lòng chọn vai trò" }]}>
+                <Select
+                  options={[
+                    { label: "Quản trị hệ thống", value: "ADMIN_SYSTEM" },
+                    { label: "Quản lý chi nhánh", value: "ADMIN_BRAND" },
+                    { label: "Nhân viên", value: "STAFF" },
+                    { label: "Nhân viên logistics", value: "LOGISTICS_STAFF" },
+                  ]}
+                  onChange={(value) => {
+                    // Khi chuyển sang ADMIN_SYSTEM, xóa branchId
+                    if (value === "ADMIN_SYSTEM") {
+                      editForm.setFieldsValue({ branchId: null })
+                    }
+                  }}
+                />
+              </Form.Item>
+              
+              <Form.Item noStyle shouldUpdate={(prev, curr) => prev.role !== curr.role || prev.isActive !== curr.isActive || prev.branchId !== curr.branchId}>
+                {({ getFieldValue, setFieldsValue }) => {
+                  const currentRole = getFieldValue("role")
+                  const branchId = getFieldValue("branchId")
+                  const isActive = getFieldValue("isActive")
+                  
+                  // Ẩn chi nhánh nếu là ADMIN_SYSTEM
+                  if (currentRole === "ADMIN_SYSTEM") return null
+                  
+                  // Nếu role là MANAGER, chỉ hiện chi nhánh chưa có manager
+                  const availableBranches = currentRole === "ADMIN_BRAND"
+                    ? branches.filter(b => !b.managerId || b.managerId === selectedUser?.id)
+                    : branches
 
-                return (
-                  <>
-                    <Form.Item name="branchId" label="Chi nhánh">
-                      <Select
-                        showSearch
-                        allowClear
-                        placeholder={currentRole === "ADMIN_BRAND" ? "Chọn chi nhánh quản lý" : "Chọn chi nhánh"}
-                        optionFilterProp="children"
-                        filterOption={(input, option) =>
-                          (option?.label ?? "").toLowerCase().includes(input.toLowerCase())
-                        }
-                        options={availableBranches.map((b) => ({
-                          value: b.id,
-                          label: `${b.name} (${b.code})`,
-                        }))}
-                        notFoundContent={
-                          currentRole === "ADMIN_BRAND" ? (
-                            <div className="text-center text-slate-500 py-2">
-                              <ShopOutlined className="mr-2" />
-                              Tất cả chi nhánh đã có quản lý
-                            </div>
-                          ) : null
-                        }
-                        onChange={(value) => {
-                          const wasActive = getFieldValue("_initialIsActive")
-                          const currentActive = getFieldValue("isActive")
-                          // Chỉ tự động disable khi xóa chi nhánh TỪ trạng thái đang active
-                          if (!value && wasActive && currentActive) {
-                            setFieldsValue({ isActive: false })
-                            message.info("Đã tự động vô hiệu hóa người dùng")
+                  return (
+                    <>
+                      <Form.Item name="branchId" label="Chi nhánh">
+                        <Select
+                          showSearch
+                          allowClear
+                          placeholder={currentRole === "ADMIN_BRAND" ? "Chọn chi nhánh quản lý" : "Chọn chi nhánh"}
+                          optionFilterProp="children"
+                          filterOption={(input, option) =>
+                            (option?.label ?? "").toLowerCase().includes(input.toLowerCase())
                           }
-                        }}
-                      />
-                    </Form.Item>
-                    {currentRole === "ADMIN_BRAND" && (
-                      <div className="text-xs text-blue-600 mt-1">
-                        💡 Chỉ hiển thị chi nhánh chưa có quản lý hoặc do người dùng này quản lý
-                      </div>
-                    )}
-                    {!currentRole.includes("ADMIN") && !branchId && (
-                      <div className="text-xs text-slate-500 mt-1">
-                        💡 Xóa chi nhánh khi đang hoạt động sẽ tự động vô hiệu hóa
-                      </div>
-                    )}
-                    {!currentRole.includes("ADMIN") && branchId && !getFieldValue("_initialIsActive") && !isActive && (
-                      <div className="text-xs text-blue-600 mt-1">
-                        💡 Chi nhánh đã được gán, có thể kích hoạt người dùng
-                      </div>
-                    )}
-                  </>
-                )
-              }}
-            </Form.Item>
-          </div>
-          <div>
-            <div className="text-sm font-semibold text-slate-700 mb-3">Trạng thái</div>
-            <Form.Item noStyle shouldUpdate={(prev, curr) => prev.branchId !== curr.branchId || prev.role !== curr.role || prev.isActive !== curr.isActive}>
-              {({ getFieldValue, setFieldsValue }) => {
-                const currentRole = getFieldValue("role")
-                const branchId = getFieldValue("branchId")
-                const isActive = getFieldValue("isActive")
-                
-                return (
-                  <>
-                    <Form.Item name="isActive" valuePropName="checked">
-                      <Switch 
-                        checkedChildren="Hoạt động" 
-                        unCheckedChildren="Vô hiệu hóa"
-                        disabled={currentRole !== "ADMIN_SYSTEM" && !branchId}
-                        onChange={(checked) => {
-                          const wasActive = getFieldValue("_initialIsActive")
-                          // Chỉ xóa chi nhánh khi vô hiệu hóa TỪ trạng thái đang active
-                          if (!checked && branchId && wasActive) {
-                            modal.confirm({
-                              title: "Xác nhận vô hiệu hóa",
-                              content: "Vô hiệu hóa người dùng từ trạng thái hoạt động sẽ tự động xóa chi nhánh. Bạn có chắc chắn?",
-                              okText: "Xác nhận",
-                              cancelText: "Hủy",
-                              onCancel: () => {
-                                setFieldsValue({ isActive: true })
-                              },
-                            })
+                          options={availableBranches.map((b) => ({
+                            value: b.id,
+                            label: `${b.name} (${b.code})`,
+                          }))}
+                          notFoundContent={
+                            currentRole === "ADMIN_BRAND" ? (
+                              <div className="text-center text-slate-500 py-2">
+                                <ShopOutlined className="mr-2" />
+                                Tất cả chi nhánh đã có quản lý
+                              </div>
+                            ) : null
                           }
-                          // Validation cho ADMIN_SYSTEM
-                          if (checked && currentRole === "ADMIN_SYSTEM" && !selectedUser?.isActive) {
-                            const activeAdmins = users.filter(u => u.role === "ADMIN_SYSTEM" && u.isActive && u.id !== selectedUser?.id)
-                            if (activeAdmins.length > 0) {
-                              message.error(`Chỉ được phép một Admin Hệ thống hoạt động`)
+                          onChange={(value) => {
+                            const wasActive = getFieldValue("_initialIsActive")
+                            const currentActive = getFieldValue("isActive")
+                            // Chỉ tự động disable khi xóa chi nhánh TỪ trạng thái đang active
+                            if (!value && wasActive && currentActive) {
                               setFieldsValue({ isActive: false })
+                              message.info("Đã tự động vô hiệu hóa người dùng")
                             }
-                          }
-                        }}
-                      />
-                    </Form.Item>
-                    {currentRole !== "ADMIN_SYSTEM" && !branchId && (
-                      <div className="text-xs text-amber-600 mt-1">
-                        ⚠️ Phải gán chi nhánh trước khi kích hoạt tài khoản
-                      </div>
-                    )}
-                  </>
-                )
-              }}
-            </Form.Item>
+                          }}
+                        />
+                      </Form.Item>
+                      {currentRole === "ADMIN_BRAND" && (
+                        <div className="text-xs text-blue-600 mt-1">
+                          💡 Chỉ hiển thị chi nhánh chưa có quản lý hoặc do người dùng này quản lý
+                        </div>
+                      )}
+                      {!currentRole.includes("ADMIN") && !branchId && (
+                        <div className="text-xs text-slate-500 mt-1">
+                          💡 Xóa chi nhánh khi đang hoạt động sẽ tự động vô hiệu hóa
+                        </div>
+                      )}
+                      {!currentRole.includes("ADMIN") && branchId && !getFieldValue("_initialIsActive") && !isActive && (
+                        <div className="text-xs text-blue-600 mt-1">
+                          💡 Chi nhánh đã được gán, có thể kích hoạt người dùng
+                        </div>
+                      )}
+                    </>
+                  )
+                }}
+              </Form.Item>
+
+              <div className="text-sm font-semibold text-slate-700 mb-3">Trạng thái</div>
+              <Form.Item noStyle shouldUpdate={(prev, curr) => prev.branchId !== curr.branchId || prev.role !== curr.role || prev.isActive !== curr.isActive}>
+                {({ getFieldValue, setFieldsValue }) => {
+                  const currentRole = getFieldValue("role")
+                  const branchId = getFieldValue("branchId")
+                  const isActive = getFieldValue("isActive")
+                  
+                  return (
+                    <>
+                      <Form.Item name="isActive" valuePropName="checked">
+                        <Switch 
+                          checkedChildren="Hoạt động" 
+                          unCheckedChildren="Vô hiệu hóa"
+                          disabled={currentRole !== "ADMIN_SYSTEM" && !branchId}
+                          onChange={(checked) => {
+                            // Validation cho ADMIN_SYSTEM
+                            if (checked && currentRole === "ADMIN_SYSTEM" && !selectedUser?.isActive) {
+                              const activeAdmins = users.filter(u => u.role === "ADMIN_SYSTEM" && u.isActive && u.id !== selectedUser?.id)
+                              if (activeAdmins.length > 0) {
+                                message.error(`Chỉ được phép một Admin Hệ thống hoạt động`)
+                                setFieldsValue({ isActive: false })
+                              }
+                            }
+                          }}
+                        />
+                      </Form.Item>
+                      {currentRole !== "ADMIN_SYSTEM" && !branchId && (
+                        <div className="text-xs text-amber-600 mt-1">
+                          ⚠️ Phải gán chi nhánh trước khi kích hoạt tài khoản
+                        </div>
+                      )}
+                    </>
+                  )
+                }}
+              </Form.Item>
+            </div>
           </div>
         </Form>
       </Modal>
@@ -869,9 +860,9 @@ function UsersContent() {
               >
                 <Select placeholder="Chọn vai trò">
                   <Select.Option value="STAFF">Nhân viên</Select.Option>
-                  <Select.Option value="ADMIN_BRAND">Quản lý</Select.Option>
-                  <Select.Option value="ADMIN_SYSTEM">Admin hệ thống</Select.Option>
-                  <Select.Option value="LOGISTICS_STAFF">Nhân viên kho</Select.Option>
+                  <Select.Option value="ADMIN_BRAND">Quản lý chi nhánh</Select.Option>
+                  <Select.Option value="ADMIN_SYSTEM">Quản trị hệ thống</Select.Option>
+                  <Select.Option value="LOGISTICS_STAFF">Nhân viên logistics</Select.Option>
                 </Select>
               </Form.Item>
 
@@ -948,21 +939,6 @@ function UsersContent() {
                           unCheckedChildren="Vô hiệu hóa"
                           disabled={currentRole !== "ADMIN_SYSTEM" && !branchId}
                           onChange={(checked) => {
-                            // Chỉ xóa chi nhánh khi vô hiệu hóa và hiện tại đang active
-                            if (!checked && branchId && getFieldValue("isActive")) {
-                              modal.confirm({
-                                title: "Xác nhận vô hiệu hóa",
-                                content: "Vô hiệu hóa sẽ xóa chi nhánh đã gán. Bạn có chắc chắn?",
-                                okText: "Xác nhận",
-                                cancelText: "Hủy",
-                                onOk: () => {
-                                  setFieldsValue({ branchId: null })
-                                },
-                                onCancel: () => {
-                                  setFieldsValue({ isActive: true })
-                                },
-                              })
-                            }
                             // Validation cho ADMIN_SYSTEM
                             if (checked && currentRole === "ADMIN_SYSTEM") {
                               const activeAdmins = users.filter(u => u.role === "ADMIN_SYSTEM" && u.isActive)
