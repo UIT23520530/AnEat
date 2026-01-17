@@ -40,7 +40,7 @@ const adminNavItems: NavItem[] = [
   { href: "/admin/invoices", icon: FileText, label: "Quản lý hóa đơn" },
   { href: "/admin/templates", icon: FileCode, label: "Quản lý mẫu" },
   { href: "/admin/warehouses", icon: Warehouse, label: "Quản lý kho hàng" },
-  { href: "/admin/settings", icon: Settings, label: "Cài đặt" },
+  { href: "/admin/settings", icon: Settings, label: "Cài đặt chung" },
 ]
 
 export function AdminLayout({ children, title }: { children: React.ReactNode; title?: string }) {

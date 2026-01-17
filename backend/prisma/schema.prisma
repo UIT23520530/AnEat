@@ -619,3 +619,36 @@ model Shipment {
   @@map("Shipment")
 }
 
+// ✨ NEW: Banner model for landing page carousel
+model Banner {
+  id           String   @id @default(cuid())
+  imageUrl     String   // URL của ảnh banner
+  title        String?  // Tiêu đề hiển thị trên banner
+  description  String?  // Mô tả/phụ đề
+  badge        String?  // Badge/nhãn (e.g., "Mới", "Giá không đổi")
+  displayOrder Int      @default(0) // Thứ tự hiển thị (0, 1, 2...)
+  isActive     Boolean  @default(true) // Hiển thị hay ẩn
+  
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("Banner")
+}
+
+// ✨ NEW: SystemSetting model for general system configuration
+model SystemSetting {
+  id    String @id @default(cuid())
+  key   String @unique // Key định danh (e.g., "store_name", "hotline", "address")
+  value String // Giá trị cấu hình (text, số, hoặc JSON)
+  type  String @default("text") // Loại: "text", "number", "json", "boolean"
+  
+  category    String? // Phân loại: "general", "contact", "about", "business"
+  description String? // Mô tả cho admin
+  isPublic    Boolean @default(true) // Hiển thị công khai hay chỉ internal
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("SystemSetting")
+}
+

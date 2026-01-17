@@ -4,6 +4,7 @@ import { GeistMono } from 'geist/font/mono'
 import { Analytics } from '@vercel/analytics/next'
 import './globals.css'
 import { CartProvider } from '@/contexts/cart-context'
+import { Toaster } from '@/components/ui/toaster'
 import './fonts.css'
 
 // Import dev helper in development mode
@@ -38,6 +39,7 @@ export default function RootLayout({
         <CartProvider>
           {children}
         </CartProvider>
+        <Toaster />
         <Analytics />
       </body>
     </html>

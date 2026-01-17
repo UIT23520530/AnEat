@@ -78,6 +78,27 @@ import {
   getLogisticsStaff,
   cancelWarehouseRequest,
 } from '../controllers/admin/warehouse-request.controller';
+import {
+  getAllBanners,
+  getBannerById,
+  createBanner,
+  updateBanner,
+  deleteBanner,
+  reorderBanners,
+  toggleBannerStatus,
+} from '../controllers/admin/banner.controller';
+import {
+  getAllSettings,
+  getPublicSettings,
+  getSettingsByCategory,
+  getSettingsAsObject,
+  getSettingByKey,
+  upsertSetting,
+  updateSetting,
+  deleteSetting,
+  bulkUpsertSettings,
+  initializeDefaultSettings,
+} from '../controllers/admin/system-setting.controller';
 import { authenticate, isAdmin, validate } from '../middleware';
 
 const router = Router();
@@ -864,5 +885,198 @@ router.delete('/templates/:id', deleteTemplate);
  * @access  Admin only
  */
 router.post('/templates/:id/duplicate', duplicateTemplate);
+
+// ==================== BANNER ROUTES ====================
+
+/**
+ * @route   GET /api/v1/admin/banners
+ * @desc    Lấy danh sách tất cả banner
+ * @access  Admin only
+ * @query   isActive - Lọc theo trạng thái active (optional)
+ */
+router.get('/banners', getAllBanners);
+
+/**
+ * @route   GET /api/v1/admin/banners/:id
+ * @desc    Lấy chi tiết banner
+ * @access  Admin only
+ */
+router.get('/banners/:id', getBannerById);
+
+/**
+ * @route   POST /api/v1/admin/banners
+ * @desc    Tạo banner mới
+ * @access  Admin only
+ */
+router.post(
+  '/banners',
+  [
+    body('imageUrl').notEmpty().withMessage('URL ảnh không được bỏ trống'),
+    body('title').optional().isString(),
+    body('description').optional().isString(),
+    body('badge').optional().isString(),
+    body('displayOrder').optional().isInt(),
+    body('isActive').optional().isBoolean(),
+  ],
+  validate,
+  createBanner
+);
+
+/**
+ * @route   PUT /api/v1/admin/banners/:id
+ * @desc    Cập nhật banner
+ * @access  Admin only
+ */
+router.put(
+  '/banners/:id',
+  [
+    param('id').notEmpty().withMessage('ID banner không được bỏ trống'),
+    body('imageUrl').optional().isString(),
+    body('title').optional().isString(),
+    body('description').optional().isString(),
+    body('badge').optional().isString(),
+    body('displayOrder').optional().isInt(),
+    body('isActive').optional().isBoolean(),
+  ],
+  validate,
+  updateBanner
+);
+
+/**
+ * @route   DELETE /api/v1/admin/banners/:id
+ * @desc    Xóa banner
+ * @access  Admin only
+ */
+router.delete(
+  '/banners/:id',
+  [param('id').notEmpty().withMessage('ID banner không được bỏ trống')],
+  validate,
+  deleteBanner
+);
+
+/**
+ * @route   POST /api/v1/admin/banners/reorder
+ * @desc    Sắp xếp lại thứ tự banner
+ * @access  Admin only
+ */
+router.post(
+  '/banners/reorder',
+  [body('bannerIds').isArray().withMessage('bannerIds phải là mảng')],
+  validate,
+  reorderBanners
+);
+
+/**
+ * @route   PATCH /api/v1/admin/banners/:id/toggle
+ * @desc    Bật/tắt banner
+ * @access  Admin only
+ */
+router.patch(
+  '/banners/:id/toggle',
+  [param('id').notEmpty().withMessage('ID banner không được bỏ trống')],
+  validate,
+  toggleBannerStatus
+);
+
+// ==================== SYSTEM SETTINGS ROUTES ====================
+
+/**
+ * @route   GET /api/v1/admin/settings
+ * @desc    Lấy tất cả cài đặt hệ thống
+ * @access  Admin only
+ * @query   category - Lọc theo danh mục (optional)
+ * @query   isPublic - Lọc theo trạng thái public (optional)
+ */
+router.get('/settings', getAllSettings);
+
+/**
+ * @route   GET /api/v1/admin/settings/object
+ * @desc    Lấy cài đặt dưới dạng object key-value
+ * @access  Admin only
+ */
+router.get('/settings/object', getSettingsAsObject);
+
+/**
+ * @route   GET /api/v1/admin/settings/category/:category
+ * @desc    Lấy cài đặt theo danh mục
+ * @access  Admin only
+ */
+router.get('/settings/category/:category', getSettingsByCategory);
+
+/**
+ * @route   GET /api/v1/admin/settings/:key
+ * @desc    Lấy cài đặt theo key
+ * @access  Admin only
+ */
+router.get('/settings/:key', getSettingByKey);
+
+/**
+ * @route   POST /api/v1/admin/settings
+ * @desc    Tạo hoặc cập nhật cài đặt (upsert)
+ * @access  Admin only
+ */
+router.post(
+  '/settings',
+  [
+    body('key').notEmpty().withMessage('Key không được bỏ trống'),
+    body('value').notEmpty().withMessage('Value không được bỏ trống'),
+    body('type').optional().isString(),
+    body('category').optional().isString(),
+    body('description').optional().isString(),
+    body('isPublic').optional().isBoolean(),
+  ],
+  validate,
+  upsertSetting
+);
+
+/**
+ * @route   PUT /api/v1/admin/settings/:key
+ * @desc    Cập nhật cài đặt theo key
+ * @access  Admin only
+ */
+router.put(
+  '/settings/:key',
+  [
+    param('key').notEmpty().withMessage('Key không được bỏ trống'),
+    body('value').optional().isString(),
+    body('type').optional().isString(),
+    body('category').optional().isString(),
+    body('description').optional().isString(),
+    body('isPublic').optional().isBoolean(),
+  ],
+  validate,
+  updateSetting
+);
+
+/**
+ * @route   DELETE /api/v1/admin/settings/:key
+ * @desc    Xóa cài đặt theo key
+ * @access  Admin only
+ */
+router.delete(
+  '/settings/:key',
+  [param('key').notEmpty().withMessage('Key không được bỏ trống')],
+  validate,
+  deleteSetting
+);
+
+/**
+ * @route   POST /api/v1/admin/settings/bulk
+ * @desc    Cập nhật nhiều cài đặt cùng lúc
+ * @access  Admin only
+ */
+router.post(
+  '/settings/bulk',
+  [body('settings').isArray().withMessage('settings phải là mảng')],
+  validate,
+  bulkUpsertSettings
+);
+
+/**
+ * @route   POST /api/v1/admin/settings/initialize
+ * @desc    Khởi tạo cài đặt mặc định
+ * @access  Admin only
+ */
+router.post('/settings/initialize', initializeDefaultSettings);
 
 export default router;

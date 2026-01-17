@@ -5,41 +5,91 @@ import { Button } from "@/components/ui/button";
 import Image from "next/image";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
-
-const banners = [
-  {
-    src: "/assets/fried-chicken-combo-meal.jpg",
-    alt: "Combo Gà Rán",
-    title: "NỞ CÀNG BỤNG VUI BẤT MOOD",
-    description: "Combo 79.000đ",
-    badge: "Giá không đổi",
-  },
-  {
-    src: "/assets/cheese-burger.png",
-    alt: "Cheese Burger",
-    title: "BURGER PHÔ MAI",
-    description: "Thử ngay burger phô mai mới",
-    badge: "Mới",
-  },
-  {
-    src: "/assets/classic-carbonara.png",
-    alt: "Pasta Carbonara",
-    title: "MỲ Ý THƯỢNG HẠNG",
-    description: "Thưởng thức hương vị Ý đích thực",
-    badge: "Best Seller",
-  },
-];
+import { bannerService, type Banner } from "@/services/banner.service";
 
 export function HeroSection() {
   const [currentSlide, setCurrentSlide] = useState(0);
+  const [banners, setBanners] = useState<Banner[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Fetch banners from API
+  useEffect(() => {
+    const fetchBanners = async () => {
+      try {
+        const response = await bannerService.getActiveBanners();
+        if (response.data && response.data.length > 0) {
+          setBanners(response.data);
+        } else {
+          // Fallback to default banners if no data from API
+          setBanners([
+            {
+              id: "1",
+              imageUrl: "/assets/fried-chicken-combo-meal.jpg",
+              title: "NỞ CÀNG BỤNG VUI BẤT MOOD",
+              description: "Combo 79.000đ",
+              badge: "Giá không đổi",
+              displayOrder: 0,
+              isActive: true,
+              createdAt: "",
+              updatedAt: "",
+            },
+            {
+              id: "2",
+              imageUrl: "/assets/cheese-burger.png",
+              title: "BURGER PHÔ MAI",
+              description: "Thử ngay burger phô mai mới",
+              badge: "Mới",
+              displayOrder: 1,
+              isActive: true,
+              createdAt: "",
+              updatedAt: "",
+            },
+            {
+              id: "3",
+              imageUrl: "/assets/classic-carbonara.png",
+              title: "MỲ Ý THƯỢNG HẠNG",
+              description: "Thưởng thức hương vị Ý đích thực",
+              badge: "Best Seller",
+              displayOrder: 2,
+              isActive: true,
+              createdAt: "",
+              updatedAt: "",
+            },
+          ]);
+        }
+      } catch (error) {
+        console.error("Error fetching banners:", error);
+        // Use fallback banners on error
+        setBanners([
+          {
+            id: "1",
+            imageUrl: "/assets/fried-chicken-combo-meal.jpg",
+            title: "NỞ CÀNG BỤNG VUI BẤT MOOD",
+            description: "Combo 79.000đ",
+            badge: "Giá không đổi",
+            displayOrder: 0,
+            isActive: true,
+            createdAt: "",
+            updatedAt: "",
+          },
+        ]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchBanners();
+  }, []);
 
   useEffect(() => {
+    if (banners.length === 0) return;
+
     const timer = setInterval(() => {
       setCurrentSlide((prev) => (prev + 1) % banners.length);
     }, 5000);
 
     return () => clearInterval(timer);
-  }, []);
+  }, [banners.length]);
 
   const goToSlide = (index: number) => {
     setCurrentSlide(index);
@@ -53,6 +103,20 @@ export function HeroSection() {
     setCurrentSlide((prev) => (prev + 1) % banners.length);
   };
 
+  if (loading) {
+    return (
+      <section className="w-full bg-gradient-to-b from-orange-50 to-white py-8 md:py-12">
+        <div className="container mx-auto px-4 max-w-7xl">
+          <div className="relative h-[350px] md:h-[600px] w-full rounded-3xl overflow-hidden shadow-2xl bg-gray-200 animate-pulse" />
+        </div>
+      </section>
+    );
+  }
+
+  if (banners.length === 0) {
+    return null;
+  }
+
   return (
     <section className="w-full bg-gradient-to-b from-orange-50 to-white py-8 md:py-12">
       <div className="container mx-auto px-4 max-w-7xl">
@@ -61,15 +125,15 @@ export function HeroSection() {
           <div className="relative h-[350px] md:h-[600px] w-full rounded-3xl overflow-hidden shadow-2xl">
             {banners.map((banner, index) => (
               <div
-                key={index}
+                key={banner.id}
                 className={cn(
                   "absolute inset-0 transition-opacity duration-700",
                   currentSlide === index ? "opacity-100 z-10" : "opacity-0 z-0"
                 )}
               >
                 <Image
-                  src={banner.src}
-                  alt={banner.alt}
+                  src={banner.imageUrl}
+                  alt={banner.title || `Banner ${index + 1}`}
                   fill
                   className="object-cover"
                   priority={index === 0}
