@@ -605,4 +605,73 @@ router.post(
   printAdminBill
 );
 
+// ==================== TEMPLATE ROUTES ====================
+
+import {
+  getAllTemplates,
+  getTemplateById,
+  createTemplate,
+  updateTemplate,
+  deleteTemplate,
+  duplicateTemplate,
+  getDefaultTemplate,
+  getTemplateStats,
+} from '../controllers/admin/template.controller';
+
+/**
+ * @route   GET /api/v1/admin/templates/stats
+ * @desc    Lấy thống kê templates
+ * @access  Admin only
+ */
+router.get('/templates/stats', getTemplateStats);
+
+/**
+ * @route   GET /api/v1/admin/templates
+ * @desc    Lấy danh sách tất cả templates
+ * @access  Admin only
+ */
+router.get('/templates', getAllTemplates);
+
+/**
+ * @route   GET /api/v1/admin/templates/default/:category
+ * @desc    Lấy template mặc định theo category
+ * @access  Admin only
+ */
+router.get('/templates/default/:category', getDefaultTemplate);
+
+/**
+ * @route   GET /api/v1/admin/templates/:id
+ * @desc    Lấy chi tiết template
+ * @access  Admin only
+ */
+router.get('/templates/:id', getTemplateById);
+
+/**
+ * @route   POST /api/v1/admin/templates
+ * @desc    Tạo template mới
+ * @access  Admin only
+ */
+router.post('/templates', createTemplate);
+
+/**
+ * @route   PUT /api/v1/admin/templates/:id
+ * @desc    Cập nhật template
+ * @access  Admin only
+ */
+router.put('/templates/:id', updateTemplate);
+
+/**
+ * @route   DELETE /api/v1/admin/templates/:id
+ * @desc    Xóa template
+ * @access  Admin only
+ */
+router.delete('/templates/:id', deleteTemplate);
+
+/**
+ * @route   POST /api/v1/admin/templates/:id/duplicate
+ * @desc    Sao chép template
+ * @access  Admin only
+ */
+router.post('/templates/:id/duplicate', duplicateTemplate);
+
 export default router;

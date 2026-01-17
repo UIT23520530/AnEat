@@ -45,6 +45,7 @@ export interface UpdateTemplateInput {
   category?: TemplateCategory;
   status?: TemplateStatus;
   isDefault?: boolean;
+  branchId?: string | null;
 }
 
 export class TemplateService {
@@ -60,12 +61,17 @@ export class TemplateService {
     // Build WHERE clause
     const where: any = { deletedAt: null };
 
+    // Build AND conditions array
+    const andConditions: any[] = [];
+
     if (filters.search) {
-      where.OR = [
-        { name: { contains: filters.search, mode: "insensitive" } },
-        { type: { contains: filters.search, mode: "insensitive" } },
-        { description: { contains: filters.search, mode: "insensitive" } },
-      ];
+      andConditions.push({
+        OR: [
+          { name: { contains: filters.search, mode: "insensitive" } },
+          { type: { contains: filters.search, mode: "insensitive" } },
+          { description: { contains: filters.search, mode: "insensitive" } },
+        ]
+      });
     }
 
     if (filters.category) {
@@ -77,9 +83,28 @@ export class TemplateService {
     }
 
     if (filters.branchId !== undefined) {
-      // null means company-wide, specific ID means branch-specific
-      where.branchId = filters.branchId || null;
+      if (filters.branchId) {
+        // When filtering by specific branch, include both:
+        // 1. Templates for that branch
+        // 2. Company-wide templates (branchId = null)
+        andConditions.push({
+          OR: [
+            { branchId: filters.branchId },
+            { branchId: null }
+          ]
+        });
+      } else {
+        // When branchId is explicitly null/empty, show only company-wide
+        where.branchId = null;
+      }
     }
+
+    // Add AND conditions if any
+    if (andConditions.length > 0) {
+      where.AND = andConditions;
+    }
+
+    console.log("[DEBUG] Template query WHERE:", JSON.stringify(where, null, 2));
 
     if (filters.isDefault !== undefined) {
       where.isDefault = filters.isDefault;
@@ -96,19 +121,20 @@ export class TemplateService {
         skip: (page - 1) * limit,
         take: limit,
         orderBy: { [sortField]: sortOrder },
-        select: {
-          id: true,
-          name: true,
-          type: true,
-          description: true,
-          content: true,
-          category: true,
-          status: true,
-          isDefault: true,
-          branchId: true,
-          createdBy: true,
-          createdAt: true,
-          updatedAt: true,
+        include: {
+          branch: {
+            select: {
+              id: true,
+              name: true,
+              code: true,
+            },
+          },
+          creator: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
         },
       }),
       prisma.template.count({ where }),
@@ -134,19 +160,20 @@ export class TemplateService {
         id,
         deletedAt: null,
       },
-      select: {
-        id: true,
-        name: true,
-        type: true,
-        description: true,
-        content: true,
-        category: true,
-        status: true,
-        isDefault: true,
-        branchId: true,
-        createdBy: true,
-        createdAt: true,
-        updatedAt: true,
+      include: {
+        branch: {
+          select: {
+            id: true,
+            name: true,
+            code: true,
+          },
+        },
+        creator: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
       },
     });
 
@@ -183,19 +210,20 @@ export class TemplateService {
         branchId: input.branchId,
         createdBy: input.createdBy,
       },
-      select: {
-        id: true,
-        name: true,
-        type: true,
-        description: true,
-        content: true,
-        category: true,
-        status: true,
-        isDefault: true,
-        branchId: true,
-        createdBy: true,
-        createdAt: true,
-        updatedAt: true,
+      include: {
+        branch: {
+          select: {
+            id: true,
+            name: true,
+            code: true,
+          },
+        },
+        creator: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
       },
     });
 
@@ -236,19 +264,20 @@ export class TemplateService {
     const template = await prisma.template.update({
       where: { id },
       data: input,
-      select: {
-        id: true,
-        name: true,
-        type: true,
-        description: true,
-        content: true,
-        category: true,
-        status: true,
-        isDefault: true,
-        branchId: true,
-        createdBy: true,
-        createdAt: true,
-        updatedAt: true,
+      include: {
+        branch: {
+          select: {
+            id: true,
+            name: true,
+            code: true,
+          },
+        },
+        creator: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
       },
     });
 
