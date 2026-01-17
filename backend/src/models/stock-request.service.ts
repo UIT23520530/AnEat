@@ -5,6 +5,7 @@ interface StockRequestQueryParams {
   page: number;
   limit: number;
   status?: StockRequestStatus;
+  type?: StockRequestType;
   productId?: string;
   branchId?: string;
   search?: string;
@@ -56,13 +57,17 @@ export class StockRequestService {
 
   // Get all stock requests
   static async findAll(params: StockRequestQueryParams) {
-    const { page, limit, status, productId, branchId, search } = params;
+    const { page, limit, status, type, productId, branchId, search } = params;
     const skip = (page - 1) * limit;
 
     const where: Prisma.StockRequestWhereInput = {};
 
     if (status) {
       where.status = status;
+    }
+
+    if (type) {
+      where.type = type;
     }
 
     if (productId) {
@@ -162,6 +167,18 @@ export class StockRequestService {
             id: true,
             name: true,
             email: true,
+          },
+        },
+        shipments: {
+          include: {
+            assignedTo: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                phone: true,
+              },
+            },
           },
         },
         transactions: {

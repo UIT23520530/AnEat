@@ -68,6 +68,16 @@ import {
   printBill as printAdminBill,
   getBillHistory as getAdminBillHistory,
 } from '../controllers/admin/bill.controller';
+import {
+  getWarehouseRequests,
+  getWarehouseRequestById,
+  approveWarehouseRequest,
+  rejectWarehouseRequest,
+  assignToLogistics,
+  getWarehouseStatistics,
+  getLogisticsStaff,
+  cancelWarehouseRequest,
+} from '../controllers/admin/warehouse-request.controller';
 import { authenticate, isAdmin, validate } from '../middleware';
 
 const router = Router();
@@ -690,6 +700,100 @@ router.post(
   param('id').notEmpty().withMessage('ID hóa đơn không được bỏ trống'),
   validate,
   printAdminBill
+);
+// ==================== WAREHOUSE REQUESTS ROUTES ====================
+
+/**
+ * @route   GET /api/v1/admin/warehouse-requests/statistics
+ * @desc    Lấy thống kê warehouse requests
+ * @access  Admin only
+ */
+router.get('/warehouse-requests/statistics', getWarehouseStatistics);
+
+/**
+ * @route   GET /api/v1/admin/warehouse-requests/logistics-staff
+ * @desc    Lấy danh sách logistics staff
+ * @access  Admin only
+ */
+router.get('/warehouse-requests/logistics-staff', getLogisticsStaff);
+
+/**
+ * @route   GET /api/v1/admin/warehouse-requests
+ * @desc    Lấy danh sách tất cả warehouse requests
+ * @access  Admin only
+ */
+router.get('/warehouse-requests', getWarehouseRequests);
+
+/**
+ * @route   GET /api/v1/admin/warehouse-requests/:id
+ * @desc    Lấy chi tiết warehouse request
+ * @access  Admin only
+ */
+router.get(
+  '/warehouse-requests/:id',
+  param('id').notEmpty().withMessage('ID warehouse request không được bỏ trống'),
+  validate,
+  getWarehouseRequestById
+);
+
+/**
+ * @route   PUT /api/v1/admin/warehouse-requests/:id/approve
+ * @desc    Duyệt warehouse request
+ * @access  Admin only
+ */
+router.put(
+  '/warehouse-requests/:id/approve',
+  [
+    param('id').notEmpty().withMessage('ID warehouse request không được bỏ trống'),
+    body('approvedQuantity').optional().isInt({ min: 1 }).withMessage('Số lượng duyệt phải là số nguyên dương'),
+  ],
+  validate,
+  approveWarehouseRequest
+);
+
+/**
+ * @route   PUT /api/v1/admin/warehouse-requests/:id/reject
+ * @desc    Từ chối warehouse request
+ * @access  Admin only
+ */
+router.put(
+  '/warehouse-requests/:id/reject',
+  [
+    param('id').notEmpty().withMessage('ID warehouse request không được bỏ trống'),
+    body('rejectedReason').notEmpty().withMessage('Lý do từ chối là bắt buộc'),
+  ],
+  validate,
+  rejectWarehouseRequest
+);
+
+/**
+ * @route   POST /api/v1/admin/warehouse-requests/:id/assign-logistics
+ * @desc    Giao warehouse request cho logistics staff
+ * @access  Admin only
+ */
+router.post(
+  '/warehouse-requests/:id/assign-logistics',
+  [
+    param('id').notEmpty().withMessage('ID warehouse request không được bỏ trống'),
+    body('logisticsStaffId').notEmpty().withMessage('ID nhân viên logistics là bắt buộc'),
+  ],
+  validate,
+  assignToLogistics
+);
+
+/**
+ * @route   PUT /api/v1/admin/warehouse-requests/:id/cancel
+ * @desc    Hủy warehouse request
+ * @access  Admin only
+ */
+router.put(
+  '/warehouse-requests/:id/cancel',
+  [
+    param('id').notEmpty().withMessage('ID warehouse request không được bỏ trống'),
+    body('cancelReason').optional().isString().withMessage('Lý do hủy phải là chuỗi'),
+  ],
+  validate,
+  cancelWarehouseRequest
 );
 
 // ==================== TEMPLATE ROUTES ====================

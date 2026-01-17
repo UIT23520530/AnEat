@@ -17,6 +17,7 @@ import {
   Search,
   FolderOpen,
   UserCheck,
+  Warehouse,
 } from "lucide-react"
 import { Sidebar, NavItem } from "./sidebar"
 import { useState } from "react"
@@ -39,6 +40,7 @@ const adminNavItems: NavItem[] = [
   { href: "/admin/promotions", icon: Ticket, label: "Quản lý khuyến mãi" },
   { href: "/admin/invoices", icon: FileText, label: "Quản lý hóa đơn" },
   { href: "/admin/templates", icon: FileCode, label: "Quản lý mẫu" },
+  { href: "/admin/warehouses", icon: Warehouse, label: "Quản lý kho hàng" },
   { href: "/admin/logs", icon: FileClock, label: "Log" },
   { href: "/admin/settings", icon: Settings, label: "Cài đặt" },
 ]
