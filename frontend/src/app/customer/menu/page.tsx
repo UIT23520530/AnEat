@@ -454,8 +454,8 @@ export default function MenuPage() {
     // Tạo slug từ input tìm kiếm (chữ thường, không dấu, có gạch nối)
     const searchSlug = createSlugFromName(searchQuery.trim());
     
-    // So sánh với slug của sản phẩm
-    return product.slug.includes(searchSlug);
+    // So sánh với slug của sản phẩm, kiểm tra slug tồn tại
+    return typeof product.slug === "string" && product.slug.includes(searchSlug);
   });
 
   return (
