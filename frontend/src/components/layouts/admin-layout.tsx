@@ -10,7 +10,6 @@ import {
   Settings,
   FileCode,
   BarChart,
-  FileClock,
   Bell,
   MessageSquare,
   Gift,
@@ -41,7 +40,6 @@ const adminNavItems: NavItem[] = [
   { href: "/admin/invoices", icon: FileText, label: "Quản lý hóa đơn" },
   { href: "/admin/templates", icon: FileCode, label: "Quản lý mẫu" },
   { href: "/admin/warehouses", icon: Warehouse, label: "Quản lý kho hàng" },
-  { href: "/admin/logs", icon: FileClock, label: "Log" },
   { href: "/admin/settings", icon: Settings, label: "Cài đặt" },
 ]
 
