@@ -24,8 +24,7 @@ export function middleware(request: NextRequest) {
     
     if (!userCookie) {
       // Redirect to login if not authenticated
-      console.log('[Middleware] ❌ No user cookie found, redirecting to login')
-      return NextResponse.redirect(new URL("/login", request.url))
+      return NextResponse.redirect(new URL("/auth/login", request.url))
     }
 
     try {
@@ -43,11 +42,8 @@ export function middleware(request: NextRequest) {
         console.log('[Middleware] ❌ User role not allowed, redirecting to unauthorized')
         return NextResponse.redirect(new URL("/unauthorized", request.url))
       }
-      
-      console.log('[Middleware] ✅ Access granted')
-    } catch (error) {
-      console.error('[Middleware] ❌ Error parsing user cookie:', error)
-      return NextResponse.redirect(new URL("/login", request.url))
+    } catch {
+      return NextResponse.redirect(new URL("/auth/login", request.url))
     }
   }
 

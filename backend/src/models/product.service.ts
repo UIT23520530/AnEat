@@ -121,6 +121,20 @@ export class ProductService {
               name: true,
             },
           },
+          options: {
+            where: { isAvailable: true },
+            orderBy: { order: 'asc' },
+            select: {
+              id: true,
+              name: true,
+              description: true,
+              price: true,
+              type: true,
+              isRequired: true,
+              isAvailable: true,
+              order: true,
+            },
+          },
           createdAt: true,
           updatedAt: true,
         },
@@ -162,6 +176,20 @@ export class ProductService {
             id: true,
             code: true,
             name: true,
+          },
+        },
+        options: {
+          where: { isAvailable: true },
+          orderBy: { order: 'asc' },
+          select: {
+            id: true,
+            name: true,
+            description: true,
+            price: true,
+            type: true,
+            isRequired: true,
+            isAvailable: true,
+            order: true,
           },
         },
         createdAt: true,
@@ -342,6 +370,20 @@ export class ProductService {
               name: true,
             },
           },
+          options: {
+            where: { isAvailable: true },
+            orderBy: { order: 'asc' },
+            select: {
+              id: true,
+              name: true,
+              description: true,
+              price: true,
+              type: true,
+              isRequired: true,
+              isAvailable: true,
+              order: true,
+            },
+          },
         },
       }),
       prisma.product.count({ where }),
@@ -415,6 +457,20 @@ export class ProductService {
             name: true,
           },
         },
+        options: {
+          where: { isAvailable: true },
+          orderBy: { order: 'asc' },
+          select: {
+            id: true,
+            name: true,
+            description: true,
+            price: true,
+            type: true,
+            isRequired: true,
+            isAvailable: true,
+            order: true,
+          },
+        },
         createdAt: true,
         updatedAt: true,
       },
@@ -424,9 +480,11 @@ export class ProductService {
       return null;
     }
 
-    // Return DTO with options structure
-    // TODO: When options field is added to schema, fetch from database
-    // For now, return with empty options array
+    // Group options by type
+    const sizes = product.options.filter(opt => opt.type === 'SIZE');
+    const sauces = product.options.filter(opt => opt.type === 'SAUCE');
+    const types = product.options.filter(opt => opt.type === 'OTHER');
+
     return {
       id: product.id,
       code: product.code,
@@ -447,12 +505,23 @@ export class ProductService {
         code: product.branch.code,
         name: product.branch.name,
       },
-      // Options structure for frontend
-      // When schema is updated, populate from database
+      // Options grouped by type
       options: {
-        sizes: [], // e.g., [{ id: '1', name: 'Upsize', priceAdjustment: 5000 }]
-        types: [], // e.g., [{ id: '1', name: 'Gà giòn', priceAdjustment: 0 }]
-        sauces: [], // e.g., [{ id: '1', name: 'Sốt BBQ', priceAdjustment: 2000 }]
+        sizes: sizes.map(opt => ({
+          id: opt.id,
+          name: opt.name,
+          priceAdjustment: opt.price / 100, // Convert from cents to VND
+        })),
+        types: types.map(opt => ({
+          id: opt.id,
+          name: opt.name,
+          priceAdjustment: opt.price / 100,
+        })),
+        sauces: sauces.map(opt => ({
+          id: opt.id,
+          name: opt.name,
+          priceAdjustment: opt.price / 100,
+        })),
       },
       createdAt: product.createdAt,
       updatedAt: product.updatedAt,

@@ -1,13 +1,55 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { PublicLayout } from "@/components/layouts/public-layout";
 import Image from "next/image";
 import { PromotionCard } from "@/components/promotion/promotion-card";
 import { useToast } from "@/hooks/use-toast";
 import { useCart } from "@/contexts/cart-context";
-import { Tag } from "lucide-react";
+import { Tag, Loader2 } from "lucide-react";
+import apiClient from "@/lib/api-client";
 
-const promotions = [
+interface PromotionResponse {
+  id: string;
+  code: string;
+  type: "PERCENTAGE" | "FIXED";
+  value: number; // Giá trị giảm giá (phần trăm hoặc số tiền cố định - tính theo cent)
+  maxUses: number | null;
+  usedCount: number;
+  isActive: boolean;
+  expiryDate: string | null;
+  minOrderAmount: number | null; // Số tiền tối thiểu (tính theo cent)
+  applicableProducts: string | null; // JSON array của product IDs
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface PromotionsResponse {
+  success: boolean;
+  code: number;
+  message: string;
+  data: PromotionResponse[];
+  meta: {
+    currentPage: number;
+    totalPages: number;
+    limit: number;
+    totalItems: number;
+  };
+}
+
+interface Promotion {
+  id: string;
+  title: string;
+  description: string;
+  image: string;
+  discount: string;
+  validFrom: string;
+  validTo: string;
+  isActive: boolean;
+}
+
+// Fallback promotions nếu API fail
+const fallbackPromotions: Promotion[] = [
   {
     id: "1",
     title: "Mỳ Ý Sốt Cay - Chiêu Mọi Ý",
@@ -28,55 +70,118 @@ const promotions = [
     validTo: "31/07/2025",
     isActive: true,
   },
-  {
-    id: "3",
-    title: "Combo Sinh Nhật Thả Ga",
-    description: "Combo đặc biệt dành cho bữa tiệc sinh nhật chỉ 329k",
-    image: "/promotions/combo-sinh-nhat.jpg",
-    discount: "329,000đ",
-    validFrom: "01/06/2025",
-    validTo: "31/08/2025",
-    isActive: true,
-  },
-  {
-    id: "4",
-    title: "Đặt Qua App Nhận Quà Liền Tay",
-    description: "Giảm ngay 20% khi đặt hàng qua ứng dụng AnEat",
-    image: "/promotions/app-promotion.jpg",
-    discount: "Giảm 20%",
-    validFrom: "01/05/2025",
-    validTo: "31/12/2025",
-    isActive: true,
-  },
-  {
-    id: "5",
-    title: "Combo Gà Rán Giá Sốc",
-    description: "2 miếng gà + khoai tây + nước ngọt chỉ 79,000đ",
-    image: "/promotions/combo-ga-ran.jpg",
-    discount: "79,000đ",
-    validFrom: "10/06/2025",
-    validTo: "30/06/2025",
-    isActive: true,
-  },
-  {
-    id: "6",
-    title: "Burger Phô Mai Đặc Biệt",
-    description: "Mua 1 tặng 1 cho burger phô mai mỗi thứ 3",
-    image: "/promotions/burger-deal.jpg",
-    discount: "Mua 1 tặng 1",
-    validFrom: "01/06/2025",
-    validTo: "31/12/2025",
-    isActive: true,
-  },
 ];
+
+// Helper function để format date
+const formatDate = (dateString: string | null): string => {
+  if (!dateString) return "";
+  const date = new Date(dateString);
+  return date.toLocaleDateString("vi-VN", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+};
+
+// Helper function để format discount string
+const formatDiscount = (type: string, value: number): string => {
+  if (type === "PERCENTAGE") {
+    return `Giảm ${value}%`;
+  } else {
+    // FIXED - value là số tiền tính theo cent
+    const amount = value / 100; // Convert từ cent sang VND
+    return `${amount.toLocaleString("vi-VN")}đ`;
+  }
+};
+
+// Map API response sang Promotion format
+const mapToPromotion = (apiPromotion: PromotionResponse): Promotion => {
+  // Tạo title từ code (có thể format lại cho đẹp)
+  const title = apiPromotion.code
+    .split("-")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(" ");
+
+  // Tạo description dựa trên type và value
+  let description = "";
+  if (apiPromotion.type === "PERCENTAGE") {
+    description = `Giảm ${apiPromotion.value}% cho đơn hàng của bạn`;
+  } else {
+    const amount = apiPromotion.value / 100;
+    description = `Giảm ${amount.toLocaleString("vi-VN")}đ cho đơn hàng của bạn`;
+  }
+
+  if (apiPromotion.minOrderAmount) {
+    const minAmount = apiPromotion.minOrderAmount / 100;
+    description += ` (áp dụng cho đơn từ ${minAmount.toLocaleString("vi-VN")}đ)`;
+  }
+
+  // Format dates
+  const validFrom = formatDate(apiPromotion.createdAt);
+  const validTo = apiPromotion.expiryDate
+    ? formatDate(apiPromotion.expiryDate)
+    : "Không giới hạn";
+
+  return {
+    id: apiPromotion.id,
+    title: title,
+    description: description,
+    image: "/promotions/default-promotion.jpg", // Placeholder image
+    discount: formatDiscount(apiPromotion.type, apiPromotion.value),
+    validFrom: validFrom,
+    validTo: validTo,
+    isActive: apiPromotion.isActive,
+  };
+};
 
 export default function PromotionsPage() {
   const { toast } = useToast();
   const { addToCart } = useCart();
+  const [promotions, setPromotions] = useState<Promotion[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleOrderClick = (promotion: typeof promotions[0]) => {
-    // Parse giá từ discount string (ví dụ: "40,000đ/phần" -> 40000)
+  // Fetch promotions from API
+  useEffect(() => {
+    const fetchPromotions = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        const response = await apiClient.get<PromotionsResponse>("/home/promotions", {
+          params: {
+            page: 1,
+            limit: 50,
+          },
+        });
+
+        if (response.data.success && response.data.data) {
+          const mappedPromotions = response.data.data.map(mapToPromotion);
+          setPromotions(mappedPromotions);
+        } else {
+          setError("Không thể tải khuyến mãi");
+          setPromotions(fallbackPromotions);
+        }
+      } catch (err: any) {
+        console.error("Error fetching promotions:", err);
+        setError("Đã xảy ra lỗi khi tải khuyến mãi");
+        // Fallback to mock data
+        setPromotions(fallbackPromotions);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPromotions();
+  }, []);
+
+  const handleOrderClick = (promotion: Promotion) => {
+    // Parse giá từ discount string (ví dụ: "40,000đ" -> 40000, "Giảm 20%" -> 0)
     const parsePrice = (discount: string): number => {
+      // Nếu là phần trăm thì không có giá cụ thể
+      if (discount.includes("%")) {
+        return 0; // Hoặc có thể tính giá dựa trên logic khác
+      }
       // Loại bỏ các ký tự không phải số
       const numbers = discount.replace(/[^\d]/g, "");
       return numbers ? parseInt(numbers, 10) : 0;
@@ -136,12 +241,26 @@ export default function PromotionsPage() {
               </h2>
             </div>
             <p className="text-gray-600 text-sm md:text-base max-w-2xl mx-auto">
-              {activePromotions.length} khuyến mãi đang áp dụng
+              {loading ? "Đang tải..." : `${activePromotions.length} khuyến mãi đang áp dụng`}
             </p>
           </div>
 
+          {/* Loading State */}
+          {loading && (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-orange-500" />
+            </div>
+          )}
+
+          {/* Error State */}
+          {error && !loading && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+              <p className="text-red-600 text-sm">{error}</p>
+            </div>
+          )}
+
           {/* Promotions Grid */}
-          {activePromotions.length > 0 ? (
+          {!loading && activePromotions.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {activePromotions.map((promotion) => (
                 <PromotionCard
@@ -151,7 +270,7 @@ export default function PromotionsPage() {
                 />
               ))}
             </div>
-          ) : (
+          ) : !loading && activePromotions.length === 0 ? (
             <div className="text-center py-16 bg-white rounded-xl shadow-sm">
               <div className="flex flex-col items-center gap-4">
                 <div className="w-24 h-24 rounded-full bg-gray-100 flex items-center justify-center">
@@ -167,7 +286,7 @@ export default function PromotionsPage() {
                 </div>
               </div>
             </div>
-          )}
+          ) : null}
         </div>
       </div>
     </PublicLayout>

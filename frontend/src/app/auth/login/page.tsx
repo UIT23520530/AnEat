@@ -35,7 +35,7 @@ export default function LoginPage() {
       })
 
       if (response.data.status === "success" && response.data.data) {
-        const { user, token } = response.data.data
+        const { user, token, customer } = response.data.data
 
         // Save token to localStorage
         localStorage.setItem("token", token)
@@ -49,8 +49,14 @@ export default function LoginPage() {
           role: user.role as UserRole,
           branchId: user.branchId,
           branchName: user.branchName,
+          avatar: user.avatar,
         }
         setCurrentUser(userInfo)
+
+        // Save customer info if available (for CUSTOMER role)
+        if (customer && user.role === "CUSTOMER") {
+          localStorage.setItem("customerInfo", JSON.stringify(customer))
+        }
 
         // Redirect based on role
         router.push(ROLE_ROUTES[user.role as UserRole])

@@ -11,6 +11,9 @@ import { Label } from "@/components/ui/label"
 import Link from "next/link"
 import { User, Mail, Phone, Lock } from "lucide-react"
 import apiClient from "@/lib/api-client"
+import { setCurrentUser } from "@/lib/auth"
+import { ROLE_ROUTES } from "@/constants/roles"
+import type { User as UserType, UserRole } from "@/types"
 
 export default function RegisterPage() {
   const router = useRouter()
@@ -88,9 +91,28 @@ export default function RegisterPage() {
         password: formData.password,
       })
 
-      if (response.data.status === "success") {
-        alert("Đăng ký thành công! Vui lòng đăng nhập.")
-        router.push("/login")
+      if (response.data.status === "success" && response.data.data) {
+        const { user, token } = response.data.data
+
+        // Save token to localStorage
+        localStorage.setItem("token", token)
+
+        // Save user info
+        const userInfo: UserType = {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          phone: user.phone,
+          role: user.role as UserRole,
+          branchId: user.branchId,
+          branchName: user.branchName,
+          avatar: user.avatar,
+        }
+        setCurrentUser(userInfo)
+
+        // For CUSTOMER role, customer record is created automatically
+        // Redirect to home page for customer
+        router.push(ROLE_ROUTES[user.role as UserRole] || "/")
       }
     } catch (err: any) {
       const errorMessage = err.response?.data?.message || "Đăng ký thất bại. Vui lòng thử lại."

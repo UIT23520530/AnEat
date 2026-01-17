@@ -1,12 +1,13 @@
 import { Router } from 'express';
 import { query, body, param } from 'express-validator';
 import { validate } from '../middleware/validation.middleware';
-import { authenticate } from '../middleware/auth.middleware';
+import { optionalAuthenticate } from '../middleware/auth.middleware';
 import {
   getBanners,
   getFeaturedProducts,
   getPublicCategories,
   getPublicProducts,
+  getProductBySlug,
   getPublicPromotions,
   getPublicOrders,
   createTempOrder,
@@ -68,6 +69,22 @@ router.get(
 );
 
 /**
+ * @route   GET /api/v1/home/products/slug/:slug
+ * @desc    Get product by slug (requires branchId)
+ * @access  Public
+ * @query   branchId (required)
+ */
+router.get(
+  '/products/slug/:slug',
+  [
+    param('slug').notEmpty().withMessage('Slug is required'),
+    query('branchId').notEmpty().withMessage('Branch ID is required'),
+  ],
+  validate,
+  getProductBySlug
+);
+
+/**
  * @route   GET /api/v1/home/promotions
  * @desc    Get active promotions
  * @access  Public
@@ -91,7 +108,7 @@ router.get(
  */
 router.get(
   '/orders',
-  // authenticate is optional - check in controller
+  optionalAuthenticate, // Optional auth - if token present, set req.user
   [
     query('orderNumber')
       .optional()

@@ -7,6 +7,137 @@
 	},
 	"item": [
 		{
+			"name": "Xác thực",
+			"item": [
+				{
+					"name": "Đăng ký khách hàng",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"customer@example.com\",\n  \"password\": \"password123\",\n  \"name\": \"Nguyễn Văn A\",\n  \"phone\": \"0901234567\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/auth/register",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"auth",
+								"register"
+							]
+						},
+						"description": "Đăng ký tài khoản khách hàng mới. Tự động tạo User với role CUSTOMER và Customer record với tier BRONZE, points 0."
+					},
+					"response": []
+				},
+				{
+					"name": "Đăng nhập khách hàng",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"customer@example.com\",\n  \"password\": \"password123\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/auth/login",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"auth",
+								"login"
+							]
+						},
+						"description": "Đăng nhập bằng email và password. Trả về token JWT và thông tin user. Nếu role CUSTOMER thì cũng trả về thông tin customer (points, tier, totalSpent)."
+					},
+					"response": []
+				},
+				{
+					"name": "Lấy thông tin user hiện tại",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text",
+								"description": "Token JWT từ đăng nhập"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/auth/me",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"auth",
+								"me"
+							]
+						},
+						"description": "Lấy thông tin user hiện tại (cần đăng nhập)"
+					},
+					"response": []
+				},
+				{
+					"name": "Đăng xuất",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/auth/logout",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"auth",
+								"logout"
+							]
+						},
+						"description": "Đăng xuất (client-side sẽ xóa token)"
+					},
+					"response": []
+				}
+			],
+			"description": "Các API xác thực (đăng ký, đăng nhập, đăng xuất)"
+		},
+		{
 			"name": "Trang chủ",
 			"item": [
 				{

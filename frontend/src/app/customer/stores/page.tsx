@@ -8,6 +8,7 @@ import { MapPin, Phone, Mail, Search, AlertCircle } from "lucide-react";
 import { apiClient } from "@/lib/api-client";
 import { useBranch } from "@/contexts/branch-context";
 import { Button } from "@/components/ui/button";
+import { createSlug } from "@/lib/utils";
 
 interface Branch {
   id: string;
@@ -55,17 +56,16 @@ export default function StoresPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Debounce search (only when search changes, not on initial load)
-  useEffect(() => {
-    if (search === "") return;
+  // Filter branches client-side
+  const filteredBranches = branches.filter((branch) => {
+    if (!search.trim()) return true;
     
-    const timer = setTimeout(() => {
-      loadBranches(search);
-    }, 300);
+    const searchSlug = createSlug(search.trim());
+    const nameSlug = createSlug(branch.name);
+    const addressSlug = createSlug(branch.address);
     
-    return () => clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [search]);
+    return nameSlug.includes(searchSlug) || addressSlug.includes(searchSlug);
+  });
 
   const handleSelectBranch = (branch: Branch) => {
     setSelectedBranch(branch);
@@ -110,19 +110,19 @@ export default function StoresPage() {
           ) : (
             <>
               {/* Branches Grid */}
-              {branches.length > 0 ? (
+              {filteredBranches.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {branches.map((branch) => (
+                  {filteredBranches.map((branch) => (
                     <Card
                       key={branch.id}
-                      className={`transition-all hover:shadow-lg ${
+                      className={`transition-all hover:shadow-lg flex flex-col h-full ${
                         selectedBranch?.id === branch.id
                           ? "border-orange-500 border-2"
                           : ""
                       }`}
                     >
-                      <CardContent className="pt-6">
-                        <div className="space-y-4">
+                      <CardContent className="pt-6 flex-1 flex flex-col">
+                        <div className="space-y-4 flex-1 flex flex-col">
                           <div className="flex items-start gap-3">
                             <div className="h-10 w-10 rounded-lg bg-orange-100 flex items-center justify-center flex-shrink-0">
                               <MapPin className="h-5 w-5 text-orange-500" />
@@ -150,15 +150,21 @@ export default function StoresPage() {
                             )}
                           </div>
 
-                          <Button
-                            variant={selectedBranch?.id === branch.id ? "default" : "outline"}
-                            className="w-full"
-                            onClick={() => handleSelectBranch(branch)}
-                          >
-                            {selectedBranch?.id === branch.id
-                              ? "Đã chọn"
-                              : "Chọn cửa hàng này"}
-                          </Button>
+                          <div className="mt-auto pt-4">
+                            <Button
+                              variant={selectedBranch?.id === branch.id ? "default" : "outline"}
+                              className={`w-full ${
+                                selectedBranch?.id === branch.id
+                                  ? "bg-orange-500 hover:bg-orange-600 text-white border-none"
+                                  : "bg-white border-orange-500 text-orange-500 hover:bg-orange-50 hover:text-orange-600"
+                              }`}
+                              onClick={() => handleSelectBranch(branch)}
+                            >
+                              {selectedBranch?.id === branch.id
+                                ? "Đã chọn"
+                                : "Chọn cửa hàng này"}
+                            </Button>
+                          </div>
                         </div>
                       </CardContent>
                     </Card>

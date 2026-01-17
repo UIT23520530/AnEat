@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { PublicLayout } from "@/components/layouts/public-layout";
 import Link from "next/link";
 import {
@@ -19,9 +20,75 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Calendar, Clock, Package, MapPin, Eye } from "lucide-react";
+import { Calendar, Clock, Package, MapPin, Eye, Loader2 } from "lucide-react";
+import apiClient from "@/lib/api-client";
+import { getCurrentUser } from "@/lib/auth";
 
-const orders = [
+interface OrderItemResponse {
+  id: string;
+  quantity: number;
+  price: number; // Giá tính theo cent
+  product: {
+    id: string;
+    name: string;
+    image: string | null;
+    price: number;
+  };
+}
+
+interface OrderResponse {
+  id: string;
+  orderNumber: string;
+  total: number; // Tổng tiền tính theo cent
+  status: "PENDING" | "PREPARING" | "READY" | "COMPLETED" | "CANCELLED";
+  deliveryAddress: string | null;
+  createdAt: string;
+  items: OrderItemResponse[];
+  branch: {
+    id: string;
+    name: string;
+    address: string;
+    phone: string;
+  };
+  customer?: {
+    id: string;
+    name: string;
+    phone: string;
+    email: string | null;
+  } | null;
+}
+
+interface OrdersResponse {
+  success: boolean;
+  code: number;
+  message: string;
+  data: OrderResponse[];
+  meta: {
+    currentPage: number;
+    totalPages: number;
+    limit: number;
+    totalItems: number;
+  };
+}
+
+interface Order {
+  id: string;
+  date: string;
+  time: string;
+  status: "pending" | "preparing" | "delivering" | "completed" | "cancelled";
+  statusText: string;
+  total: number;
+  items: Array<{
+    name: string;
+    quantity: number;
+    price: number;
+  }>;
+  address: string;
+  phone: string;
+}
+
+// Fallback orders nếu API fail
+const fallbackOrders: Order[] = [
   {
     id: "000120304",
     date: "09/06/2025",
@@ -37,47 +104,77 @@ const orders = [
     address: "123 Đường ABC, Phường XYZ, Quận 1, TP.HCM",
     phone: "0123456789",
   },
-  {
-    id: "000120303",
-    date: "08/06/2025",
-    time: "07:30 PM",
-    status: "preparing",
-    statusText: "Đang chuẩn bị",
-    total: 186900,
-    items: [
-      { name: "Mỳ Ý Carbonara", quantity: 2, price: 93500 },
-    ],
-    address: "456 Đường DEF, Phường UVW, Quận 3, TP.HCM",
-    phone: "0987654321",
-  },
-  {
-    id: "000120302",
-    date: "07/06/2025",
-    time: "06:15 PM",
-    status: "delivering",
-    statusText: "Đang giao hàng",
-    total: 154800,
-    items: [
-      { name: "Burger Bò Cổ Điển", quantity: 2, price: 64900 },
-      { name: "Nước Ngọt", quantity: 2, price: 22000 },
-    ],
-    address: "789 Đường GHI, Phường RST, Quận 5, TP.HCM",
-    phone: "0369852147",
-  },
-  {
-    id: "000120301",
-    date: "06/06/2025",
-    time: "05:45 PM",
-    status: "completed",
-    statusText: "Hoàn thành",
-    total: 195800,
-    items: [
-      { name: "Combo Gà Rán", quantity: 2, price: 97900 },
-    ],
-    address: "321 Đường JKL, Phường MNO, Quận 7, TP.HCM",
-    phone: "0258963147",
-  },
 ];
+
+// Helper function để map OrderStatus từ backend sang frontend
+const mapOrderStatus = (
+  status: OrderResponse["status"]
+): { status: Order["status"]; statusText: string } => {
+  switch (status) {
+    case "PENDING":
+      return { status: "pending", statusText: "Chờ xác nhận" };
+    case "PREPARING":
+      return { status: "preparing", statusText: "Đang chuẩn bị" };
+    case "READY":
+      return { status: "delivering", statusText: "Sẵn sàng" };
+    case "COMPLETED":
+      return { status: "completed", statusText: "Hoàn thành" };
+    case "CANCELLED":
+      return { status: "cancelled", statusText: "Đã hủy" };
+    default:
+      return { status: "pending", statusText: "Chờ xác nhận" };
+  }
+};
+
+// Helper function để format date
+const formatDate = (dateString: string): string => {
+  const date = new Date(dateString);
+  return date.toLocaleDateString("vi-VN", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+};
+
+// Helper function để format time
+const formatTime = (dateString: string): string => {
+  const date = new Date(dateString);
+  return date.toLocaleTimeString("vi-VN", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+};
+
+// Map API response sang Order format
+const mapToOrder = (apiOrder: OrderResponse): Order => {
+  const { status, statusText } = mapOrderStatus(apiOrder.status);
+
+  // Format items
+  const items = apiOrder.items.map((item) => ({
+    name: item.product.name,
+    quantity: item.quantity,
+    price: item.price / 100, // Convert từ cent sang VND
+  }));
+
+  // Lấy address từ deliveryAddress hoặc branch address
+  const address = apiOrder.deliveryAddress || apiOrder.branch.address;
+
+  // Lấy phone từ customer hoặc branch
+  const phone = apiOrder.customer?.phone || apiOrder.branch.phone;
+
+  return {
+    id: apiOrder.orderNumber,
+    date: formatDate(apiOrder.createdAt),
+    time: formatTime(apiOrder.createdAt),
+    status: status,
+    statusText: statusText,
+    total: apiOrder.total / 100, // Convert từ cent sang VND
+    items: items,
+    address: address,
+    phone: phone,
+  };
+};
 
 const getStatusColor = (status: string) => {
   switch (status) {
@@ -89,12 +186,70 @@ const getStatusColor = (status: string) => {
       return "bg-purple-500";
     case "completed":
       return "bg-green-500";
+    case "cancelled":
+      return "bg-red-500";
     default:
       return "bg-gray-500";
   }
 };
 
 export default function OrdersPage() {
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Fetch orders from API
+  useEffect(() => {
+    const fetchOrders = async () => {
+      // Kiểm tra user đã đăng nhập chưa
+      const currentUser = getCurrentUser();
+      if (!currentUser) {
+        setLoading(false);
+        setError("Vui lòng đăng nhập để xem đơn hàng của bạn");
+        setOrders([]);
+        return;
+      }
+
+      try {
+        setLoading(true);
+        setError(null);
+
+        const response = await apiClient.get<OrdersResponse>("/home/orders", {
+          params: {
+            page: 1,
+            limit: 50,
+          },
+        });
+
+        if (response.data.success && response.data.data) {
+          const mappedOrders = response.data.data.map(mapToOrder);
+          setOrders(mappedOrders);
+        } else {
+          setError("Không thể tải đơn hàng");
+          setOrders([]);
+        }
+      } catch (err: any) {
+        console.error("Error fetching orders:", err);
+        
+        // Lấy message từ backend nếu có
+        const errorMessage = err.response?.data?.message || err.message;
+        
+        // Nếu lỗi do chưa đăng nhập hoặc không có quyền
+        if (err.response?.status === 400 || err.response?.status === 401) {
+          setError(errorMessage || "Vui lòng đăng nhập để xem đơn hàng của bạn");
+        } else {
+          setError(errorMessage || "Đã xảy ra lỗi khi tải đơn hàng");
+        }
+        
+        setOrders([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchOrders();
+  }, []);
+
   return (
     <PublicLayout>
       <div className="bg-[#FFF9F2] min-h-screen">
@@ -104,9 +259,34 @@ export default function OrdersPage() {
             <h1 className="text-4xl font-bold mb-2">ĐƠN HÀNG CỦA TÔI</h1>
           </div>
 
+          {/* Loading State */}
+          {loading && (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-orange-500" />
+            </div>
+          )}
+
+          {/* Error State */}
+          {error && !loading && (
+            <Card className="py-12">
+              <CardContent className="text-center">
+                <Package className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+                <p className="text-muted-foreground text-lg mb-4">{error}</p>
+                {error.includes("đăng nhập") && (
+                  <Link href="/auth/login">
+                    <Button className="bg-orange-500 hover:bg-orange-600">
+                      Đăng nhập ngay
+                    </Button>
+                  </Link>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
           {/* Orders List */}
-          <div className="space-y-6">
-            {orders.map((order) => (
+          {!loading && orders.length > 0 && (
+            <div className="space-y-6">
+              {orders.map((order) => (
               <Card key={order.id} className="overflow-hidden shadow-lg">
                 <CardHeader>
                   <div className="flex justify-between items-start">
@@ -210,10 +390,11 @@ export default function OrdersPage() {
                   </div>
                 </CardContent>
               </Card>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
 
-          {orders.length === 0 && (
+          {!loading && orders.length === 0 && (
             <Card className="py-12">
               <CardContent className="text-center">
                 <Package className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
