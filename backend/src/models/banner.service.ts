@@ -1,49 +1,137 @@
 import { prisma } from '../db';
-import { BannerStatus } from '@prisma/client';
+import { Banner } from '@prisma/client';
 
-export interface Banner {
-  id: string;
-  title: string | null;
-  description: string | null;
-  image: string;
-  link: string | null;
-  order: number;
-  status: BannerStatus;
-  createdAt: Date;
-  updatedAt: Date;
+interface BannerFilters {
+  isActive?: boolean;
 }
 
-/**
- * Service layer for Banner operations
- */
+interface CreateBannerData {
+  imageUrl: string;
+  title?: string;
+  description?: string;
+  badge?: string;
+  displayOrder?: number;
+  isActive?: boolean;
+}
+
+interface UpdateBannerData {
+  imageUrl?: string;
+  title?: string;
+  description?: string;
+  badge?: string;
+  displayOrder?: number;
+  isActive?: boolean;
+}
+
 export class BannerService {
   /**
-   * Get all active banners ordered by display order
+   * Get all banners with filters
    */
-  static async getActiveBanners(): Promise<Banner[]> {
+  static async getAllBanners(filters: BannerFilters = {}): Promise<Banner[]> {
+    const where: any = {};
+
+    if (filters.isActive !== undefined) {
+      where.isActive = filters.isActive;
+    }
+
     const banners = await prisma.banner.findMany({
-      where: {
-        status: BannerStatus.ACTIVE,
-      },
-      orderBy: {
-        order: 'asc',
-      },
+      where,
+      orderBy: { displayOrder: 'asc' },
     });
 
     return banners;
   }
 
   /**
-   * Get all banners (for admin)
+   * Get active banners for public display
    */
-  static async getAllBanners(): Promise<Banner[]> {
-    const banners = await prisma.banner.findMany({
-      orderBy: [
-        { status: 'asc' },
-        { order: 'asc' },
-      ],
+  static async getActiveBanners(): Promise<Banner[]> {
+    return this.getAllBanners({ isActive: true });
+  }
+
+  /**
+   * Get banner by ID
+   */
+  static async getBannerById(id: string): Promise<Banner | null> {
+    const banner = await prisma.banner.findUnique({
+      where: { id },
     });
 
-    return banners;
+    return banner;
+  }
+
+  /**
+   * Create new banner
+   */
+  static async createBanner(data: CreateBannerData): Promise<Banner> {
+    // If displayOrder not provided, set it to max + 1
+    if (data.displayOrder === undefined) {
+      const maxOrder = await prisma.banner.findFirst({
+        orderBy: { displayOrder: 'desc' },
+        select: { displayOrder: true },
+      });
+      data.displayOrder = maxOrder ? maxOrder.displayOrder + 1 : 0;
+    }
+
+    const banner = await prisma.banner.create({
+      data: {
+        imageUrl: data.imageUrl,
+        title: data.title,
+        description: data.description,
+        badge: data.badge,
+        displayOrder: data.displayOrder,
+        isActive: data.isActive ?? true,
+      },
+    });
+
+    return banner;
+  }
+
+  /**
+   * Update banner
+   */
+  static async updateBanner(id: string, data: UpdateBannerData): Promise<Banner> {
+    const banner = await prisma.banner.update({
+      where: { id },
+      data,
+    });
+
+    return banner;
+  }
+
+  /**
+   * Delete banner
+   */
+  static async deleteBanner(id: string): Promise<void> {
+    await prisma.banner.delete({
+      where: { id },
+    });
+  }
+
+  /**
+   * Reorder banners
+   */
+  static async reorderBanners(bannerIds: string[]): Promise<void> {
+    // Update display order for each banner
+    const updatePromises = bannerIds.map((id, index) =>
+      prisma.banner.update({
+        where: { id },
+        data: { displayOrder: index },
+      })
+    );
+
+    await Promise.all(updatePromises);
+  }
+
+  /**
+   * Toggle banner active status
+   */
+  static async toggleBannerStatus(id: string): Promise<Banner> {
+    const banner = await this.getBannerById(id);
+    if (!banner) {
+      throw new Error('Banner not found');
+    }
+
+    return this.updateBanner(id, { isActive: !banner.isActive });
   }
 }

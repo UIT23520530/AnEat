@@ -112,6 +112,9 @@ export class BranchService {
           isActive: true,
           managerId: true,
           manager: {
+            where: {
+              deletedAt: null, // 🔥 CRITICAL FIX: Only show managers that are not deleted
+            },
             select: {
               id: true,
               name: true,
@@ -154,6 +157,9 @@ export class BranchService {
         isActive: true,
         managerId: true,
         manager: {
+          where: {
+            deletedAt: null, // 🔥 CRITICAL FIX: Only show manager that is not deleted
+          },
           select: {
             id: true,
             name: true,
@@ -281,6 +287,9 @@ export class BranchService {
         name: true,
         managerId: true,
         manager: {
+          where: {
+            deletedAt: null, // 🔥 CRITICAL FIX: Only show manager that is not deleted
+          },
           select: {
             id: true,
             name: true,

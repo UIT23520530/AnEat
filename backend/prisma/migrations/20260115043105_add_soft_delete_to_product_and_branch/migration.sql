@@ -1,5 +1,5 @@
 -- AlterTable
-ALTER TABLE "Branch" ADD COLUMN     "deletedAt" TIMESTAMP(3);
+ALTER TABLE "Product" ADD COLUMN IF NOT EXISTS "deletedAt" TIMESTAMP(3);
 
 -- AlterTable
-ALTER TABLE "Product" ADD COLUMN     "deletedAt" TIMESTAMP(3);
+ALTER TABLE "Branch" ADD COLUMN IF NOT EXISTS "deletedAt" TIMESTAMP(3);

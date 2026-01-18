@@ -13,6 +13,17 @@ import {
   getAvailableManagers,
 } from '../controllers/admin/admin.controller';
 import {
+  getSystemStats,
+  getBranchPerformance,
+  getTopBranches,
+  getSystemRevenueData,
+  getTopProductsSystemWide,
+  getUserStatsByRole,
+  getGrowthMetrics,
+  getSystemAlerts,
+  exportSystemReport,
+} from '../controllers/admin/admin-dashboard.controller';
+import {
   getAllUsers,
   getUserById,
   // createUser, // Removed - Admin cannot create users directly
@@ -57,6 +68,37 @@ import {
   printBill as printAdminBill,
   getBillHistory as getAdminBillHistory,
 } from '../controllers/admin/bill.controller';
+import {
+  getWarehouseRequests,
+  getWarehouseRequestById,
+  approveWarehouseRequest,
+  rejectWarehouseRequest,
+  assignToLogistics,
+  getWarehouseStatistics,
+  getLogisticsStaff,
+  cancelWarehouseRequest,
+} from '../controllers/admin/warehouse-request.controller';
+import {
+  getAllBanners,
+  getBannerById,
+  createBanner,
+  updateBanner,
+  deleteBanner,
+  reorderBanners,
+  toggleBannerStatus,
+} from '../controllers/admin/banner.controller';
+import {
+  getAllSettings,
+  getPublicSettings,
+  getSettingsByCategory,
+  getSettingsAsObject,
+  getSettingByKey,
+  upsertSetting,
+  updateSetting,
+  deleteSetting,
+  bulkUpsertSettings,
+  initializeDefaultSettings,
+} from '../controllers/admin/system-setting.controller';
 import { authenticate, isAdmin, validate } from '../middleware';
 
 const router = Router();
@@ -67,10 +109,86 @@ router.use(isAdmin);
 
 /**
  * @route   GET /api/v1/admin/dashboard
- * @desc    Trang tổng quan hệ thống
+ * @desc    Trang tổng quan hệ thống (legacy - simple stats)
  * @access  Admin only
  */
 router.get('/dashboard', getDashboardStats);
+
+/**
+ * ==================== ADMIN DASHBOARD ROUTES (NEW) ====================
+ */
+
+/**
+ * @route   GET /api/v1/admin/dashboard/system-stats
+ * @desc    Lấy thống kê toàn hệ thống (revenue, orders, branches, users, customers, products)
+ * @access  Admin only
+ */
+router.get('/dashboard/system-stats', getSystemStats);
+
+/**
+ * @route   GET /api/v1/admin/dashboard/branch-performance
+ * @desc    Lấy so sánh hiệu suất giữa các chi nhánh
+ * @access  Admin only
+ * @query   limit - Giới hạn số lượng chi nhánh (optional)
+ */
+router.get('/dashboard/branch-performance', getBranchPerformance);
+
+/**
+ * @route   GET /api/v1/admin/dashboard/top-branches
+ * @desc    Lấy danh sách top chi nhánh theo doanh thu hoặc đơn hàng
+ * @access  Admin only
+ * @query   metric - 'revenue' hoặc 'orders' (default: revenue)
+ * @query   limit - Số lượng top branches (default: 10)
+ */
+router.get('/dashboard/top-branches', getTopBranches);
+
+/**
+ * @route   GET /api/v1/admin/dashboard/revenue-data
+ * @desc    Lấy dữ liệu doanh thu toàn hệ thống theo thời gian
+ * @access  Admin only
+ * @query   period - 'day', 'week', hoặc 'month'
+ * @query   dateFrom - Ngày bắt đầu (optional)
+ * @query   dateTo - Ngày kết thúc (optional)
+ */
+router.get('/dashboard/revenue-data', getSystemRevenueData);
+
+/**
+ * @route   GET /api/v1/admin/dashboard/top-products
+ * @desc    Lấy top sản phẩm bán chạy nhất toàn hệ thống
+ * @access  Admin only
+ * @query   limit - Số lượng sản phẩm (default: 10)
+ */
+router.get('/dashboard/top-products', getTopProductsSystemWide);
+
+/**
+ * @route   GET /api/v1/admin/dashboard/user-stats
+ * @desc    Lấy thống kê người dùng theo role
+ * @access  Admin only
+ */
+router.get('/dashboard/user-stats', getUserStatsByRole);
+
+/**
+ * @route   GET /api/v1/admin/dashboard/growth-metrics
+ * @desc    Lấy các chỉ số tăng trưởng (MoM, YoY)
+ * @access  Admin only
+ */
+router.get('/dashboard/growth-metrics', getGrowthMetrics);
+
+/**
+ * @route   GET /api/v1/admin/dashboard/alerts
+ * @desc    Lấy các cảnh báo hệ thống (chi nhánh có vấn đề)
+ * @access  Admin only
+ */
+router.get('/dashboard/alerts', getSystemAlerts);
+
+/**
+ * @route   GET /api/v1/admin/dashboard/export
+ * @desc    Xuất báo cáo toàn hệ thống ra file Excel
+ * @access  Admin only
+ * @query   dateFrom - Ngày bắt đầu (required)
+ * @query   dateTo - Ngày kết thúc (required)
+ */
+router.get('/dashboard/export', exportSystemReport);
 
 /**
  * ==================== QUẢN LÝ CHI NHÁNH ====================
@@ -604,6 +722,100 @@ router.post(
   validate,
   printAdminBill
 );
+// ==================== WAREHOUSE REQUESTS ROUTES ====================
+
+/**
+ * @route   GET /api/v1/admin/warehouse-requests/statistics
+ * @desc    Lấy thống kê warehouse requests
+ * @access  Admin only
+ */
+router.get('/warehouse-requests/statistics', getWarehouseStatistics);
+
+/**
+ * @route   GET /api/v1/admin/warehouse-requests/logistics-staff
+ * @desc    Lấy danh sách logistics staff
+ * @access  Admin only
+ */
+router.get('/warehouse-requests/logistics-staff', getLogisticsStaff);
+
+/**
+ * @route   GET /api/v1/admin/warehouse-requests
+ * @desc    Lấy danh sách tất cả warehouse requests
+ * @access  Admin only
+ */
+router.get('/warehouse-requests', getWarehouseRequests);
+
+/**
+ * @route   GET /api/v1/admin/warehouse-requests/:id
+ * @desc    Lấy chi tiết warehouse request
+ * @access  Admin only
+ */
+router.get(
+  '/warehouse-requests/:id',
+  param('id').notEmpty().withMessage('ID warehouse request không được bỏ trống'),
+  validate,
+  getWarehouseRequestById
+);
+
+/**
+ * @route   PUT /api/v1/admin/warehouse-requests/:id/approve
+ * @desc    Duyệt warehouse request
+ * @access  Admin only
+ */
+router.put(
+  '/warehouse-requests/:id/approve',
+  [
+    param('id').notEmpty().withMessage('ID warehouse request không được bỏ trống'),
+    body('approvedQuantity').optional().isInt({ min: 1 }).withMessage('Số lượng duyệt phải là số nguyên dương'),
+  ],
+  validate,
+  approveWarehouseRequest
+);
+
+/**
+ * @route   PUT /api/v1/admin/warehouse-requests/:id/reject
+ * @desc    Từ chối warehouse request
+ * @access  Admin only
+ */
+router.put(
+  '/warehouse-requests/:id/reject',
+  [
+    param('id').notEmpty().withMessage('ID warehouse request không được bỏ trống'),
+    body('rejectedReason').notEmpty().withMessage('Lý do từ chối là bắt buộc'),
+  ],
+  validate,
+  rejectWarehouseRequest
+);
+
+/**
+ * @route   POST /api/v1/admin/warehouse-requests/:id/assign-logistics
+ * @desc    Giao warehouse request cho logistics staff
+ * @access  Admin only
+ */
+router.post(
+  '/warehouse-requests/:id/assign-logistics',
+  [
+    param('id').notEmpty().withMessage('ID warehouse request không được bỏ trống'),
+    body('logisticsStaffId').notEmpty().withMessage('ID nhân viên logistics là bắt buộc'),
+  ],
+  validate,
+  assignToLogistics
+);
+
+/**
+ * @route   PUT /api/v1/admin/warehouse-requests/:id/cancel
+ * @desc    Hủy warehouse request
+ * @access  Admin only
+ */
+router.put(
+  '/warehouse-requests/:id/cancel',
+  [
+    param('id').notEmpty().withMessage('ID warehouse request không được bỏ trống'),
+    body('cancelReason').optional().isString().withMessage('Lý do hủy phải là chuỗi'),
+  ],
+  validate,
+  cancelWarehouseRequest
+);
 
 // ==================== TEMPLATE ROUTES ====================
 
@@ -673,5 +885,198 @@ router.delete('/templates/:id', deleteTemplate);
  * @access  Admin only
  */
 router.post('/templates/:id/duplicate', duplicateTemplate);
+
+// ==================== BANNER ROUTES ====================
+
+/**
+ * @route   GET /api/v1/admin/banners
+ * @desc    Lấy danh sách tất cả banner
+ * @access  Admin only
+ * @query   isActive - Lọc theo trạng thái active (optional)
+ */
+router.get('/banners', getAllBanners);
+
+/**
+ * @route   GET /api/v1/admin/banners/:id
+ * @desc    Lấy chi tiết banner
+ * @access  Admin only
+ */
+router.get('/banners/:id', getBannerById);
+
+/**
+ * @route   POST /api/v1/admin/banners
+ * @desc    Tạo banner mới
+ * @access  Admin only
+ */
+router.post(
+  '/banners',
+  [
+    body('imageUrl').notEmpty().withMessage('URL ảnh không được bỏ trống'),
+    body('title').optional().isString(),
+    body('description').optional().isString(),
+    body('badge').optional().isString(),
+    body('displayOrder').optional().isInt(),
+    body('isActive').optional().isBoolean(),
+  ],
+  validate,
+  createBanner
+);
+
+/**
+ * @route   PUT /api/v1/admin/banners/:id
+ * @desc    Cập nhật banner
+ * @access  Admin only
+ */
+router.put(
+  '/banners/:id',
+  [
+    param('id').notEmpty().withMessage('ID banner không được bỏ trống'),
+    body('imageUrl').optional().isString(),
+    body('title').optional().isString(),
+    body('description').optional().isString(),
+    body('badge').optional().isString(),
+    body('displayOrder').optional().isInt(),
+    body('isActive').optional().isBoolean(),
+  ],
+  validate,
+  updateBanner
+);
+
+/**
+ * @route   DELETE /api/v1/admin/banners/:id
+ * @desc    Xóa banner
+ * @access  Admin only
+ */
+router.delete(
+  '/banners/:id',
+  [param('id').notEmpty().withMessage('ID banner không được bỏ trống')],
+  validate,
+  deleteBanner
+);
+
+/**
+ * @route   POST /api/v1/admin/banners/reorder
+ * @desc    Sắp xếp lại thứ tự banner
+ * @access  Admin only
+ */
+router.post(
+  '/banners/reorder',
+  [body('bannerIds').isArray().withMessage('bannerIds phải là mảng')],
+  validate,
+  reorderBanners
+);
+
+/**
+ * @route   PATCH /api/v1/admin/banners/:id/toggle
+ * @desc    Bật/tắt banner
+ * @access  Admin only
+ */
+router.patch(
+  '/banners/:id/toggle',
+  [param('id').notEmpty().withMessage('ID banner không được bỏ trống')],
+  validate,
+  toggleBannerStatus
+);
+
+// ==================== SYSTEM SETTINGS ROUTES ====================
+
+/**
+ * @route   GET /api/v1/admin/settings
+ * @desc    Lấy tất cả cài đặt hệ thống
+ * @access  Admin only
+ * @query   category - Lọc theo danh mục (optional)
+ * @query   isPublic - Lọc theo trạng thái public (optional)
+ */
+router.get('/settings', getAllSettings);
+
+/**
+ * @route   GET /api/v1/admin/settings/object
+ * @desc    Lấy cài đặt dưới dạng object key-value
+ * @access  Admin only
+ */
+router.get('/settings/object', getSettingsAsObject);
+
+/**
+ * @route   GET /api/v1/admin/settings/category/:category
+ * @desc    Lấy cài đặt theo danh mục
+ * @access  Admin only
+ */
+router.get('/settings/category/:category', getSettingsByCategory);
+
+/**
+ * @route   GET /api/v1/admin/settings/:key
+ * @desc    Lấy cài đặt theo key
+ * @access  Admin only
+ */
+router.get('/settings/:key', getSettingByKey);
+
+/**
+ * @route   POST /api/v1/admin/settings
+ * @desc    Tạo hoặc cập nhật cài đặt (upsert)
+ * @access  Admin only
+ */
+router.post(
+  '/settings',
+  [
+    body('key').notEmpty().withMessage('Key không được bỏ trống'),
+    body('value').notEmpty().withMessage('Value không được bỏ trống'),
+    body('type').optional().isString(),
+    body('category').optional().isString(),
+    body('description').optional().isString(),
+    body('isPublic').optional().isBoolean(),
+  ],
+  validate,
+  upsertSetting
+);
+
+/**
+ * @route   PUT /api/v1/admin/settings/:key
+ * @desc    Cập nhật cài đặt theo key
+ * @access  Admin only
+ */
+router.put(
+  '/settings/:key',
+  [
+    param('key').notEmpty().withMessage('Key không được bỏ trống'),
+    body('value').optional().isString(),
+    body('type').optional().isString(),
+    body('category').optional().isString(),
+    body('description').optional().isString(),
+    body('isPublic').optional().isBoolean(),
+  ],
+  validate,
+  updateSetting
+);
+
+/**
+ * @route   DELETE /api/v1/admin/settings/:key
+ * @desc    Xóa cài đặt theo key
+ * @access  Admin only
+ */
+router.delete(
+  '/settings/:key',
+  [param('key').notEmpty().withMessage('Key không được bỏ trống')],
+  validate,
+  deleteSetting
+);
+
+/**
+ * @route   POST /api/v1/admin/settings/bulk
+ * @desc    Cập nhật nhiều cài đặt cùng lúc
+ * @access  Admin only
+ */
+router.post(
+  '/settings/bulk',
+  [body('settings').isArray().withMessage('settings phải là mảng')],
+  validate,
+  bulkUpsertSettings
+);
+
+/**
+ * @route   POST /api/v1/admin/settings/initialize
+ * @desc    Khởi tạo cài đặt mặc định
+ * @access  Admin only
+ */
+router.post('/settings/initialize', initializeDefaultSettings);
 
 export default router;

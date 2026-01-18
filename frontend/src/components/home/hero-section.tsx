@@ -5,29 +5,7 @@ import { Button } from "@/components/ui/button";
 import Image from "next/image";
 import { ChevronLeft, ChevronRight, Package, Truck } from "lucide-react";
 import { cn } from "@/lib/utils";
-import apiClient from "@/lib/api-client";
-import { useRouter } from "next/navigation";
-import { useBranch } from "@/contexts/branch-context";
-import { BranchSelectorDialog } from "@/components/branch/branch-selector-dialog";
-
-interface Banner {
-  id: string;
-  title: string | null;
-  description: string | null;
-  image: string;
-  link: string | null;
-  order: number;
-  status: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-interface BannerResponse {
-  success: boolean;
-  code: number;
-  message: string;
-  data: Banner[];
-}
+import { bannerService, type Banner } from "@/services/banner.service";
 
 export function HeroSection() {
   const router = useRouter();
@@ -35,49 +13,68 @@ export function HeroSection() {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [banners, setBanners] = useState<Banner[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
+  // Fetch banners from API
   useEffect(() => {
     const fetchBanners = async () => {
       try {
-        setLoading(true);
-        setError(null);
-        
-        // Log để debug
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
-        console.log('Fetching banners from:', `${apiUrl}/home/banners`);
-        
-        const response = await apiClient.get<BannerResponse>("/home/banners");
-        
-        if (response.data.success && response.data.data) {
-          setBanners(response.data.data);
+        const response = await bannerService.getActiveBanners();
+        if (response.data && response.data.length > 0) {
+          setBanners(response.data);
         } else {
-          setError("Không thể tải banners");
+          // Fallback to default banners if no data from API
+          setBanners([
+            {
+              id: "1",
+              imageUrl: "/assets/fried-chicken-combo-meal.jpg",
+              title: "NỞ CÀNG BỤNG VUI BẤT MOOD",
+              description: "Combo 79.000đ",
+              badge: "Giá không đổi",
+              displayOrder: 0,
+              isActive: true,
+              createdAt: "",
+              updatedAt: "",
+            },
+            {
+              id: "2",
+              imageUrl: "/assets/cheese-burger.png",
+              title: "BURGER PHÔ MAI",
+              description: "Thử ngay burger phô mai mới",
+              badge: "Mới",
+              displayOrder: 1,
+              isActive: true,
+              createdAt: "",
+              updatedAt: "",
+            },
+            {
+              id: "3",
+              imageUrl: "/assets/classic-carbonara.png",
+              title: "MỲ Ý THƯỢNG HẠNG",
+              description: "Thưởng thức hương vị Ý đích thực",
+              badge: "Best Seller",
+              displayOrder: 2,
+              isActive: true,
+              createdAt: "",
+              updatedAt: "",
+            },
+          ]);
         }
-      } catch (err: any) {
-        console.error("Error fetching banners:", err);
-        console.error("Error details:", {
-          message: err.message,
-          code: err.code,
-          response: err.response?.data,
-          status: err.response?.status,
-          url: err.config?.url,
-          baseURL: err.config?.baseURL,
-        });
-        
-        // Xử lý các loại lỗi khác nhau
-        if (err.code === 'ECONNREFUSED' || err.message === 'Network Error') {
-          setError("Không thể kết nối đến server. Vui lòng kiểm tra backend đã chạy chưa.");
-        } else if (err.response?.status === 404) {
-          setError("API không tồn tại");
-        } else if (err.response?.status >= 500) {
-          setError("Lỗi server. Vui lòng thử lại sau.");
-        } else {
-          setError("Đã xảy ra lỗi khi tải banners");
-        }
-        
-        // Fallback to empty array
-        setBanners([]);
+      } catch (error) {
+        console.error("Error fetching banners:", error);
+        // Use fallback banners on error
+        setBanners([
+          {
+            id: "1",
+            imageUrl: "/assets/fried-chicken-combo-meal.jpg",
+            title: "NỞ CÀNG BỤNG VUI BẤT MOOD",
+            description: "Combo 79.000đ",
+            badge: "Giá không đổi",
+            displayOrder: 0,
+            isActive: true,
+            createdAt: "",
+            updatedAt: "",
+          },
+        ]);
       } finally {
         setLoading(false);
       }
@@ -85,6 +82,16 @@ export function HeroSection() {
 
     fetchBanners();
   }, []);
+
+  useEffect(() => {
+    if (banners.length === 0) return;
+
+    const timer = setInterval(() => {
+      setCurrentSlide((prev) => (prev + 1) % banners.length);
+    }, 5000);
+
+    return () => clearInterval(timer);
+  }, [banners.length]);
 
   // Fallback banners nếu API fail
   const fallbackBanners: Banner[] = [
@@ -166,15 +173,18 @@ export function HeroSection() {
     router.push("/customer/menu");
   };
 
-  // Show loading state
   if (loading) {
     return (
-      <section className="w-full bg-gradient-to-b from-orange-50 to-orange-50 py-12 md:py-16">
+      <section className="w-full bg-gradient-to-b from-orange-50 to-white py-8 md:py-12">
         <div className="container mx-auto px-4 max-w-7xl">
           <div className="relative h-[350px] md:h-[600px] w-full rounded-3xl overflow-hidden shadow-2xl bg-gray-200 animate-pulse" />
         </div>
       </section>
     );
+  }
+
+  if (banners.length === 0) {
+    return null;
   }
 
   return (
@@ -192,8 +202,8 @@ export function HeroSection() {
                 )}
               >
                 <Image
-                  src={banner.image || "/placeholder.svg"}
-                  alt={banner.title || banner.description || `Banner ${index + 1}`}
+                  src={banner.imageUrl}
+                  alt={banner.title || `Banner ${index + 1}`}
                   fill
                   className="object-cover"
                   priority={index === 0}

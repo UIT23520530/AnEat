@@ -16,6 +16,7 @@
     "prisma:migrate:deploy": "prisma migrate deploy",
     "prisma:studio": "prisma studio",
     "prisma:seed": "node prisma/seed-nationwide.js",
+    "seed:banners": "ts-node prisma/seed-banner-settings.ts",
     "db:push": "prisma db push",
     "db:reset": "prisma migrate reset",
     "lint": "eslint . --ext .ts",

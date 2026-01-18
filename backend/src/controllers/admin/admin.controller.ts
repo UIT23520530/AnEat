@@ -319,13 +319,25 @@ export const assignManager = async (req: Request, res: Response): Promise<void> 
 
     // Check if manager exists (if managerId is provided)
     if (managerId) {
-      const manager = await prisma.user.findUnique({
-        where: { id: managerId },
+      const manager = await prisma.user.findFirst({
+        where: { 
+          id: managerId,
+          deletedAt: null, // 🔥 CRITICAL FIX: Only allow non-deleted users as managers
+        },
       });
       if (!manager) {
         res.status(404).json({
           status: 'error',
-          message: 'Không tìm thấy quản lý',
+          message: 'Không tìm thấy quản lý hoặc tài khoản đã bị xóa',
+        });
+        return;
+      }
+
+      // Check if manager has correct role
+      if (manager.role !== UserRole.ADMIN_BRAND) {
+        res.status(400).json({
+          status: 'error',
+          message: 'Người dùng này không phải là quản lý chi nhánh',
         });
         return;
       }
@@ -413,6 +425,7 @@ export const getAvailableManagers = async (req: Request, res: Response): Promise
     // Build where clause
     const where: any = {
       role: UserRole.ADMIN_BRAND,
+      deletedAt: null, // 🔥 CRITICAL FIX: Only show non-deleted managers
     };
     
     // If no currentManagerId, only get managers without branches

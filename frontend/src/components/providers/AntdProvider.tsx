@@ -16,7 +16,8 @@ export function AntdProvider({ children }: { children: React.ReactNode }) {
         message.includes('[antd: compatible]') ||
         message.includes('u.ant.design/v5-for-19') ||
         message.includes('useForm') ||
-        message.includes('not connected to any Form element')
+        message.includes('not connected to any Form element') ||
+        message.includes('Static function can not consume context')
       ) {
         return;
       }

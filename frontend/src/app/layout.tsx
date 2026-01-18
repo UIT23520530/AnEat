@@ -4,7 +4,6 @@ import { GeistMono } from 'geist/font/mono'
 import { Analytics } from '@vercel/analytics/next'
 import './globals.css'
 import { CartProvider } from '@/contexts/cart-context'
-import { BranchProvider } from '@/contexts/branch-context'
 import { Toaster } from '@/components/ui/toaster'
 import './fonts.css'
 

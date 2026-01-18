@@ -415,6 +415,28 @@ export const deleteUser = async (req: Request, res: Response): Promise<void> => 
       return;
     }
 
+    // 🔥 CRITICAL FIX: If user is a manager of any branch, remove them from the branch first
+    if (user.role === UserRole.ADMIN_BRAND) {
+      const managedBranch = await prisma.branch.findFirst({
+        where: { managerId: id },
+      });
+
+      if (managedBranch) {
+        console.log('⚠️ User is managing branch:', { branchId: managedBranch.id, branchName: managedBranch.name });
+        
+        // Remove manager from branch and deactivate the branch
+        await prisma.branch.update({
+          where: { id: managedBranch.id },
+          data: {
+            managerId: null,
+            isActive: false, // Deactivate branch when manager is removed
+          },
+        });
+        
+        console.log('✅ Removed manager from branch and deactivated it:', { branchId: managedBranch.id });
+      }
+    }
+
     await prisma.user.update({
       where: { id },
       data: {

@@ -132,6 +132,10 @@ import templateRoutes from './routes/template.routes';
 import logisticsStaffRoutes from './routes/logistics-staff.routes';
 import homeRoutes from './routes/home.routes';
 
+// Shared/Public controllers
+import { getActiveBanners } from './controllers/shared/banner.controller';
+import { getPublicSettings } from './controllers/shared/system-setting.controller';
+
 // Mount routes
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/users', userRoutes);
@@ -150,6 +154,10 @@ app.use('/api/v1/products', productRoutes);
 app.use('/api/v1/stock-requests', stockRequestRoutes);
 app.use('/api/v1/promotions', promotionRoutes);
 app.use('/api/v1/home', homeRoutes);
+
+// Public/Shared routes (no authentication required)
+app.get('/api/v1/banners', getActiveBanners);
+app.get('/api/v1/settings', getPublicSettings);
 
 // ==================== ERROR HANDLING ====================
 

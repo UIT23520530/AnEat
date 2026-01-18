@@ -441,132 +441,36 @@ model Shipment {
   @@map("Shipment")
 }
 
+// ✨ NEW: Banner model for landing page carousel
 model Banner {
-  id          String       @id @default(cuid())
-  title       String?
-  description String?
-  image       String
-  link        String?
-  order       Int          @default(0)
-  status      BannerStatus @default(ACTIVE)
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+  id           String   @id @default(cuid())
+  imageUrl     String   // URL của ảnh banner
+  title        String?  // Tiêu đề hiển thị trên banner
+  description  String?  // Mô tả/phụ đề
+  badge        String?  // Badge/nhãn (e.g., "Mới", "Giá không đổi")
+  displayOrder Int      @default(0) // Thứ tự hiển thị (0, 1, 2...)
+  isActive     Boolean  @default(true) // Hiển thị hay ẩn
+  
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   @@map("Banner")
 }
 
-model AboutUs {
-  id        String   @id @default(cuid())
-  title     String
-  content   String
-  image     String?
-  mission   String?
-  vision    String?
-  values    String?
-  isActive  Boolean  @default(true)
+// ✨ NEW: SystemSetting model for general system configuration
+model SystemSetting {
+  id    String @id @default(cuid())
+  key   String @unique // Key định danh (e.g., "store_name", "hotline", "address")
+  value String // Giá trị cấu hình (text, số, hoặc JSON)
+  type  String @default("text") // Loại: "text", "number", "json", "boolean"
+  
+  category    String? // Phân loại: "general", "contact", "about", "business"
+  description String? // Mô tả cho admin
+  isPublic    Boolean @default(true) // Hiển thị công khai hay chỉ internal
+  
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@map("AboutUs")
+  @@map("SystemSetting")
 }
 
-enum UserRole {
-  ADMIN_SYSTEM
-  ADMIN_BRAND
-  STAFF
-  CUSTOMER
-  LOGISTICS_STAFF
-}
-
-enum OrderStatus {
-  PENDING
-  PREPARING
-  READY
-  COMPLETED
-  CANCELLED
-}
-
-enum TableStatus {
-  EMPTY
-  OCCUPIED
-  RESERVED
-}
-
-enum PromotionType {
-  PERCENTAGE
-  FIXED
-}
-
-enum PaymentMethod {
-  CASH
-  CARD
-  BANK_TRANSFER
-  E_WALLET
-}
-
-enum PaymentStatus {
-  PENDING
-  PAID
-  FAILED
-  REFUNDED
-}
-
-enum CustomerTier {
-  BRONZE
-  SILVER
-  GOLD
-  VIP
-}
-
-enum StockRequestStatus {
-  PENDING
-  APPROVED
-  REJECTED
-  COMPLETED
-  CANCELLED
-}
-
-enum StockRequestType {
-  RESTOCK
-  ADJUSTMENT
-  RETURN
-}
-
-enum BillStatus {
-  DRAFT
-  ISSUED
-  PAID
-  CANCELLED
-  REFUNDED
-}
-
-enum TemplateCategory {
-  INVOICE
-  ORDER
-  RECEIPT
-  REPORT
-}
-
-enum TemplateStatus {
-  ACTIVE
-  INACTIVE
-}
-
-enum ShipmentStatus {
-  READY
-  IN_TRANSIT
-  DELIVERED
-  COMPLETED
-  CANCELLED
-}
-
-enum BannerStatus {
-  ACTIVE
-  INACTIVE
-}
-
-enum OrderType {
-  DELIVERY
-  PICKUP
-  DINE_IN
-}
