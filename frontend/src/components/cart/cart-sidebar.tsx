@@ -37,7 +37,7 @@ export function CartSidebar() {
         {cartItems.length === 0 ? (
           <div className="flex-1 flex flex-col items-center justify-center">
             <p className="text-muted-foreground">Giỏ hàng của bạn đang trống.</p>
-            <Button onClick={closeCart} className="mt-4">
+            <Button onClick={closeCart} className="mt-4 text-white bg-orange-500 hover:bg-orange-600">
               Tiếp tục mua sắm
             </Button>
           </div>
@@ -100,7 +100,7 @@ export function CartSidebar() {
                   <span>Tổng cộng:</span>
                   <span>{total.toLocaleString("vi-VN")}đ</span>
                 </div>
-                <Button asChild className="w-full">
+                <Button asChild className="w-full bg-orange-500 hover:bg-orange-600 text-white">
                   <Link href="/customer/checkout">Thanh toán</Link>
                 </Button>
               </div>

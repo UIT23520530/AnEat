@@ -3,11 +3,13 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Package, Truck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { bannerService, type Banner } from "@/services/banner.service";
 
 export function HeroSection() {
+  const router = useRouter();
+  const { openBranchSelector } = useBranch();
   const [currentSlide, setCurrentSlide] = useState(0);
   const [banners, setBanners] = useState<Banner[]>([]);
   const [loading, setLoading] = useState(true);
@@ -91,16 +93,84 @@ export function HeroSection() {
     return () => clearInterval(timer);
   }, [banners.length]);
 
+  // Fallback banners nếu API fail
+  const fallbackBanners: Banner[] = [
+    {
+      id: "fallback-1",
+      title: "NỞ CÀNG BỤNG VUI BẤT MOOD",
+      description: "Combo 79.000đ",
+      image: "/assets/fried-chicken-combo-meal.jpg",
+      link: null,
+      order: 0,
+      status: "ACTIVE",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    },
+    {
+      id: "fallback-2",
+      title: "BURGER PHÔ MAI",
+      description: "Thử ngay burger phô mai mới",
+      image: "/assets/cheese-burger.png",
+      link: null,
+      order: 1,
+      status: "ACTIVE",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    },
+    {
+      id: "fallback-3",
+      title: "MỲ Ý THƯỢNG HẠNG",
+      description: "Thưởng thức hương vị Ý đích thực",
+      image: "/assets/classic-carbonara.png",
+      link: null,
+      order: 2,
+      status: "ACTIVE",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    },
+  ];
+
+  // Sử dụng fallback nếu không có banners từ API
+  const displayBanners = banners.length > 0 ? banners : fallbackBanners;
+
+  useEffect(() => {
+    if (displayBanners.length > 0) {
+      const timer = setInterval(() => {
+        setCurrentSlide((prev) => (prev + 1) % displayBanners.length);
+      }, 5000);
+
+      return () => clearInterval(timer);
+    }
+  }, [displayBanners.length]);
+
   const goToSlide = (index: number) => {
     setCurrentSlide(index);
   };
 
   const previousSlide = () => {
-    setCurrentSlide((prev) => (prev - 1 + banners.length) % banners.length);
+    setCurrentSlide((prev) => (prev - 1 + displayBanners.length) % displayBanners.length);
   };
 
   const nextSlide = () => {
-    setCurrentSlide((prev) => (prev + 1) % banners.length);
+    setCurrentSlide((prev) => (prev + 1) % displayBanners.length);
+  };
+
+  // Handle Pickup - Open branch selector and set order type
+  const handlePickup = () => {
+    // Save order type to localStorage for menu page
+    if (typeof window !== "undefined") {
+      localStorage.setItem("orderType", "PICKUP");
+    }
+    openBranchSelector();
+  };
+
+  // Handle Delivery - Navigate to menu and set order type
+  const handleDelivery = () => {
+    // Save order type to localStorage for menu page
+    if (typeof window !== "undefined") {
+      localStorage.setItem("orderType", "DELIVERY");
+    }
+    router.push("/customer/menu");
   };
 
   if (loading) {
@@ -118,12 +188,12 @@ export function HeroSection() {
   }
 
   return (
-    <section className="w-full bg-gradient-to-b from-orange-50 to-white py-8 md:py-12">
+    <section className="w-full bg-gradient-to-b from-orange-50 to-orange-50 py-12 md:py-16">
       <div className="container mx-auto px-4 max-w-7xl">
         {/* Banner Carousel */}
-        <div className="relative mb-6 overflow-visible">
+        <div className="relative mb-10 overflow-visible">
           <div className="relative h-[350px] md:h-[600px] w-full rounded-3xl overflow-hidden shadow-2xl">
-            {banners.map((banner, index) => (
+            {displayBanners.map((banner, index) => (
               <div
                 key={banner.id}
                 className={cn(
@@ -137,7 +207,25 @@ export function HeroSection() {
                   fill
                   className="object-cover"
                   priority={index === 0}
+                  sizes="100vw"
                 />
+                {/* Overlay with title and description if available */}
+                {(banner.title || banner.description) && (
+                  <div className="absolute inset-0 bg-gradient-to-r from-black/60 to-transparent flex items-center">
+                    <div className="container mx-auto px-8">
+                      {banner.title && (
+                        <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-4">
+                          {banner.title}
+                        </h2>
+                      )}
+                      {banner.description && (
+                        <p className="text-lg md:text-xl lg:text-2xl text-white/90 max-w-2xl">
+                          {banner.description}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -159,38 +247,47 @@ export function HeroSection() {
           </button>
 
           {/* Dots Indicator */}
-          <div className="flex justify-center gap-2 mt-6">
-            {banners.map((_, index) => (
-              <button
-                key={index}
-                onClick={() => goToSlide(index)}
-                className={cn(
-                  "h-2.5 rounded-full transition-all duration-300",
-                  currentSlide === index
-                    ? "w-8 bg-orange-500"
-                    : "w-2.5 bg-gray-300 hover:bg-gray-400"
-                )}
-                aria-label={`Go to slide ${index + 1}`}
-              />
-            ))}
-          </div>
+          {displayBanners.length > 1 && (
+            <div className="flex justify-center gap-2 mt-6">
+              {displayBanners.map((banner, index) => (
+                <button
+                  key={banner.id}
+                  onClick={() => goToSlide(index)}
+                  className={cn(
+                    "h-2.5 rounded-full transition-all duration-300",
+                    currentSlide === index
+                      ? "w-8 bg-orange-500"
+                      : "w-2.5 bg-gray-300 hover:bg-gray-400"
+                  )}
+                  aria-label={`Go to slide ${index + 1}`}
+                />
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Action Buttons */}
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
           <Button
             size="lg"
-            className="w-full sm:w-auto bg-orange-500 text-white rounded-full hover:bg-orange-600 px-12 py-6 text-lg font-bold shadow-lg hover:shadow-xl transition-all"
+            onClick={handlePickup}
+            className="w-full sm:w-auto bg-orange-500 text-white rounded-full hover:bg-white hover:text-orange-500 hover:border-orange-500 border border-orange-500 px-[52.8px] py-[26.4px] text-[19.8px] font-bold shadow-lg hover:shadow-xl transition-colors duration-200"
           >
+            <Package className="mr-2 h-5 w-5" />
             Đặt đến lấy
           </Button>
           <Button
             size="lg"
-            className="w-full sm:w-auto bg-orange-500 text-white rounded-full hover:bg-orange-600 px-12 py-6 text-lg font-bold shadow-lg hover:shadow-xl transition-all"
+            onClick={handleDelivery}
+            className="w-full sm:w-auto bg-orange-500 text-white rounded-full hover:bg-white hover:text-orange-500 hover:border-orange-500 border border-orange-500 px-[52.8px] py-[26.4px] text-[19.8px] font-bold shadow-lg hover:shadow-xl transition-colors duration-200"
           >
+            <Truck className="mr-2 h-5 w-5" />
             Giao tận nơi
           </Button>
         </div>
+
+        {/* Branch Selector Dialog */}
+        <BranchSelectorDialog />
       </div>
     </section>
   );

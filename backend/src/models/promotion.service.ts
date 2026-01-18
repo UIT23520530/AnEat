@@ -7,6 +7,7 @@ interface PromotionQueryParams {
   isActive?: boolean;
   type?: PromotionType;
   search?: string;
+  branchId?: string;
 }
 
 interface CreatePromotionData {
@@ -18,6 +19,7 @@ interface CreatePromotionData {
   expiryDate?: Date;
   minOrderAmount?: number;
   applicableProducts?: string;
+  branchId?: string;
 }
 
 interface UpdatePromotionData {
@@ -34,7 +36,7 @@ interface UpdatePromotionData {
 export class PromotionService {
   // Get all promotions with filtering and pagination
   static async findAll(params: PromotionQueryParams) {
-    const { page, limit, isActive, type, search } = params;
+    const { page, limit, isActive, type, search, branchId } = params;
     const skip = (page - 1) * limit;
 
     const where: Prisma.PromotionWhereInput = {};
@@ -51,6 +53,16 @@ export class PromotionService {
       where.OR = [
         { code: { contains: search, mode: 'insensitive' } },
       ];
+    }
+
+    if (branchId) {
+      where.OR = [
+        { branchId: branchId },
+        { branchId: null }, // Include global promotions
+      ];
+    } else {
+      where.branchId = null; // System admin sees only global if no branchId requested? 
+      // Actually Admin usually should see everything, but let's keep it simple.
     }
 
     const [promotions, total] = await Promise.all([
@@ -72,6 +84,7 @@ export class PromotionService {
           expiryDate: true,
           minOrderAmount: true,
           applicableProducts: true,
+          branchId: true,
           createdAt: true,
           updatedAt: true,
         },
@@ -97,29 +110,62 @@ export class PromotionService {
         expiryDate: true,
         minOrderAmount: true,
         applicableProducts: true,
+        branchId: true,
         createdAt: true,
         updatedAt: true,
       },
     });
   }
 
-  // Get promotion by code (for customer use)
-  static async findByCode(code: string) {
-    const promotion = await prisma.promotion.findUnique({
-      where: { code },
-      select: {
-        id: true,
-        code: true,
-        type: true,
-        value: true,
-        maxUses: true,
-        usedCount: true,
-        isActive: true,
-        expiryDate: true,
-        minOrderAmount: true,
-        applicableProducts: true,
-      },
-    });
+  // Get promotion by code (with Branch awareness)
+  static async findByCode(code: string, branchId?: string) {
+    // 1. Try to find branch-specific promotion first
+    let promotion = null;
+
+    if (branchId) {
+      promotion = await prisma.promotion.findFirst({
+        where: {
+          code: code.toUpperCase(),
+          branchId: branchId
+        },
+        select: {
+          id: true,
+          code: true,
+          type: true,
+          value: true,
+          maxUses: true,
+          usedCount: true,
+          isActive: true,
+          expiryDate: true,
+          minOrderAmount: true,
+          applicableProducts: true,
+          branchId: true,
+        },
+      });
+    }
+
+    // 2. If not found or not branch-specific requested, try global
+    if (!promotion) {
+      promotion = await prisma.promotion.findFirst({
+        where: {
+          code: code.toUpperCase(),
+          branchId: null
+        },
+        select: {
+          id: true,
+          code: true,
+          type: true,
+          value: true,
+          maxUses: true,
+          usedCount: true,
+          isActive: true,
+          expiryDate: true,
+          minOrderAmount: true,
+          applicableProducts: true,
+          branchId: true,
+        },
+      });
+    }
 
     if (!promotion) {
       return null;
@@ -143,9 +189,12 @@ export class PromotionService {
 
   // Create new promotion
   static async create(data: CreatePromotionData) {
-    // Check if code already exists
-    const existingPromotion = await prisma.promotion.findUnique({
-      where: { code: data.code },
+    // Check if code already exists for THIS branch
+    const existingPromotion = await prisma.promotion.findFirst({
+      where: {
+        code: data.code.toUpperCase(),
+        branchId: data.branchId || null
+      },
     });
 
     if (existingPromotion) {
@@ -162,6 +211,7 @@ export class PromotionService {
         expiryDate: data.expiryDate,
         minOrderAmount: data.minOrderAmount,
         applicableProducts: data.applicableProducts,
+        branchId: data.branchId,
       },
       select: {
         id: true,
@@ -174,6 +224,7 @@ export class PromotionService {
         expiryDate: true,
         minOrderAmount: true,
         applicableProducts: true,
+        branchId: true,
         createdAt: true,
         updatedAt: true,
       },
@@ -193,8 +244,11 @@ export class PromotionService {
 
     // If updating code, check if new code already exists
     if (data.code && data.code !== promotion.code) {
-      const existingPromotion = await prisma.promotion.findUnique({
-        where: { code: data.code },
+      const existingPromotion = await prisma.promotion.findFirst({
+        where: {
+          code: data.code.toUpperCase(),
+          branchId: promotion.branchId // Check in the SAME scope as the existing promotion
+        },
       });
 
       if (existingPromotion) {
@@ -225,6 +279,7 @@ export class PromotionService {
         expiryDate: true,
         minOrderAmount: true,
         applicableProducts: true,
+        branchId: true,
         createdAt: true,
         updatedAt: true,
       },
@@ -254,14 +309,17 @@ export class PromotionService {
   }
 
   // Get statistics
-  static async getStatistics() {
+  static async getStatistics(branchId?: string) {
+    const where: Prisma.PromotionWhereInput = branchId ? { branchId } : {};
+
     const [totalPromotions, activePromotions, expiredPromotions] = await Promise.all([
-      prisma.promotion.count(),
+      prisma.promotion.count({ where }),
       prisma.promotion.count({
-        where: { isActive: true },
+        where: { ...where, isActive: true },
       }),
       prisma.promotion.count({
         where: {
+          ...where,
           expiryDate: {
             lt: new Date(),
           },
@@ -271,6 +329,7 @@ export class PromotionService {
 
     // Calculate total uses
     const promotions = await prisma.promotion.findMany({
+      where,
       select: { usedCount: true },
     });
     const totalUses = promotions.reduce((sum, p) => sum + p.usedCount, 0);

@@ -1,13 +1,26 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ShoppingCart, User, MenuIcon, MapPin, ShoppingBag } from "lucide-react";
+import { ShoppingCart, User, MenuIcon, MapPin, ShoppingBag, Store, LogOut, User as UserIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/contexts/cart-context";
+import { useBranch } from "@/contexts/branch-context";
 import { CartSidebar } from "../cart/cart-sidebar";
+import { BranchSelectorDialog } from "../branch/branch-selector-dialog";
 import { Badge } from "../ui/badge";
+import { getCurrentUser, logout } from "@/lib/auth";
+import type { User as UserType } from "@/types";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 interface PublicLayoutProps {
   children: ReactNode;
@@ -16,13 +29,20 @@ interface PublicLayoutProps {
 export function PublicLayout({ children }: PublicLayoutProps) {
   const pathname = usePathname() || "/";
   const { openCart, cartItems } = useCart();
+  const { openBranchSelector, selectedBranch } = useBranch();
+  const [user, setUser] = useState<UserType | null>(null);
+
+  useEffect(() => {
+    setUser(getCurrentUser());
+  }, []);
+
   const navItems = [
     { href: "/", label: "Trang chủ" },
     { href: "/customer/menu", label: "Thực đơn" },
     { href: "/customer/promotions", label: "Khuyến mãi" },
     { href: "/customer/orders", label: "Đơn hàng" },
     { href: "/customer/about-us", label: "Về chúng tôi" },
-    { href: "/customer/contact-us", label: "Liên hệ" },
+    { href: "/customer/stores", label: "Cửa hàng" },
   ];
 
   const isActive = (href: string) => {
@@ -38,7 +58,7 @@ export function PublicLayout({ children }: PublicLayoutProps) {
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
           <div className="flex items-center gap-6">
-            <Link href="/" className="flex flex-col items-center gap-1">
+            <Link href="/" className="flex items-center gap-2">
               <img
                 src="/icons/AnEat.svg"
                 alt="AnEat"
@@ -54,10 +74,10 @@ export function PublicLayout({ children }: PublicLayoutProps) {
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`text-base font-medium uppercase transition-colors ${
+                  className={`text-base uppercase transition-colors ${
                   isActive(item.href)
                     ? "text-orange-500 font-bold border-b-2 border-orange-500 pb-1"
-                    : "text-muted-foreground hover:text-orange-500"
+                    : "text-muted-foreground font-medium hover:text-orange-500"
                   }`}
                 >
                   {item.label}
@@ -67,9 +87,18 @@ export function PublicLayout({ children }: PublicLayoutProps) {
           </div>
 
           <div className="flex items-center gap-2">
-            {/* Button map */}
-            <Button variant="ghost" size="icon">
-              <MapPin className="h-6 w-6" />
+            {/* Button chọn cửa hàng */}
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={openBranchSelector}
+              title={selectedBranch ? selectedBranch.name : "Chọn cửa hàng"}
+              className="relative"
+            >
+              <Store className="h-6 w-6" />
+              {selectedBranch && (
+                <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-green-500 border-2 border-white" />
+              )}
             </Button>
             {/* Button cart */}
             <Button variant="ghost" size="icon" onClick={openCart} className="relative">
@@ -82,23 +111,60 @@ export function PublicLayout({ children }: PublicLayoutProps) {
             </Button>
 
             {/* Button user */}
-            <Link href="/auth/login">
-              <Button
-                size="lg"
-                className="hidden sm:flex w-full sm:w-auto bg-orange-500 text-white rounded-full hover:bg-orange-600"
-              >
-                Đăng nhập
-              </Button>
-            </Link>
-            <Link href="/auth/register">
-                <Button
-                variant="outline"
-                size="lg"
-                className="hidden sm:flex w-full sm:w-auto border-orange-500 text-orange-500 rounded-full hover:bg-orange-100 hover:text-orange-600"
-                >
-                Đăng ký
-                </Button>
-            </Link>
+            {user ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="relative h-10 w-10 rounded-full">
+                    <Avatar className="h-10 w-10 border border-gray-200">
+                      <AvatarImage src={user.image || "/placeholder-user.jpg"} alt={user.name} />
+                      <AvatarFallback>{user.name ? user.name.charAt(0).toUpperCase() : "U"}</AvatarFallback>
+                    </Avatar>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-56" align="end" forceMount>
+                  <DropdownMenuLabel className="font-normal">
+                    <div className="flex flex-col space-y-1">
+                      <p className="text-sm font-medium leading-none">{user.name}</p>
+                      <p className="text-xs leading-none text-muted-foreground">
+                        {user.email}
+                      </p>
+                    </div>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild>
+                    <Link href="/profile" className="cursor-pointer">
+                      <UserIcon className="mr-2 h-4 w-4" />
+                      <span>Hồ sơ</span>
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={logout} className="cursor-pointer text-red-600 focus:text-red-600">
+                    <LogOut className="mr-2 h-4 w-4" />
+                    <span>Đăng xuất</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <>
+                <Link href="/auth/login">
+                  <Button
+                    size="lg"
+                    className="hidden sm:flex w-full sm:w-auto bg-orange-500 text-white rounded-full hover:bg-orange-600"
+                  >
+                    Đăng nhập
+                  </Button>
+                </Link>
+                <Link href="/auth/register">
+                  <Button
+                    variant="outline"
+                    size="lg"
+                    className="hidden sm:flex w-full sm:w-auto border-orange-500 text-orange-500 rounded-full hover:bg-orange-100 hover:text-orange-600"
+                  >
+                    Đăng ký
+                  </Button>
+                </Link>
+              </>
+            )}
             <Button variant="ghost" size="icon" className="md:hidden">
               <MenuIcon className="h-6 w-6" />
             </Button>
@@ -109,6 +175,7 @@ export function PublicLayout({ children }: PublicLayoutProps) {
       {/* Main Content */}
       <main className="bg-orange-50 flex-1">{children}</main>
       <CartSidebar />
+      <BranchSelectorDialog />
 
       {/* Footer */}
       <footer className="border-t bg-muted/50">
@@ -141,10 +208,10 @@ export function PublicLayout({ children }: PublicLayoutProps) {
                 </li>
                 <li>
                   <Link
-                    href="/customer/contact-us"
+                    href="/customer/stores"
                     className="text-muted-foreground hover:text-foreground"
                   >
-                    Liên hệ
+                    Cửa hàng
                   </Link>
                 </li>
               </ul>
@@ -160,26 +227,10 @@ export function PublicLayout({ children }: PublicLayoutProps) {
                     Hồ sơ
                   </Link>
                 </li>
-                <li>
-                  <Link
-                    href="/customer/history"
-                    className="text-muted-foreground hover:text-foreground"
-                  >
-                    Lịch sử đặt hàng
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href="/customer/feedback"
-                    className="text-muted-foreground hover:text-foreground"
-                  >
-                    Phản hồi
-                  </Link>
-                </li>
               </ul>
             </div>
             <div>
-              <h4 className="font-semibold mb-4">Liên hệ</h4>
+              <h4 className="font-semibold mb-4">Cửa hàng</h4>
               <ul className="space-y-2 text-sm text-muted-foreground">
                 <li>Điện thoại: 1900 6522</li>
                 <li>Email: info@aneat.com</li>

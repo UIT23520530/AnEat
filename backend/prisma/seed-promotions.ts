@@ -101,39 +101,54 @@ async function main() {
 
   for (const promotion of promotions) {
     try {
-      const created = await prisma.promotion.upsert({
-        where: { code: promotion.code },
-        update: promotion,
-        create: promotion,
+      // Find updated logic: explicit global (branchId: null) check
+      const existing = await prisma.promotion.findFirst({
+        where: {
+          code: promotion.code,
+          branchId: null,
+        },
       });
-      console.log(`✅ Created/Updated promotion: ${created.code}`);
+
+      if (existing) {
+        // Update
+        const updated = await prisma.promotion.update({
+          where: { id: existing.id },
+          data: promotion,
+        });
+        console.log(`✅ Updated global promotion: ${updated.code}`);
+      } else {
+        // Create
+        const created = await prisma.promotion.create({
+          data: {
+            ...promotion,
+            branchId: null,
+          },
+        });
+        console.log(`✅ Created global promotion: ${created.code}`);
+      }
     } catch (error) {
-      console.error(`❌ Error creating promotion ${promotion.code}:`, error);
+      console.error(`❌ Error creating/updating promotion ${promotion.code}:`, error);
     }
   }
 
   // Simulate some used promotions
   try {
-    await prisma.promotion.update({
-      where: { code: 'WELCOME10' },
-      data: { usedCount: 234 },
-    });
-    await prisma.promotion.update({
-      where: { code: 'SALE20' },
-      data: { usedCount: 156 },
-    });
-    await prisma.promotion.update({
-      where: { code: 'FREESHIP50K' },
-      data: { usedCount: 892 },
-    });
-    await prisma.promotion.update({
-      where: { code: 'NEWYEAR30' },
-      data: { usedCount: 45 },
-    });
-    await prisma.promotion.update({
-      where: { code: 'FLASH50' },
-      data: { usedCount: 67 },
-    });
+    const updateUsedCount = async (code: string, count: number) => {
+      const p = await prisma.promotion.findFirst({ where: { code, branchId: null } });
+      if (p) {
+        await prisma.promotion.update({
+          where: { id: p.id },
+          data: { usedCount: count },
+        });
+      }
+    };
+
+    await updateUsedCount('WELCOME10', 234);
+    await updateUsedCount('SALE20', 156);
+    await updateUsedCount('FREESHIP50K', 892);
+    await updateUsedCount('NEWYEAR30', 45);
+    await updateUsedCount('FLASH50', 67);
+
     console.log('✅ Updated usedCount for promotions');
   } catch (error) {
     console.error('❌ Error updating usedCount:', error);

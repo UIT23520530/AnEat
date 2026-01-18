@@ -45,11 +45,12 @@ export interface StaffDetailResponse {
 
 export interface CreateStaffRequest {
   email: string;
-  password: string;
+  password?: string;
   name: string;
   phone: string;
   avatar?: string;
   isActive?: boolean;
+  branchId?: string | null;
 }
 
 export interface UpdateStaffRequest {
@@ -59,6 +60,7 @@ export interface UpdateStaffRequest {
   phone?: string;
   avatar?: string;
   isActive?: boolean;
+  branchId?: string | null;
 }
 
 // Query parameters cho GET list

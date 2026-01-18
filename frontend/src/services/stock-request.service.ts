@@ -87,6 +87,8 @@ export interface StockStatisticsResponse {
   data: StockStatistics;
 }
 
+const MANAGER_STOCK_REQUEST_BASE_URL = '/stock-requests';
+
 export const stockRequestService = {
   // Get all stock requests
   getStockRequests: async (params?: {
@@ -96,31 +98,37 @@ export const stockRequestService = {
     productId?: string;
     search?: string;
   }): Promise<StockRequestsResponse> => {
-    const response = await apiClient.get('/stock-requests', { params });
+    const response = await apiClient.get(MANAGER_STOCK_REQUEST_BASE_URL, { params });
     return response.data;
   },
 
   // Get stock request by ID
   getStockRequestById: async (id: string): Promise<StockRequestResponse> => {
-    const response = await apiClient.get(`/stock-requests/${id}`);
+    const response = await apiClient.get(`${MANAGER_STOCK_REQUEST_BASE_URL}/${id}`);
     return response.data;
   },
 
   // Create new stock request
   createStockRequest: async (data: CreateStockRequestDto): Promise<StockRequestResponse> => {
-    const response = await apiClient.post('/stock-requests', data);
+    const response = await apiClient.post(MANAGER_STOCK_REQUEST_BASE_URL, data);
+    return response.data;
+  },
+
+  // Update stock request
+  updateStockRequest: async (id: string, data: Partial<CreateStockRequestDto>): Promise<StockRequestResponse> => {
+    const response = await apiClient.put(`${MANAGER_STOCK_REQUEST_BASE_URL}/${id}`, data);
     return response.data;
   },
 
   // Cancel stock request
   cancelStockRequest: async (id: string): Promise<{ success: boolean; message: string }> => {
-    const response = await apiClient.put(`/stock-requests/${id}/cancel`);
+    const response = await apiClient.put(`${MANAGER_STOCK_REQUEST_BASE_URL}/${id}/cancel`);
     return response.data;
   },
 
   // Get statistics
   getStatistics: async (): Promise<StockStatisticsResponse> => {
-    const response = await apiClient.get('/stock-requests/statistics');
+    const response = await apiClient.get(`${MANAGER_STOCK_REQUEST_BASE_URL}/statistics`);
     return response.data;
   },
 };

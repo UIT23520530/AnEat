@@ -1,303 +1,183 @@
-"use client";
+"use client"
 
-import { Form, Input, Select, Row, Col, InputNumber, Upload, Switch } from "antd";
-import { PlusOutlined } from "@ant-design/icons";
-import { useEffect, useState } from "react";
-import type { UploadFile, UploadProps } from "antd";
-
-const { Option } = Select;
-const { TextArea } = Input;
+import { Form, Input, InputNumber, Select, Row, Col, Switch } from "antd"
+import { useEffect } from "react"
+import { Product } from "@/services/admin-product.service"
+import { Category } from "@/services/admin-category.service"
+import { Branch } from "@/services/admin-branch.service"
 
 interface ProductsFormProps {
-  initialValues?: any;
-  onSubmit: (values: any) => void;
-  isEdit?: boolean;
+  form: any
+  onFinish: (values: any) => void
+  isEdit?: boolean
+  selectedProduct?: Product | null
+  categories: Category[]
+  branches: Branch[]
+  hideBranch?: boolean
 }
 
 export default function ProductsForm({
-  initialValues,
-  onSubmit,
+  form,
+  onFinish,
   isEdit = false,
+  selectedProduct,
+  categories,
+  branches,
+  hideBranch = false,
 }: ProductsFormProps) {
-  const [form] = Form.useForm();
-  const [fileList, setFileList] = useState<UploadFile[]>([]);
-
   useEffect(() => {
-    if (initialValues) {
-      form.setFieldsValue(initialValues);
-      // Set image if exists
-      if (initialValues.image) {
-        setFileList([
-          {
-            uid: "-1",
-            name: "image.png",
-            status: "done",
-            url: initialValues.image,
-          },
-        ]);
-      }
+    if (isEdit && selectedProduct) {
+      form.setFieldsValue({
+        code: selectedProduct.code,
+        name: selectedProduct.name,
+        description: selectedProduct.description,
+        price: selectedProduct.price / 100, // Convert cents to currency units
+        image: selectedProduct.image,
+        categoryId: selectedProduct.categoryId,
+        branchId: selectedProduct.branchId || undefined,
+        quantity: selectedProduct.quantity,
+        prepTime: selectedProduct.prepTime || undefined,
+        isAvailable: selectedProduct.isAvailable,
+        costPrice: selectedProduct.costPrice ? selectedProduct.costPrice / 100 : undefined,
+      })
+    } else if (!isEdit) {
+      form.resetFields()
+      form.setFieldsValue({ isAvailable: true, quantity: 0 })
     }
-  }, [initialValues, form]);
-
-  const handleFinish = (values: any) => {
-    const submitData = {
-      ...values,
-      image: fileList.length > 0 ? fileList[0].url || fileList[0].thumbUrl : null,
-    };
-    onSubmit(submitData);
-    if (!isEdit) {
-      form.resetFields();
-      setFileList([]);
-    }
-  };
-
-  const handleUploadChange: UploadProps["onChange"] = ({ fileList: newFileList }) => {
-    setFileList(newFileList);
-  };
-
-  const uploadButton = (
-    <button style={{ border: 0, background: "none" }} type="button">
-      <PlusOutlined />
-      <div style={{ marginTop: 8 }}>Upload</div>
-    </button>
-  );
+  }, [isEdit, selectedProduct, form])
 
   return (
-    <Form
-      form={form}
-      layout="vertical"
-      onFinish={handleFinish}
-      autoComplete="off"
-      size="large"
-      initialValues={{
-        status: "available",
-        featured: false,
-        stock: 0,
-      }}
-    >
+    <Form form={form} layout="vertical" onFinish={onFinish}>
       <Row gutter={16}>
-        {/* Product Name */}
         <Col span={12}>
           <Form.Item
-            label="Product Name"
+            label="Mã sản phẩm"
+            name="code"
+            rules={[
+              { required: true, message: "Vui lòng nhập mã sản phẩm" },
+              { max: 20, message: "Mã không quá 20 ký tự" },
+              { pattern: /^[A-Z0-9_]+$/, message: "Mã chỉ chứa chữ hoa, số và _" },
+            ]}
+          >
+            <Input placeholder="VD: GA_CAY" />
+          </Form.Item>
+        </Col>
+        <Col span={12}>
+          <Form.Item
+            label="Tên sản phẩm"
             name="name"
             rules={[
-              { required: true, message: "Please enter product name" },
-              { min: 2, message: "Name must be at least 2 characters" },
+              { required: true, message: "Vui lòng nhập tên sản phẩm" },
+              { max: 200, message: "Tên không quá 200 ký tự" },
             ]}
           >
-            <Input placeholder="Enter product name" />
+            <Input placeholder="VD: Gà cay" />
           </Form.Item>
         </Col>
+      </Row>
 
-        {/* Category */}
+      <Form.Item label="Mô tả" name="description">
+        <Input.TextArea rows={3} placeholder="Mô tả về sản phẩm..." />
+      </Form.Item>
+
+      <Row gutter={16}>
         <Col span={12}>
           <Form.Item
-            label="Category"
-            name="category"
-            rules={[{ required: true, message: "Please select category" }]}
-          >
-            <Select placeholder="Select category">
-              <Option value="Main Course">Main Course</Option>
-              <Option value="Side Dish">Side Dish</Option>
-              <Option value="Appetizer">Appetizer</Option>
-              <Option value="Dessert">Dessert</Option>
-              <Option value="Beverage">Beverage</Option>
-              <Option value="Combo">Combo</Option>
-              <Option value="Snack">Snack</Option>
-            </Select>
-          </Form.Item>
-        </Col>
-
-        {/* Price */}
-        <Col span={8}>
-          <Form.Item
-            label="Price (VND)"
+            label="Giá bán (VNĐ)"
             name="price"
             rules={[
-              { required: true, message: "Please enter price" },
-              { type: "number", min: 1000, message: "Price must be at least 1,000 VND" },
+              { required: true, message: "Vui lòng nhập giá" },
+              { type: "number", min: 0, message: "Giá phải >= 0" },
             ]}
           >
             <InputNumber
+              style={{ width: "100%" }}
               placeholder="50000"
-              style={{ width: "100%" }}
               formatter={(value) => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ",")}
-              parser={(value) => value!.replace(/\$\s?|(,*)/g, "") as any}
-              min={1000}
-              step={1000}
+              parser={(value) => value!.replace(/\$\s?|(,*)/g, "")}
             />
           </Form.Item>
         </Col>
-
-        {/* Stock */}
-        <Col span={8}>
+        <Col span={12}>
           <Form.Item
-            label="Stock Quantity"
-            name="stock"
+            label="Giá vốn (VNĐ)"
+            name="costPrice"
             rules={[
-              { required: true, message: "Please enter stock quantity" },
-              { type: "number", min: 0, message: "Stock cannot be negative" },
+              { type: "number", min: 0, message: "Giá vốn phải >= 0" },
             ]}
           >
             <InputNumber
-              placeholder="100"
               style={{ width: "100%" }}
-              min={0}
-              step={1}
+              placeholder="30000"
+              formatter={(value) => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ",")}
+              parser={(value) => value!.replace(/\$\s?|(,*)/g, "")}
             />
           </Form.Item>
         </Col>
+      </Row>
 
-        {/* Status */}
-        <Col span={8}>
-          <Form.Item
-            label="Status"
-            name="status"
-            rules={[{ required: true, message: "Please select status" }]}
-          >
-            <Select placeholder="Select status">
-              <Option value="available">Available</Option>
-              <Option value="unavailable">Unavailable</Option>
-              <Option value="out-of-stock">Out of Stock</Option>
-            </Select>
-          </Form.Item>
-        </Col>
-
-        {/* SKU */}
+      <Row gutter={16}>
         <Col span={12}>
           <Form.Item
-            label="SKU (Stock Keeping Unit)"
-            name="sku"
+            label="Số lượng tồn kho"
+            name="quantity"
             rules={[
-              { pattern: /^[A-Z0-9-]+$/, message: "SKU must contain only uppercase letters, numbers, and dashes" },
+              { required: true, message: "Vui lòng nhập số lượng" },
+              { type: "number", min: 0, message: "Số lượng phải >= 0" },
             ]}
           >
-            <Input placeholder="PROD-001" style={{ textTransform: "uppercase" }} />
+            <InputNumber style={{ width: "100%" }} placeholder={isEdit ? "100" : "0"} min={0} />
           </Form.Item>
         </Col>
-
-        {/* Barcode */}
         <Col span={12}>
           <Form.Item
-            label="Barcode"
-            name="barcode"
-            rules={[
-              { pattern: /^[0-9]+$/, message: "Barcode must contain only numbers" },
-            ]}
+            label="Danh mục"
+            name="categoryId"
+            rules={[{ required: true, message: "Vui lòng chọn danh mục" }]}
           >
-            <Input placeholder="1234567890123" />
-          </Form.Item>
-        </Col>
-
-        {/* Description */}
-        <Col span={24}>
-          <Form.Item
-            label="Description"
-            name="description"
-            rules={[
-              { max: 500, message: "Description cannot exceed 500 characters" },
-            ]}
-          >
-            <TextArea
-              rows={3}
-              placeholder="Enter product description"
-              maxLength={500}
-              showCount
-            />
-          </Form.Item>
-        </Col>
-
-        {/* Image Upload */}
-        <Col span={12}>
-          <Form.Item label="Product Image" name="image">
-            <Upload
-              listType="picture-card"
-              fileList={fileList}
-              onChange={handleUploadChange}
-              beforeUpload={() => false}
-              maxCount={1}
-            >
-              {fileList.length >= 1 ? null : uploadButton}
-            </Upload>
-          </Form.Item>
-        </Col>
-
-        {/* Featured Toggle */}
-        <Col span={12}>
-          <Form.Item
-            label="Featured Product"
-            name="featured"
-            valuePropName="checked"
-            tooltip="Featured products will be highlighted on the homepage"
-          >
-            <Switch />
-          </Form.Item>
-          <p style={{ color: "#6B7280", fontSize: "14px", marginTop: "8px" }}>
-            Mark this product as featured to display it prominently
-          </p>
-        </Col>
-
-        {/* Ingredients/Tags */}
-        <Col span={24}>
-          <Form.Item
-            label="Ingredients/Tags"
-            name="tags"
-            tooltip="Comma-separated list of ingredients or tags"
-          >
-            <Input placeholder="chicken, spicy, gluten-free" />
-          </Form.Item>
-        </Col>
-
-        {/* Calories */}
-        <Col span={8}>
-          <Form.Item
-            label="Calories (kcal)"
-            name="calories"
-            rules={[
-              { type: "number", min: 0, message: "Calories cannot be negative" },
-            ]}
-          >
-            <InputNumber
-              placeholder="250"
-              style={{ width: "100%" }}
-              min={0}
-              step={10}
-            />
-          </Form.Item>
-        </Col>
-
-        {/* Preparation Time */}
-        <Col span={8}>
-          <Form.Item
-            label="Prep Time (minutes)"
-            name="prepTime"
-            rules={[
-              { type: "number", min: 1, message: "Prep time must be at least 1 minute" },
-            ]}
-          >
-            <InputNumber
-              placeholder="15"
-              style={{ width: "100%" }}
-              min={1}
-              step={1}
-            />
-          </Form.Item>
-        </Col>
-
-        {/* Spice Level */}
-        <Col span={8}>
-          <Form.Item label="Spice Level" name="spiceLevel">
-            <Select placeholder="Select spice level">
-              <Option value="none">None</Option>
-              <Option value="mild">Mild</Option>
-              <Option value="medium">Medium</Option>
-              <Option value="hot">Hot</Option>
-              <Option value="extra-hot">Extra Hot</Option>
+            <Select placeholder="Chọn danh mục">
+              {(isEdit ? categories : categories.filter(c => c.isActive)).map((cat) => (
+                <Select.Option key={cat.id} value={cat.id}>
+                  {cat.name}
+                </Select.Option>
+              ))}
             </Select>
           </Form.Item>
         </Col>
       </Row>
+
+      <Row gutter={16}>
+        {!hideBranch ? (
+          <Col span={12}>
+            <Form.Item
+              label="Chi nhánh"
+              name="branchId"
+            >
+              <Select placeholder="Chọn chi nhánh (tùy chọn)" allowClear>
+                {(isEdit ? branches : branches.filter(b => b.isActive)).map((branch) => (
+                  <Select.Option key={branch.id} value={branch.id}>
+                    {branch.name}
+                  </Select.Option>
+                ))}
+              </Select>
+            </Form.Item>
+          </Col>
+        ) : null}
+        <Col span={hideBranch ? 12 : 12}>
+          <Form.Item label="Thời gian chuẩn bị (phút)" name="prepTime">
+            <InputNumber style={{ width: "100%" }} placeholder="15" min={0} />
+          </Form.Item>
+        </Col>
+        <Col span={12}>
+          <Form.Item label="URL hình ảnh" name="image">
+            <Input placeholder="https://example.com/image.jpg" />
+          </Form.Item>
+        </Col>
+      </Row>
+
+      <Form.Item label="Trạng thái" name="isAvailable" valuePropName="checked">
+        <Switch checkedChildren="Đang bán" unCheckedChildren="Đã ẩn" />
+      </Form.Item>
     </Form>
-  );
+  )
 }

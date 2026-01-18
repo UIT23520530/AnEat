@@ -7,6 +7,7 @@ import {
   getStockRequests,
   getStockRequestById,
   createStockRequest,
+  updateStockRequest,
   cancelStockRequest,
   getStockStatistics,
 } from '../controllers/manager/stock-request.controller';
@@ -21,7 +22,7 @@ const router = Router();
 router.get(
   '/',
   authenticate,
-  authorize(UserRole.ADMIN_SYSTEM, UserRole.ADMIN_BRAND),
+  authorize(UserRole.ADMIN_SYSTEM, UserRole.ADMIN_BRAND, UserRole.STAFF),
   [
     query('page').optional().isInt({ min: 1 }),
     query('limit').optional().isInt({ min: 1, max: 100 }),
@@ -41,7 +42,7 @@ router.get(
 router.get(
   '/statistics',
   authenticate,
-  authorize(UserRole.ADMIN_SYSTEM, UserRole.ADMIN_BRAND),
+  authorize(UserRole.ADMIN_SYSTEM, UserRole.ADMIN_BRAND, UserRole.STAFF),
   getStockStatistics
 );
 
@@ -53,7 +54,7 @@ router.get(
 router.get(
   '/:id',
   authenticate,
-  authorize(UserRole.ADMIN_SYSTEM, UserRole.ADMIN_BRAND),
+  authorize(UserRole.ADMIN_SYSTEM, UserRole.ADMIN_BRAND, UserRole.STAFF),
   param('id').isString().notEmpty(),
   validate,
   getStockRequestById
@@ -67,13 +68,13 @@ router.get(
 router.post(
   '/',
   authenticate,
-  authorize(UserRole.ADMIN_SYSTEM, UserRole.ADMIN_BRAND),
+  authorize(UserRole.ADMIN_SYSTEM, UserRole.ADMIN_BRAND, UserRole.STAFF),
   [
     body('type').optional().isString().isIn(['RESTOCK', 'ADJUSTMENT', 'RETURN']),
     body('requestedQuantity')
       .isInt({ min: 1 })
       .withMessage('Requested quantity must be at least 1'),
-    body('notes').optional().isString(),
+    body('notes').optional({ nullable: true, checkFalsy: true }),
     body('expectedDate').optional().isISO8601(),
     body('productId').isString().notEmpty().withMessage('Product ID is required'),
     body('branchId').optional().isString(),
@@ -90,10 +91,31 @@ router.post(
 router.put(
   '/:id/cancel',
   authenticate,
-  authorize(UserRole.ADMIN_SYSTEM, UserRole.ADMIN_BRAND),
+  authorize(UserRole.ADMIN_SYSTEM, UserRole.ADMIN_BRAND, UserRole.STAFF),
   param('id').isString().notEmpty(),
   validate,
   cancelStockRequest
+);
+
+/**
+ * @route   PUT /api/v1/manager/stock-requests/:id
+ * @desc    Update stock request
+ * @access  Private (ADMIN_SYSTEM, ADMIN_BRAND, STAFF)
+ */
+router.put(
+  '/:id',
+  authenticate,
+  authorize(UserRole.ADMIN_SYSTEM, UserRole.ADMIN_BRAND, UserRole.STAFF),
+  [
+    param('id').isString().notEmpty(),
+    body('type').optional().isString().isIn(['RESTOCK', 'ADJUSTMENT', 'RETURN']),
+    body('requestedQuantity').optional().isInt({ min: 1 }),
+    body('notes').optional({ nullable: true, checkFalsy: true }),
+    body('expectedDate').optional().isISO8601(),
+    body('productId').optional().isString().notEmpty(),
+  ],
+  validate,
+  updateStockRequest
 );
 
 export default router;

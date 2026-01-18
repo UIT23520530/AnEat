@@ -10,10 +10,21 @@ import dayjs from "dayjs";
 import { adminBillService, BillDTO, UpdateBillDto } from "@/services/admin-bill.service";
 import { adminBranchService } from "@/services/admin-branch.service";
 import ThermalPrintReceipt from "@/components/invoice/ThermalPrintReceipt";
-import { InvoiceEditForm } from "@/components/forms/Admin/InvoiceEditForm";
-import { InvoiceHistoryModal } from "@/components/forms/Admin/InvoiceHistoryModal";import { InvoiceDetailModal } from "@/components/forms/Admin/InvoiceDetailModal";
-import { InvoicePrintModal } from "@/components/forms/Admin/InvoicePrintModal";
+import { InvoiceEditForm } from "@/components/forms/admin/InvoiceEditForm";
+import { InvoiceHistoryModal } from "@/components/forms/admin/InvoiceHistoryModal";import { InvoiceDetailModal } from "@/components/forms/admin/InvoiceDetailModal";
+import { InvoicePrintModal } from "@/components/forms/admin/InvoicePrintModal";
 const { Option } = Select;
+
+// Search normalization helper
+const normalizeSearchString = (str: string) => {
+  return str
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/g, "d")
+    .replace(/\s+/g, "-")
+    .trim()
+}
 
 interface InvoiceItem {
   id: string;
@@ -178,42 +189,57 @@ function InvoicesContent() {
     setLoading(true);
     try {
       const params: any = {
-        page,
-        limit: pageSize,
+        page: 1,
+        limit: 999, // Fetch more for client-side filtering with normalization
         sort: "-createdAt",
       };
 
-      // Apply filters
-      if (statusFilter && statusFilter !== "all") {
-        if (statusFilter === "PAID") params.status = "PAID";
-        else if (statusFilter === "PENDING") params.paymentStatus = "PENDING";
-        else if (statusFilter === "CANCELLED") params.status = "CANCELLED";
-        else if (statusFilter === "REFUNDED") params.status = "REFUNDED";
-        else if (statusFilter === "DRAFT") params.status = "DRAFT";
-        else if (statusFilter === "ISSUED") params.status = "ISSUED";
-      }
-
-      if (paymentMethodFilter && paymentMethodFilter !== "all") {
-        params.paymentMethod = paymentMethodFilter;
-      }
-
-      if (branchFilter) {
-        params.branchId = branchFilter;
-      }
-
-      if (searchText) {
-        params.search = searchText;
-      }
+      // We still send basic filters to the backend to reduce payload
+      if (branchFilter) params.branchId = branchFilter;
 
       const response = await adminBillService.getBills(params);
 
       if (response.success) {
-        const mappedInvoices = response.data.map(mapBillToInvoice);
-        setInvoices(mappedInvoices);
+        let filteredData = response.data.map(mapBillToInvoice);
+
+        // Client-side filter by status
+        if (statusFilter && statusFilter !== "all") {
+          if (statusFilter === "PAID") filteredData = filteredData.filter(i => i.status === "paid");
+          else if (statusFilter === "PENDING") filteredData = filteredData.filter(i => i.paymentStatus === "pending");
+          else if (statusFilter === "CANCELLED") filteredData = filteredData.filter(i => i.status === "cancelled");
+          else if (statusFilter === "REFUNDED") filteredData = filteredData.filter(i => i.status === "refunded");
+          else if (statusFilter === "DRAFT") filteredData = filteredData.filter(i => i.status === "draft");
+          else if (statusFilter === "ISSUED") filteredData = filteredData.filter(i => i.status === "issued");
+        }
+
+        // Client-side filter by payment method
+        if (paymentMethodFilter && paymentMethodFilter !== "all") {
+          filteredData = filteredData.filter(i => i.paymentMethod === paymentMethodFilter.toLowerCase());
+        }
+
+        // Client-side filter by Search Query with normalization
+        if (searchText) {
+          const normalizedQuery = normalizeSearchString(searchText);
+          filteredData = filteredData.filter(i => {
+            const normalizedBillNumber = normalizeSearchString(i.billNumber);
+            const normalizedCustomerName = normalizeSearchString(i.customerName);
+            const normalizedOrderNumber = normalizeSearchString(i.orderNumber);
+            const normalizedPhone = i.customerPhone ? normalizeSearchString(i.customerPhone) : "";
+            
+            return (
+              normalizedBillNumber.includes(normalizedQuery) ||
+              normalizedCustomerName.includes(normalizedQuery) ||
+              normalizedOrderNumber.includes(normalizedQuery) ||
+              normalizedPhone.includes(normalizedQuery)
+            );
+          });
+        }
+
+        setInvoices(filteredData);
         setPagination({
-          current: response.meta.current_page,
-          pageSize: response.meta.limit,
-          total: response.meta.total_items,
+          current: 1,
+          pageSize: 10,
+          total: filteredData.length,
         });
       }
     } catch (error: any) {

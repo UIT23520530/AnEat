@@ -18,12 +18,15 @@ export const getPromotions = async (req: Request, res: Response): Promise<Respon
     const type = req.query.type as PromotionType | undefined;
     const search = req.query.search as string | undefined;
 
+    const branchId = req.user.role === 'ADMIN_SYSTEM' ? undefined : req.user.branchId || undefined;
+
     const { promotions, total } = await PromotionService.findAll({
       page,
       limit,
       isActive,
       type,
       search,
+      branchId,
     });
 
     res.status(200).json({
@@ -121,6 +124,8 @@ export const createPromotion = async (req: Request, res: Response): Promise<Resp
 
     const { code, type, value, maxUses, isActive, expiryDate, minOrderAmount, applicableProducts } = req.body;
 
+    const branchId = req.user.role === 'ADMIN_SYSTEM' ? undefined : (req.user.branchId || undefined);
+
     const promotion = await PromotionService.create({
       code,
       type,
@@ -130,6 +135,7 @@ export const createPromotion = async (req: Request, res: Response): Promise<Resp
       expiryDate: expiryDate ? new Date(expiryDate) : undefined,
       minOrderAmount,
       applicableProducts,
+      branchId,
     });
 
     res.status(201).json({
@@ -159,6 +165,23 @@ export const updatePromotion = async (req: Request, res: Response): Promise<Resp
 
     const { id } = req.params;
     const { code, type, value, maxUses, isActive, expiryDate, minOrderAmount, applicableProducts } = req.body;
+
+    // Check if permission allowed
+    if (req.user.role !== 'ADMIN_SYSTEM') {
+      const existing = await PromotionService.findById(id);
+      if (existing && !existing.branchId) {
+        return res.status(403).json({
+          success: false,
+          message: 'Bạn không có quyền chỉnh sửa khuyến mãi của hệ thống',
+        });
+      }
+      if (existing && existing.branchId !== req.user.branchId) {
+        return res.status(403).json({
+          success: false,
+          message: 'Bạn không có quyền chỉnh sửa khuyến mãi này',
+        });
+      }
+    }
 
     const promotion = await PromotionService.update(id, {
       code,
@@ -224,7 +247,8 @@ export const getPromotionStatistics = async (req: Request, res: Response): Promi
       });
     }
 
-    const statistics = await PromotionService.getStatistics();
+    const branchId = req.user.role === 'ADMIN_SYSTEM' ? undefined : (req.user.branchId || undefined);
+    const statistics = await PromotionService.getStatistics(branchId);
 
     res.status(200).json({
       success: true,

@@ -59,7 +59,7 @@ export function AntdProvider({ children }: { children: React.ReactNode }) {
           colorError: '#EF4444',
           colorInfo: '#3B82F6',
           borderRadius: 8,
-          fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+          fontFamily: "'Be Vietnam Pro', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
         },
         components: {
           Button: {

@@ -22,12 +22,24 @@ import {
 } from "@ant-design/icons";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { adminTemplateService, TemplateDTO, TemplateCategory, TemplateStatus, CreateTemplateDto, UpdateTemplateDto } from "@/services/admin-template.service";
-import { TemplateForm } from "@/components/forms/Admin/TemplateForm";
-import { TemplateDetailModal } from "@/components/forms/Admin/TemplateDetailModal";
-import { TemplatePreviewModal } from "@/components/forms/Admin/TemplatePreviewModal";
+import { adminBranchService } from "@/services/admin-branch.service";
+import { TemplateForm } from "@/components/forms/admin/TemplateForm";
+import { TemplateDetailModal } from "@/components/forms/admin/TemplateDetailModal";
+import { TemplatePreviewModal } from "@/components/forms/admin/TemplatePreviewModal";
 import dayjs from "dayjs";
 
 const { Option } = Select;
+
+// Search normalization helper
+const normalizeSearchString = (str: string) => {
+  return str
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/g, "d")
+    .replace(/\s+/g, "-")
+    .trim()
+}
 
 function TemplatesContent() {
   const { message, modal } = App.useApp();
@@ -46,7 +58,7 @@ function TemplatesContent() {
   const [searchTerm, setSearchTerm] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [branchFilter, setBranchFilter] = useState<string | null>(null);
+  const [branchFilter, setBranchFilter] = useState<string>("all");
   const [branches, setBranches] = useState<any[]>([]);
 
   // Modals
@@ -73,7 +85,12 @@ function TemplatesContent() {
       if (searchTerm) filters.search = searchTerm;
       if (categoryFilter && categoryFilter !== "all") filters.category = categoryFilter as TemplateCategory;
       if (statusFilter && statusFilter !== "all") filters.status = statusFilter as TemplateStatus;
-      if (branchFilter) filters.branchId = branchFilter;
+      
+      if (branchFilter === "system") {
+        filters.branchId = null;
+      } else if (branchFilter && branchFilter !== "all") {
+        filters.branchId = branchFilter;
+      }
 
       const response = await adminTemplateService.getAll(
         filters,
@@ -94,7 +111,11 @@ function TemplatesContent() {
   // Load stats
   const loadStats = async () => {
     try {
-      const data = await adminTemplateService.getStats(branchFilter || undefined);
+      let bId: string | undefined = undefined;
+      if (branchFilter === "system") bId = "null";
+      else if (branchFilter !== "all") bId = branchFilter;
+      
+      const data = await adminTemplateService.getStats(bId);
       setStats(data);
     } catch (error) {
       console.error("Load stats error:", error);
@@ -104,8 +125,7 @@ function TemplatesContent() {
   // Load branches
   const loadBranches = async () => {
     try {
-      const { adminBranchService } = await import("@/services/admin-branch.service");
-      const response = await adminBranchService.getBranches();
+      const response = await adminBranchService.getBranches({ limit: 100 });
       setBranches(response.data);
     } catch (error) {
       console.error("Load branches error:", error);
@@ -463,12 +483,12 @@ function TemplatesContent() {
               </Row>
 
               {/* Filters */}
-              <div className="flex justify-between items-center">
+              <div className="flex justify-between items-center gap-2">
                 <Space size="middle">
                   <Input
                     placeholder="Tìm kiếm mẫu..."
                     prefix={<SearchOutlined />}
-                    style={{ width: 280 }}
+                    style={{ width: 230 }}
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     allowClear
@@ -500,21 +520,28 @@ function TemplatesContent() {
 
                   <Select
                     showSearch
-                    allowClear
                     value={branchFilter}
-                    onChange={(value) => setBranchFilter(value || null)}
+                    onChange={setBranchFilter}
                     placeholder="Lọc theo chi nhánh"
-                    style={{ width: 200 }}
-                    className={branchFilter ? "[&>.ant-select-selector]:!bg-blue-50 [&>.ant-select-selector]:!border-blue-500" : ""}
-                    optionFilterProp="children"
-                    filterOption={(input, option) =>
-                      (option?.label ?? "").toLowerCase().includes(input.toLowerCase())
-                    }
-                    options={branches.map((b) => ({
-                      value: b.id,
-                      label: `${b.code} # ${b.name}`,
-                    }))}
-                  />
+                    style={{ minWidth: 260 }}
+                    popupMatchSelectWidth={false}
+                    className={branchFilter !== "all" ? "[&>.ant-select-selector]:!bg-blue-50 [&>.ant-select-selector]:!border-blue-500" : ""}
+                    optionFilterProp="label"
+                  >
+                    <Select.Option value="all" label="Tất cả chi nhánh">
+                      <div className="flex items-center gap-2 py-1">
+                        <span>Tất cả chi nhánh</span>
+                      </div>
+                    </Select.Option>
+                  
+                    {branches.map((b) => (
+                      <Select.Option key={b.id} value={b.id} label={b.name}>
+                        <div className="flex items-center gap-2 py-1">
+                          <span>{b.name}</span>
+                        </div>
+                      </Select.Option>
+                    ))}
+                  </Select>
                 </Space>
 
                 <Button
@@ -687,7 +714,9 @@ function TemplatesContent() {
 export default function TemplatesPage() {
   return (
     <AdminLayout title="Quản lý Mẫu">
+      <App>
       <TemplatesContent />
+      </App>
     </AdminLayout>
   );
 }

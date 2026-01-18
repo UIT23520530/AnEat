@@ -11,12 +11,17 @@ export interface User {
   branchId?: string // For ADMIN_BRAND and STAFF
   branchName?: string // For ADMIN_BRAND and STAFF
   avatar?: string
+  address?: string
+  tier?: "BRONZE" | "SILVER" | "GOLD" | "VIP"
+  points?: number
+  totalSpent?: number
 }
 
 // Product interfaces
 export interface Product {
   id: string
   name: string
+  slug?: string // Slug cho SEO-friendly URL
   description: string
   basePrice: number
   discountedPrice?: number

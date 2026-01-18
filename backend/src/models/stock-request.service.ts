@@ -34,7 +34,7 @@ export class StockRequestService {
   static async generateRequestNumber(): Promise<string> {
     const today = new Date();
     const prefix = `SR${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}`;
-    
+
     const lastRequest = await prisma.stockRequest.findFirst({
       where: {
         requestNumber: {
@@ -241,7 +241,7 @@ export class StockRequestService {
   }
 
   // Cancel request
-  static async cancel(id: string, userId: string) {
+  static async cancel(id: string, userId: string, branchId?: string) {
     const request = await prisma.stockRequest.findUnique({
       where: { id },
     });
@@ -250,12 +250,13 @@ export class StockRequestService {
       throw new Error('Stock request not found');
     }
 
-    if (request.requestedById !== userId) {
-      throw new Error('Only the requester can cancel this request');
+    // Permission check: Branch level
+    if (branchId && request.branchId !== branchId) {
+      throw new Error('Bạn không có quyền hủy yêu cầu của chi nhánh khác');
     }
 
-    if (request.status !== StockRequestStatus.PENDING) {
-      throw new Error('Can only cancel pending requests');
+    if (request.status !== StockRequestStatus.PENDING && request.status !== StockRequestStatus.APPROVED) {
+      throw new Error('Chỉ có thể hủy yêu cầu đang chờ hoặc đã duyệt');
     }
 
     return prisma.stockRequest.update({
@@ -263,6 +264,51 @@ export class StockRequestService {
       data: {
         status: StockRequestStatus.CANCELLED,
       },
+    });
+  }
+
+  // Edit request (while not completed/rejected/cancelled)
+  static async edit(id: string, userId: string, branchId: string, data: Partial<CreateStockRequestData>) {
+    const request = await prisma.stockRequest.findUnique({
+      where: { id },
+    });
+
+    if (!request) {
+      throw new Error('Không tìm thấy yêu cầu nhập kho');
+    }
+
+    // Security check: Must be in the same branch
+    if (request.branchId !== branchId) {
+      throw new Error('Bạn không có quyền chỉnh sửa yêu cầu của chi nhánh khác');
+    }
+
+    // Status check: Only allow editing if not completed, rejected, or cancelled
+    if (
+      request.status === StockRequestStatus.COMPLETED ||
+      request.status === StockRequestStatus.REJECTED ||
+      request.status === StockRequestStatus.CANCELLED
+    ) {
+      throw new Error(`Không thể chỉnh sửa yêu cầu đã ${request.status === StockRequestStatus.COMPLETED ? 'hoàn thành' : 'bị từ chối hoặc hủy'}`);
+    }
+
+    const updateData: any = {
+      productId: data.productId,
+      type: data.type,
+      requestedQuantity: data.requestedQuantity,
+      notes: data.notes,
+      expectedDate: data.expectedDate,
+    };
+
+    // If an APPROVED request is edited, reset it to PENDING for re-approval
+    if (request.status === StockRequestStatus.APPROVED) {
+      updateData.status = StockRequestStatus.PENDING;
+      updateData.approvedById = null;
+      updateData.approvedQuantity = null;
+    }
+
+    return prisma.stockRequest.update({
+      where: { id },
+      data: updateData,
     });
   }
 

@@ -1,11 +1,11 @@
-"use client";
+"use client"
 
-import React, { useState, useEffect } from "react";
-import { ManagerLayout } from "@/components/layouts/manager-layout";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import React, { useState, useEffect } from "react"
+import { ManagerLayout } from "@/components/layouts/manager-layout"
+import { Card, CardContent, CardHeader } from "@/components/ui/card"
+import PromotionsForm from "@/components/forms/manager/PromotionsForm"
 import {
   Table,
-  Input,
   Button,
   Modal,
   Form,
@@ -17,11 +17,10 @@ import {
   Statistic,
   Spin,
   Select,
-  DatePicker,
-  InputNumber,
-  Switch,
   App,
-} from "antd";
+  Tooltip,
+  Input,
+} from "antd"
 import {
   PlusOutlined,
   SearchOutlined,
@@ -31,172 +30,284 @@ import {
   PercentageOutlined,
   DollarOutlined,
   EditOutlined,
-} from "@ant-design/icons";
-import type { ColumnsType } from "antd/es/table";
+  DeleteOutlined,
+  EyeOutlined,
+  EyeInvisibleOutlined,
+} from "@ant-design/icons"
+import type { TableColumnsType } from "antd"
 import {
   promotionService,
   type Promotion,
   type CreatePromotionDto,
   type PromotionStatistics,
-} from "@/services/promotion.service";
-import dayjs from "dayjs";
+} from "@/services/promotion.service"
+import { managerProductService } from "@/services/manager-product.service"
+import { managerCategoryService } from "@/services/manager-category.service"
+import { Product } from "@/services/admin-product.service"
+import { Category } from "@/services/admin-category.service"
+import dayjs from "dayjs"
 
-const { Search } = Input;
+// Search normalization helper
+const normalizeSearchString = (str: string) => {
+  return str
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/g, "d")
+    .replace(/\s+/g, "-")
+    .trim()
+}
 
 function PromotionsContent() {
-  const { message } = App.useApp();
+  const { message } = App.useApp()
 
   // States
-  const [promotions, setPromotions] = useState<Promotion[]>([]);
-  const [statistics, setStatistics] = useState<PromotionStatistics | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [isActiveFilter, setIsActiveFilter] = useState<string>("all");
+  const [promotions, setPromotions] = useState<Promotion[]>([])
+  const [productTreeData, setProductTreeData] = useState<any[]>([])
+  const [statistics, setStatistics] = useState<PromotionStatistics | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [searchQuery, setSearchQuery] = useState("")
+  const [isActiveFilter, setIsActiveFilter] = useState<string>("all")
+  const [typeFilter, setTypeFilter] = useState<string>("all")
   const [pagination, setPagination] = useState({
     current: 1,
     pageSize: 10,
     total: 0,
-  });
+  })
 
   // Modal states
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingPromotion, setEditingPromotion] = useState<Promotion | null>(null);
-  const [form] = Form.useForm();
-
-  // Load promotions
-  const loadPromotions = async () => {
-    try {
-      setLoading(true);
-      const response = await promotionService.getPromotions({
-        page: pagination.current,
-        limit: pagination.pageSize,
-        isActive: isActiveFilter === "all" ? undefined : isActiveFilter === "active",
-        search: searchQuery || undefined,
-      });
-
-      setPromotions(response.data);
-      setPagination((prev) => ({
-        ...prev,
-        total: response.meta.totalItems,
-      }));
-    } catch (error: any) {
-      message.error(error.response?.data?.message || "Không thể tải danh sách khuyến mãi");
-    } finally {
-      setLoading(false);
-    }
-  };
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [editingPromotion, setEditingPromotion] = useState<Promotion | null>(null)
+  const [form] = Form.useForm()
 
   // Load statistics
   const loadStatistics = async () => {
     try {
-      const response = await promotionService.getStatistics();
-      setStatistics(response.data);
+      const response = await promotionService.getStatistics()
+      setStatistics(response.data)
     } catch (error: any) {
-      console.error("Failed to load statistics:", error);
+      console.error("Failed to load statistics:", error)
     }
-  };
+  }
+
+  // Load products for selection (Manager specific)
+  const loadProductTree = async () => {
+    try {
+      const [productsRes, categoriesRes] = await Promise.all([
+        managerProductService.getProducts({ page: 1, limit: 999 }),
+        managerCategoryService.getCategories({ page: 1, limit: 999 })
+      ])
+
+      const products: Product[] = productsRes.data
+      const categories: Category[] = categoriesRes.data
+
+      // Build tree data
+      const tree = categories.map((cat) => {
+        const catProducts = products.filter((p) => p.categoryId === cat.id)
+        return {
+          title: cat.name,
+          value: `cat-${cat.id}`,
+          key: `cat-${cat.id}`,
+          children: catProducts.map((p) => ({
+            title: `${p.code} - ${p.name}`,
+            value: p.id,
+            key: p.id,
+          })),
+        }
+      }).filter(node => node.children.length > 0)
+
+      // Add uncategorized products
+      const noCatProducts = products.filter((p) => !p.categoryId)
+      if (noCatProducts.length > 0) {
+        tree.push({
+          title: "Khác",
+          value: "cat-other",
+          key: "cat-other",
+          children: noCatProducts.map((p) => ({
+            title: `${p.code} - ${p.name}`,
+            value: p.id,
+            key: p.id,
+          })),
+        })
+      }
+
+      setProductTreeData(tree)
+    } catch (error) {
+      console.error("Failed to load products/categories:", error)
+    }
+  }
+
+  // Load promotions with Client-side filtering
+  const loadPromotions = async () => {
+    setLoading(true)
+    try {
+      // Fetch ALL promotions (scoped to branch by promotionService because user is Manager)
+      const response = await promotionService.getPromotions({
+        page: 1,
+        limit: 999,
+      })
+
+      let filteredData = response.data
+
+      // Filter by Search Query (Code)
+      if (searchQuery) {
+        const normalizedQuery = normalizeSearchString(searchQuery)
+        filteredData = filteredData.filter((p) => {
+          const normalizedCode = normalizeSearchString(p.code)
+          return normalizedCode.includes(normalizedQuery)
+        })
+      }
+
+      // Filter by Active Status
+      if (isActiveFilter === "active") {
+        filteredData = filteredData.filter((p) => p.isActive)
+      } else if (isActiveFilter === "inactive") {
+        filteredData = filteredData.filter((p) => !p.isActive)
+      } else if (isActiveFilter === "expired") {
+        filteredData = filteredData.filter((p) => p.expiryDate && dayjs(p.expiryDate).isBefore(dayjs()))
+      }
+
+      // Filter by Type
+      if (typeFilter !== "all") {
+        filteredData = filteredData.filter((p) => p.type === typeFilter)
+      }
+
+      setPromotions(filteredData)
+      setPagination((prev) => ({
+        ...prev,
+        total: filteredData.length,
+      }))
+    } catch (error: any) {
+      message.error(error.response?.data?.message || "Không thể tải danh sách khuyến mãi")
+    } finally {
+      setLoading(false)
+    }
+  }
 
   useEffect(() => {
-    loadStatistics();
-  }, []);
+    loadStatistics()
+    loadProductTree()
+  }, [])
 
   useEffect(() => {
-    loadPromotions();
-  }, [pagination.current, pagination.pageSize, searchQuery, isActiveFilter]);
+    loadPromotions()
+  }, [searchQuery, isActiveFilter, typeFilter])
 
   // Handle create/edit
   const handleOpenModal = (promotion?: Promotion) => {
     if (promotion) {
-      setEditingPromotion(promotion);
-      form.setFieldsValue({
-        code: promotion.code,
-        type: promotion.type,
-        value: promotion.value,
-        maxUses: promotion.maxUses,
-        isActive: promotion.isActive,
-        expiryDate: promotion.expiryDate ? dayjs(promotion.expiryDate) : undefined,
-        minOrderAmount: promotion.minOrderAmount,
-      });
+      setEditingPromotion(promotion)
     } else {
-      setEditingPromotion(null);
-      form.resetFields();
-      form.setFieldsValue({
-        isActive: true,
-        type: "PERCENTAGE",
-      });
+      setEditingPromotion(null)
     }
-    setIsModalOpen(true);
-  };
+    setIsModalOpen(true)
+  }
 
-  const handleSubmit = async (values: CreatePromotionDto) => {
+  const handleSubmit = async (values: any) => {
     try {
-      const data = {
+      const data: CreatePromotionDto = {
         ...values,
         expiryDate: values.expiryDate ? dayjs(values.expiryDate).toISOString() : undefined,
-      };
-
-      if (editingPromotion) {
-        await promotionService.updatePromotion(editingPromotion.id, data);
-        message.success("Cập nhật khuyến mãi thành công!");
-      } else {
-        await promotionService.createPromotion(data);
-        message.success("Tạo khuyến mãi thành công!");
+        applicableProducts: values.applicableProducts?.length ? JSON.stringify(values.applicableProducts) : undefined,
       }
 
-      setIsModalOpen(false);
-      form.resetFields();
-      setEditingPromotion(null);
-      loadPromotions();
-      loadStatistics();
+      if (editingPromotion) {
+        await promotionService.updatePromotion(editingPromotion.id, data)
+        message.success("Cập nhật khuyến mãi thành công!")
+      } else {
+        await promotionService.createPromotion(data)
+        message.success("Tạo khuyến mãi thành công!")
+      }
+
+      setIsModalOpen(false)
+      form.resetFields()
+      setEditingPromotion(null)
+      loadPromotions()
+      loadStatistics()
     } catch (error: any) {
-      message.error(error.response?.data?.message || "Không thể lưu khuyến mãi");
+      const errorMsg = error.response?.data?.message || "Không thể lưu khuyến mãi"
+      if (errorMsg.includes("Unique constraint") || errorMsg.includes("đã tồn tại")) {
+        message.error("Mã khuyến mãi đã tồn tại!")
+      } else {
+        message.error(errorMsg)
+      }
     }
-  };
+  }
 
   // Handle delete
   const handleDelete = async (id: string) => {
     try {
-      await promotionService.deletePromotion(id);
-      message.success("Xóa khuyến mãi thành công!");
-      loadPromotions();
-      loadStatistics();
+      await promotionService.deletePromotion(id)
+      message.success("Xóa khuyến mãi thành công!")
+      loadPromotions()
+      loadStatistics()
     } catch (error: any) {
-      message.error(error.response?.data?.message || "Không thể xóa khuyến mãi");
+      message.error(error.response?.data?.message || "Không thể xóa khuyến mãi")
     }
-  };
+  }
+
+  // Handle Toggle Active
+  const handleToggleActive = async (record: Promotion) => {
+    const action = record.isActive ? "ẩn" : "hiện"
+    try {
+      await promotionService.updatePromotion(record.id, {
+        isActive: !record.isActive,
+      })
+      message.success(`Đã ${action} khuyến mãi thành công`)
+      loadPromotions()
+      loadStatistics()
+    } catch (error: any) {
+      message.error(error.response?.data?.message || `Không thể ${action} khuyến mãi`)
+    }
+  }
 
   // Get promotion status
   const getPromotionStatus = (promotion: Promotion) => {
     if (!promotion.isActive) {
-      return { color: "default", text: "Ngừng hoạt động" };
+      return { color: "default", text: "Ngừng hoạt động", icon: <CloseCircleOutlined /> }
     }
     if (promotion.expiryDate && new Date(promotion.expiryDate) < new Date()) {
-      return { color: "error", text: "Đã hết hạn" };
+      return { color: "error", text: "Đã hết hạn", icon: <CloseCircleOutlined /> }
     }
     if (promotion.maxUses && promotion.usedCount >= promotion.maxUses) {
-      return { color: "warning", text: "Đã hết lượt" };
+      return { color: "warning", text: "Đã hết lượt", icon: <CloseCircleOutlined /> }
     }
-    return { color: "success", text: "Đang hoạt động" };
-  };
+    return { color: "success", text: "Đang hoạt động", icon: <CheckCircleOutlined /> }
+  }
 
   // Columns
-  const columns: ColumnsType<Promotion> = [
+  const columns: TableColumnsType<Promotion> = [
     {
       title: "Mã khuyến mãi",
       dataIndex: "code",
       key: "code",
-      width: 150,
-      render: (code: string) => <Tag color="blue">{code}</Tag>,
+      width: 180,
+      fixed: "left",
+      render: (code: string, record: Promotion) => (
+        <Space direction="vertical" size={0} style={{ opacity: record.isActive ? 1 : 0.5 }}>
+          <Tag color="blue" style={{ fontWeight: 600 }}>{code}</Tag>
+          {!record.branchId && (
+            <Tag color="purple" style={{ fontSize: '10px', marginTop: '4px' }} bordered={false}>
+              HỆ THỐNG
+            </Tag>
+          )}
+        </Space>
+      ),
     },
     {
-      title: "Loại",
+      title: "Loại khuyến mãi",
       dataIndex: "type",
       key: "type",
-      width: 120,
-      render: (type: string) => (
-        <Tag color={type === "PERCENTAGE" ? "orange" : "green"} icon={type === "PERCENTAGE" ? <PercentageOutlined /> : <DollarOutlined />}>
-          {type === "PERCENTAGE" ? "Phần trăm" : "Cố định"}
-        </Tag>
+      width: 140,
+      render: (type: string, record: Promotion) => (
+        <span style={{ opacity: record.isActive ? 1 : 0.5 }}>
+          <Tag
+            color={type === "PERCENTAGE" ? "orange" : "green"}
+            icon={type === "PERCENTAGE" ? <PercentageOutlined /> : <DollarOutlined />}
+          >
+            {type === "PERCENTAGE" ? "Phần trăm" : "Cố định"}
+          </Tag>
+        </span>
       ),
     },
     {
@@ -204,30 +315,35 @@ function PromotionsContent() {
       dataIndex: "value",
       key: "value",
       width: 120,
-      align: "center",
-      render: (value: number, record: Promotion) =>
-        record.type === "PERCENTAGE" ? `${value}%` : `${value.toLocaleString()} ₫`,
+      align: "right",
+      render: (value: number, record: Promotion) => (
+        <span className="font-medium" style={{ opacity: record.isActive ? 1 : 0.5 }}>
+          {record.type === "PERCENTAGE" ? `${value}%` : `${value.toLocaleString()} ₫`}
+        </span>
+      ),
     },
     {
-      title: "Điều kiện tối thiểu",
+      title: "Đơn tối thiểu",
       dataIndex: "minOrderAmount",
       key: "minOrderAmount",
       width: 150,
       align: "right",
-      render: (amount: number | null) =>
-        amount ? `${amount.toLocaleString()} ₫` : "-",
+      render: (amount: number | null, record: Promotion) =>
+        <span style={{ opacity: record.isActive ? 1 : 0.5 }}>
+          {amount ? `${amount.toLocaleString()} ₫` : "-"}
+        </span>,
     },
     {
-      title: "Số lượt",
+      title: "Số lượt dùng",
       key: "usage",
-      width: 120,
+      width: 140,
       align: "center",
       render: (_, record: Promotion) => (
-        <div>
-          <div className="font-medium">{record.usedCount}</div>
-          <div className="text-xs text-gray-500">
-            {record.maxUses ? `/ ${record.maxUses}` : "Không giới hạn"}
-          </div>
+        <div style={{ opacity: record.isActive ? 1 : 0.5 }}>
+          <span className="font-medium">{record.usedCount}</span>
+          <span className="text-xs text-gray-500 ml-1">
+            {record.maxUses ? `/ ${record.maxUses}` : " (∞)"}
+          </span>
         </div>
       ),
     },
@@ -235,17 +351,21 @@ function PromotionsContent() {
       title: "Ngày hết hạn",
       dataIndex: "expiryDate",
       key: "expiryDate",
-      width: 120,
-      render: (date: string | null) =>
-        date ? dayjs(date).format("DD/MM/YYYY") : "Không giới hạn",
+      width: 150,
+      align: "center",
+      render: (date: string | null, record: Promotion) =>
+        <span style={{ opacity: record.isActive ? 1 : 0.5 }}>
+          {date ? dayjs(date).format("DD/MM/YYYY") : <span className="text-gray-400">Không giới hạn</span>}
+        </span>,
     },
     {
       title: "Trạng thái",
       key: "status",
-      width: 150,
+      width: 160,
+      align: "center",
       render: (_, record: Promotion) => {
-        const status = getPromotionStatus(record);
-        return <Tag color={status.color}>{status.text}</Tag>;
+        const { color, text, icon } = getPromotionStatus(record)
+        return <Tag color={color} icon={icon}>{text}</Tag>
       },
     },
     {
@@ -253,127 +373,151 @@ function PromotionsContent() {
       key: "action",
       width: 150,
       fixed: "right",
-      render: (_, record: Promotion) => (
-        <Space>
-          <Button
-            type="link"
-            icon={<EditOutlined />}
-            onClick={() => handleOpenModal(record)}
-          >
-            Sửa
-          </Button>
-          <Popconfirm
-            title="Xóa khuyến mãi?"
-            description="Bạn có chắc muốn xóa khuyến mãi này?"
-            onConfirm={() => handleDelete(record.id)}
-            okText="Xóa"
-            cancelText="Hủy"
-            okButtonProps={{ danger: true }}
-          >
-            <Button type="link" danger>
-              Xóa
-            </Button>
-          </Popconfirm>
-        </Space>
-      ),
+      align: "center",
+      render: (_, record: Promotion) => {
+        const isGlobal = !record.branchId;
+        return (
+          <Space size="small">
+            <Tooltip title={isGlobal ? "Không thể ẩn khuyến mãi hệ thống" : (record.isActive ? "Ẩn khuyến mãi" : "Hiện khuyến mãi")}>
+              <Button
+                type="text"
+                disabled={isGlobal}
+                icon={record.isActive ? <EyeInvisibleOutlined /> : <EyeOutlined />}
+                onClick={() => handleToggleActive(record)}
+              />
+            </Tooltip>
+            <Tooltip title={isGlobal ? "Không thể sửa khuyến mãi hệ thống" : "Chỉnh sửa"}>
+              <Button
+                type="text"
+                disabled={isGlobal}
+                icon={<EditOutlined />}
+                onClick={() => handleOpenModal(record)}
+              />
+            </Tooltip>
+            <Popconfirm
+              title="Xóa khuyến mãi?"
+              description={
+                <div>
+                  <p>Bạn có chắc muốn xóa <strong>{record.code}</strong>?</p>
+                  <p className="text-xs text-red-500 mt-1">Hành động này không thể hoàn tác.</p>
+                </div>
+              }
+              onConfirm={() => handleDelete(record.id)}
+              okText="Xóa"
+              cancelText="Hủy"
+              okButtonProps={{ danger: true }}
+              disabled={isGlobal}
+            >
+              <Tooltip title={isGlobal ? "Không thể xóa khuyến mãi hệ thống" : "Xóa"}>
+                <Button type="text" danger icon={<DeleteOutlined />} disabled={isGlobal} />
+              </Tooltip>
+            </Popconfirm>
+          </Space>
+        );
+      },
     },
-  ];
+  ]
 
   return (
     <div className="p-8">
-      <Card className="border-0 shadow-sm">
-        <CardHeader>
-          <div className="flex flex-col gap-4">
-            <div>
-              <CardTitle className="text-2xl font-bold text-slate-900">
-                Quản lý Khuyến mãi
-              </CardTitle>
-            </div>
+      <Spin spinning={loading}>
+        <Card className="border-0 shadow-sm">
+          <CardHeader>
+            <div className="flex flex-col gap-4">
+              {/* Stats Cards */}
+              {statistics && (
+                <Row gutter={[24, 16]} className="-mx-2">
+                  <Col span={6}>
+                    <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
+                      <Statistic
+                        title="Tổng khuyến mãi"
+                        value={statistics.totalPromotions}
+                        prefix={<TagOutlined />}
+                        valueStyle={{ color: "#1890ff" }}
+                      />
+                    </div>
+                  </Col>
+                  <Col span={6}>
+                    <div className="bg-green-50 p-4 rounded-lg border border-green-100">
+                      <Statistic
+                        title="Đang hoạt động"
+                        value={statistics.activePromotions}
+                        prefix={<CheckCircleOutlined />}
+                        valueStyle={{ color: "#52c41a" }}
+                      />
+                    </div>
+                  </Col>
+                  <Col span={6}>
+                    <div className="bg-red-50 p-4 rounded-lg border border-red-100">
+                      <Statistic
+                        title="Đã hết hạn"
+                        value={statistics.expiredPromotions}
+                        prefix={<CloseCircleOutlined />}
+                        valueStyle={{ color: "#ff4d4f" }}
+                      />
+                    </div>
+                  </Col>
+                  <Col span={6}>
+                    <div className="bg-orange-50 p-4 rounded-lg border border-orange-100">
+                      <Statistic
+                        title="Tổng lượt sử dụng"
+                        value={statistics.totalUses}
+                        prefix={<DollarOutlined />}
+                        valueStyle={{ color: "#faad14" }}
+                      />
+                    </div>
+                  </Col>
+                </Row>
+              )}
 
-            {/* Stats Cards */}
-            <Row gutter={16}>
-              <Col span={6}>
-                <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
-                  <Statistic
-                    title="Tổng khuyến mãi"
-                    value={statistics?.totalPromotions || 0}
-                    prefix={<TagOutlined />}
-                    valueStyle={{ color: "#1890ff" }}
+              {/* Filters */}
+              <div className="flex justify-between items-center mt-2">
+                <Space size="middle">
+                  <Input
+                    placeholder="Tìm mã khuyến mãi..."
+                    prefix={<SearchOutlined />}
+                    style={{ width: 300, height: 40 }}
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    allowClear
                   />
-                </div>
-              </Col>
-              <Col span={6}>
-                <div className="bg-green-50 p-4 rounded-lg border border-green-100">
-                  <Statistic
-                    title="Đang hoạt động"
-                    value={statistics?.activePromotions || 0}
-                    prefix={<CheckCircleOutlined />}
-                    valueStyle={{ color: "#52c41a" }}
-                  />
-                </div>
-              </Col>
-              <Col span={6}>
-                <div className="bg-red-50 p-4 rounded-lg border border-red-100">
-                  <Statistic
-                    title="Đã hết hạn"
-                    value={statistics?.expiredPromotions || 0}
-                    prefix={<CloseCircleOutlined />}
-                    valueStyle={{ color: "#ff4d4f" }}
-                  />
-                </div>
-              </Col>
-              <Col span={6}>
-                <div className="bg-orange-50 p-4 rounded-lg border border-orange-100">
-                  <Statistic
-                    title="Tổng lượt sử dụng"
-                    value={statistics?.totalUses || 0}
-                    prefix={<DollarOutlined />}
-                    valueStyle={{ color: "#faad14" }}
-                  />
-                </div>
-              </Col>
-            </Row>
-
-            {/* Filters */}
-            <div className="flex justify-between items-center">
-              <Space>
-                <Search
-                  placeholder="Tìm mã khuyến mãi..."
-                  allowClear
-                  enterButton={<SearchOutlined />}
+                  <Select
+                    value={typeFilter}
+                    onChange={setTypeFilter}
+                    style={{ width: 180, height: 40 }}
+                    className={typeFilter !== "all" ? "[&>.ant-select-selector]:!bg-blue-50 [&>.ant-select-selector]:!border-blue-500" : ""}
+                  >
+                    <Select.Option value="all">Tất cả loại</Select.Option>
+                    <Select.Option value="PERCENTAGE">Phần trăm (%)</Select.Option>
+                    <Select.Option value="FIXED">Cố định (₫)</Select.Option>
+                  </Select>
+                  <Select
+                    value={isActiveFilter}
+                    onChange={setIsActiveFilter}
+                    style={{ width: 200, height: 40 }}
+                    className={isActiveFilter !== "all" ? "[&>.ant-select-selector]:!bg-blue-50 [&>.ant-select-selector]:!border-blue-500" : ""}
+                  >
+                    <Select.Option value="all">Tất cả trạng thái</Select.Option>
+                    <Select.Option value="active">Đang hoạt động</Select.Option>
+                    <Select.Option value="inactive">Ngừng hoạt động</Select.Option>
+                    <Select.Option value="expired">Đã hết hạn</Select.Option>
+                  </Select>
+                </Space>
+                <Button
+                  type="primary"
+                  icon={<PlusOutlined />}
                   size="large"
-                  onSearch={setSearchQuery}
-                  onChange={(e) => {
-                    if (!e.target.value) setSearchQuery("");
-                  }}
-                  style={{ width: 300 }}
-                />
-                <Select
-                  value={isActiveFilter}
-                  onChange={setIsActiveFilter}
-                  style={{ width: 180 }}
-                  size="large"
+                  onClick={() => handleOpenModal()}
+                  className="h-[40px]"
                 >
-                  <Select.Option value="all">Tất cả</Select.Option>
-                  <Select.Option value="active">Đang hoạt động</Select.Option>
-                  <Select.Option value="inactive">Ngừng hoạt động</Select.Option>
-                </Select>
-              </Space>
-              <Button
-                type="primary"
-                icon={<PlusOutlined />}
-                size="large"
-                onClick={() => handleOpenModal()}
-              >
-                Tạo khuyến mãi
-              </Button>
+                  Tạo khuyến mãi
+                </Button>
+              </div>
             </div>
-          </div>
-        </CardHeader>
+          </CardHeader>
 
-        <CardContent>
-          <Spin spinning={loading}>
-            {/* Promotions Table */}
+          <CardContent>
+            {/* Table */}
             <Table
               columns={columns}
               dataSource={promotions}
@@ -381,157 +525,55 @@ function PromotionsContent() {
               pagination={{
                 ...pagination,
                 onChange: (page, pageSize) => {
-                  setPagination({ ...pagination, current: page, pageSize });
+                  setPagination({ ...pagination, current: page, pageSize })
                 },
                 showSizeChanger: true,
-                showTotal: (total) => `Tổng ${total} khuyến mãi`,
+                showTotal: (total) => `Hiển thị ${total} khuyến mãi`,
               }}
               scroll={{ x: 1200 }}
               bordered={false}
-              className="ant-table-custom"
+              className="ant-table-custom mt-4"
             />
-          </Spin>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      </Spin>
 
       {/* Create/Edit Modal */}
       <Modal
-        title={editingPromotion ? "Sửa khuyến mãi" : "Tạo khuyến mãi"}
+        title={editingPromotion ? "Chỉnh sửa khuyến mãi" : "Tạo khuyến mãi mới"}
         open={isModalOpen}
         onCancel={() => {
-          setIsModalOpen(false);
-          form.resetFields();
-          setEditingPromotion(null);
+          setIsModalOpen(false)
+          form.resetFields()
+          setEditingPromotion(null)
         }}
         footer={null}
-        width={600}
+        width={700}
+        destroyOnHidden
       >
-        <Form
+        <PromotionsForm
           form={form}
-          layout="vertical"
           onFinish={handleSubmit}
-          className="mt-4"
-        >
-          <Form.Item
-            label="Mã khuyến mãi"
-            name="code"
-            rules={[
-              { required: true, message: "Vui lòng nhập mã khuyến mãi!" },
-              { min: 3, max: 20, message: "Mã phải từ 3-20 ký tự!" },
-            ]}
-          >
-            <Input
-              size="large"
-              placeholder="VD: SALE20"
-              style={{ textTransform: "uppercase" }}
-            />
-          </Form.Item>
-
-          <Row gutter={16}>
-            <Col span={12}>
-              <Form.Item
-                label="Loại khuyến mãi"
-                name="type"
-                rules={[{ required: true, message: "Vui lòng chọn loại!" }]}
-              >
-                <Select size="large">
-                  <Select.Option value="PERCENTAGE">Phần trăm (%)</Select.Option>
-                  <Select.Option value="FIXED">Cố định (₫)</Select.Option>
-                </Select>
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item
-                label="Giá trị"
-                name="value"
-                rules={[
-                  { required: true, message: "Vui lòng nhập giá trị!" },
-                  {
-                    type: "number",
-                    min: 0,
-                    message: "Giá trị phải lớn hơn 0!",
-                  },
-                ]}
-              >
-                <InputNumber size="large" style={{ width: "100%" }} min={0} />
-              </Form.Item>
-            </Col>
-          </Row>
-
-          <Row gutter={16}>
-            <Col span={12}>
-              <Form.Item label="Số lượt sử dụng tối đa" name="maxUses">
-                <InputNumber
-                  size="large"
-                  style={{ width: "100%" }}
-                  min={1}
-                  placeholder="Không giới hạn"
-                />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item label="Giá trị đơn hàng tối thiểu" name="minOrderAmount">
-                <InputNumber
-                  size="large"
-                  style={{ width: "100%" }}
-                  min={0}
-                  placeholder="0"
-                  formatter={(value) =>
-                    `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ",")
-                  }
-                />
-              </Form.Item>
-            </Col>
-          </Row>
-
-          <Form.Item label="Ngày hết hạn" name="expiryDate">
-            <DatePicker
-              size="large"
-              style={{ width: "100%" }}
-              format="DD/MM/YYYY"
-              placeholder="Không giới hạn"
-              disabledDate={(current) => {
-                return current && current < dayjs().startOf("day");
-              }}
-            />
-          </Form.Item>
-
-          <Form.Item
-            label="Trạng thái"
-            name="isActive"
-            valuePropName="checked"
-          >
-            <Switch checkedChildren="Bật" unCheckedChildren="Tắt" />
-          </Form.Item>
-
-          <Form.Item className="mb-0 text-right">
-            <Space>
-              <Button
-                onClick={() => {
-                  setIsModalOpen(false);
-                  form.resetFields();
-                  setEditingPromotion(null);
-                }}
-              >
-                Hủy
-              </Button>
-              <Button type="primary" htmlType="submit">
-                {editingPromotion ? "Cập nhật" : "Tạo mới"}
-              </Button>
-            </Space>
-          </Form.Item>
-        </Form>
+          isEdit={!!editingPromotion}
+          editingPromotion={editingPromotion}
+          productTreeData={productTreeData}
+          onCancel={() => {
+            setIsModalOpen(false)
+            form.resetFields()
+            setEditingPromotion(null)
+          }}
+        />
       </Modal>
     </div>
-  );
+  )
 }
 
 export default function PromotionsPage() {
   return (
-    <ManagerLayout>
-        <App>
-            <PromotionsContent />
-        </App>
+    <ManagerLayout title="Khuyến mãi cửa hàng">
+      <App>
+        <PromotionsContent />
+      </App>
     </ManagerLayout>
-  );
+  )
 }

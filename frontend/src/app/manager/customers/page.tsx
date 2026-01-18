@@ -28,11 +28,11 @@ import {
   UserOutlined,
   CrownOutlined,
   TrophyOutlined,
-  StarOutlined,
-  EditOutlined,
   EyeOutlined,
   PlusOutlined,
-  GiftOutlined,
+  DeleteOutlined,
+  StarOutlined,
+  EditOutlined,
 } from "@ant-design/icons"
 import type { TableColumnsType } from "antd"
 import {
@@ -40,9 +40,11 @@ import {
   type Customer,
   type CustomerTier,
 } from "@/services/manager-customer.service"
+import CustomersForm from "@/components/forms/admin/CustomersForm"
+import CustomersDetailModal from "@/components/forms/admin/CustomersDetailModal"
 
 function CustomersContent() {
-  const { message } = App.useApp()
+  const { message, modal } = App.useApp()
   const [customers, setCustomers] = useState<Customer[]>([])
   const [loading, setLoading] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
@@ -50,13 +52,9 @@ function CustomersContent() {
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null)
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
-  const [isPointsModalOpen, setIsPointsModalOpen] = useState(false)
-  const [isTierModalOpen, setIsTierModalOpen] = useState(false)
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
   const [editForm] = Form.useForm()
   const [addForm] = Form.useForm()
-  const [pointsForm] = Form.useForm()
-  const [tierForm] = Form.useForm()
   const [statistics, setStatistics] = useState<any>(null)
   const [pagination, setPagination] = useState({
     current: 1,
@@ -157,28 +155,9 @@ function CustomersContent() {
   // Handle edit
   const handleEdit = (record: Customer) => {
     setSelectedCustomer(record)
-    editForm.setFieldsValue({
-      name: record.name,
-      phone: record.phone,
-      email: record.email,
-      tier: record.tier,
-    })
     setIsEditModalOpen(true)
   }
 
-  // Handle adjust points
-  const handleAdjustPoints = (record: Customer) => {
-    setSelectedCustomer(record)
-    pointsForm.resetFields()
-    setIsPointsModalOpen(true)
-  }
-
-  // Handle change tier
-  const handleChangeTier = (record: Customer) => {
-    setSelectedCustomer(record)
-    tierForm.setFieldsValue({ tier: record.tier })
-    setIsTierModalOpen(true)
-  }
 
   // Handle add customer
   const handleAdd = () => {
@@ -191,42 +170,28 @@ function CustomersContent() {
     if (!selectedCustomer) return
 
     try {
-      await managerCustomerService.updateCustomer(selectedCustomer.id, values)
+      // General update
+      const updateData = {
+        name: values.name,
+        phone: values.phone,
+        email: values.email,
+        tier: values.tier,
+      }
+      await managerCustomerService.updateCustomer(selectedCustomer.id, updateData)
+
+      // Points adjustment if any
+      if (values.pointsAdjustment !== 0) {
+        await managerCustomerService.adjustPoints(selectedCustomer.id, {
+          points: values.pointsAdjustment,
+          reason: "Điều chỉnh từ quản trị viên",
+        })
+      }
+
       message.success("Đã cập nhật thông tin khách hàng")
       setIsEditModalOpen(false)
       loadCustomers()
     } catch (error: any) {
       message.error(error.response?.data?.message || "Không thể cập nhật thông tin")
-    }
-  }
-
-  // Submit points adjustment
-  const handleSubmitPoints = async (values: any) => {
-    if (!selectedCustomer) return
-
-    try {
-      await managerCustomerService.adjustPoints(selectedCustomer.id, values)
-      message.success("Đã điều chỉnh điểm thành công")
-      setIsPointsModalOpen(false)
-      pointsForm.resetFields()
-      loadCustomers()
-    } catch (error: any) {
-      message.error(error.response?.data?.message || "Không thể điều chỉnh điểm")
-    }
-  }
-
-  // Submit tier change
-  const handleSubmitTier = async (values: any) => {
-    if (!selectedCustomer) return
-
-    try {
-      await managerCustomerService.updateTier(selectedCustomer.id, values)
-      message.success("Đã thay đổi hạng thành viên")
-      setIsTierModalOpen(false)
-      tierForm.resetFields()
-      loadCustomers()
-    } catch (error: any) {
-      message.error(error.response?.data?.message || "Không thể thay đổi hạng")
     }
   }
 
@@ -242,6 +207,27 @@ function CustomersContent() {
     } catch (error: any) {
       message.error(error.response?.data?.message || "Không thể thêm khách hàng")
     }
+  }
+
+  // Handle delete customer
+  const handleDelete = (record: Customer) => {
+    modal.confirm({
+      title: "Xác nhận xóa khách hàng",
+      content: `Bạn có chắc chắn muốn xóa khách hàng "${record.name}" (${record.phone})? Thao tác này không thể hoàn tác.`,
+      okText: "Xóa",
+      okType: "danger",
+      cancelText: "Hủy",
+      onOk: async () => {
+        try {
+          await managerCustomerService.deleteCustomer(record.id)
+          message.success("Đã xóa khách hàng thành công")
+          loadCustomers()
+          loadStatistics()
+        } catch (error: any) {
+          message.error(error.response?.data?.message || "Không thể xóa khách hàng")
+        }
+      },
+    })
   }
 
   // Table columns
@@ -318,18 +304,12 @@ function CustomersContent() {
               onClick={() => handleEdit(record)}
             />
           </Tooltip>
-          <Tooltip title="Điều chỉnh điểm">
+          <Tooltip title="Xóa">
             <Button
               type="text"
-              icon={<GiftOutlined />}
-              onClick={() => handleAdjustPoints(record)}
-            />
-          </Tooltip>
-          <Tooltip title="Đổi hạng">
-            <Button
-              type="text"
-              icon={<CrownOutlined />}
-              onClick={() => handleChangeTier(record)}
+              danger
+              icon={<DeleteOutlined />}
+              onClick={() => handleDelete(record)}
             />
           </Tooltip>
         </Space>
@@ -458,133 +438,34 @@ function CustomersContent() {
       </Spin>
 
       {/* Detail Modal */}
-      <Modal
-        title="Chi tiết khách hàng"
+      <CustomersDetailModal
+        customer={selectedCustomer}
         open={isDetailModalOpen}
-        onCancel={() => setIsDetailModalOpen(false)}
-        footer={null}
-        width={600}
-      >
-        {selectedCustomer && (
-          <Descriptions bordered column={2}>
-            <Descriptions.Item label="Tên" span={2}>
-              {selectedCustomer.name}
-            </Descriptions.Item>
-            <Descriptions.Item label="Số điện thoại">
-              {selectedCustomer.phone}
-            </Descriptions.Item>
-            <Descriptions.Item label="Email">
-              {selectedCustomer.email || "Chưa có"}
-            </Descriptions.Item>
-            <Descriptions.Item label="Hạng">
-              <Tag color={getTierColor(selectedCustomer.tier)} icon={getTierIcon(selectedCustomer.tier)}>
-                {selectedCustomer.tier}
-              </Tag>
-            </Descriptions.Item>
-            <Descriptions.Item label="Điểm tích lũy">
-              <span className="text-orange-600 font-semibold">
-                {selectedCustomer.points.toLocaleString()}
-              </span>
-            </Descriptions.Item>
-            <Descriptions.Item label="Tổng chi tiêu" span={2}>
-              <span className="font-semibold">
-                {formatCurrency(selectedCustomer.totalSpent)}
-              </span>
-            </Descriptions.Item>
-            <Descriptions.Item label="Số đơn hàng">
-              {selectedCustomer._count?.orders || 0}
-            </Descriptions.Item>
-            <Descriptions.Item label="Số đánh giá">
-              {selectedCustomer._count?.reviews || 0}
-            </Descriptions.Item>
-          </Descriptions>
-        )}
-      </Modal>
+        onCancel={() => {
+          setIsDetailModalOpen(false)
+          setSelectedCustomer(null)
+        }}
+      />
 
       {/* Edit Modal */}
       <Modal
         title="Chỉnh sửa thông tin khách hàng"
         open={isEditModalOpen}
-        onCancel={() => setIsEditModalOpen(false)}
+        onCancel={() => {
+          setIsEditModalOpen(false)
+          setSelectedCustomer(null)
+        }}
         onOk={() => editForm.submit()}
-        okText="Lưu"
+        okText="Lưu thay đổi"
         cancelText="Hủy"
+        width={700}
       >
-        <Form form={editForm} layout="vertical" onFinish={handleSubmitEdit}>
-          <Form.Item label="Tên" name="name" rules={[{ required: true }]}>
-            <Input />
-          </Form.Item>
-          <Form.Item
-            label="Số điện thoại"
-            name="phone"
-            rules={[{ required: true }, { pattern: /^[0-9]{10}$/ }]}
-          >
-            <Input />
-          </Form.Item>
-          <Form.Item label="Email" name="email" rules={[{ type: "email" }]}>
-            <Input />
-          </Form.Item>
-          <Form.Item label="Hạng" name="tier">
-            <Select>
-              <Select.Option value="BRONZE">Hạng Đồng</Select.Option>
-              <Select.Option value="SILVER">Hạng Bạc</Select.Option>
-              <Select.Option value="GOLD">Hạng Vàng</Select.Option>
-              <Select.Option value="VIP">Hạng VIP</Select.Option>
-            </Select>
-          </Form.Item>
-        </Form>
-      </Modal>
-
-      {/* Adjust Points Modal */}
-      <Modal
-        title="Điều chỉnh điểm tích lũy"
-        open={isPointsModalOpen}
-        onCancel={() => setIsPointsModalOpen(false)}
-        onOk={() => pointsForm.submit()}
-        okText="Xác nhận"
-        cancelText="Hủy"
-      >
-        <Form form={pointsForm} layout="vertical" onFinish={handleSubmitPoints}>
-          <Form.Item
-            label="Số điểm điều chỉnh"
-            name="points"
-            rules={[{ required: true }]}
-            extra="Nhập số dương để cộng điểm, số âm để trừ điểm"
-          >
-            <InputNumber style={{ width: "100%" }} />
-          </Form.Item>
-          <Form.Item
-            label="Lý do"
-            name="reason"
-            rules={[{ required: true }, { min: 5 }]}
-          >
-            <Input.TextArea rows={3} />
-          </Form.Item>
-        </Form>
-      </Modal>
-
-      {/* Change Tier Modal */}
-      <Modal
-        title="Thay đổi hạng thành viên"
-        open={isTierModalOpen}
-        onCancel={() => setIsTierModalOpen(false)}
-        onOk={() => tierForm.submit()}
-        okText="Xác nhận"
-        cancelText="Hủy"
-      >
-        <Form form={tierForm} layout="vertical" onFinish={handleSubmitTier}>
-          <Form.Item label="Hạng mới" name="tier" rules={[{ required: true }]}>
-            <Select>
-              <Select.Option value="BRONZE">Hạng Đồng</Select.Option>
-              <Select.Option value="SILVER">Hạng Bạc</Select.Option>
-              <Select.Option value="GOLD">Hạng Vàng</Select.Option>
-              <Select.Option value="VIP">Hạng VIP</Select.Option>
-            </Select>
-          </Form.Item>
-          <Form.Item label="Lý do" name="reason">
-            <Input.TextArea rows={2} />
-          </Form.Item>
-        </Form>
+        <CustomersForm
+          form={editForm}
+          isEdit={true}
+          selectedCustomer={selectedCustomer as any}
+          onFinish={handleSubmitEdit}
+        />
       </Modal>
 
       {/* Add Customer Modal */}
@@ -593,35 +474,15 @@ function CustomersContent() {
         open={isAddModalOpen}
         onCancel={() => setIsAddModalOpen(false)}
         onOk={() => addForm.submit()}
-        okText="Thêm"
+        okText="Thêm khách hàng"
         cancelText="Hủy"
+        width={700}
       >
-        <Form form={addForm} layout="vertical" onFinish={handleSubmitAdd}>
-          <Form.Item
-            label="Số điện thoại"
-            name="phone"
-            rules={[
-              { required: true },
-              { pattern: /^[0-9]{10}$/, message: "SĐT phải 10 số" },
-            ]}
-          >
-            <Input />
-          </Form.Item>
-          <Form.Item label="Tên" name="name" rules={[{ required: true }]}>
-            <Input />
-          </Form.Item>
-          <Form.Item label="Email" name="email" rules={[{ type: "email" }]}>
-            <Input />
-          </Form.Item>
-          <Form.Item label="Hạng" name="tier" initialValue="BRONZE">
-            <Select>
-              <Select.Option value="BRONZE">Hạng Đồng</Select.Option>
-              <Select.Option value="SILVER">Hạng Bạc</Select.Option>
-              <Select.Option value="GOLD">Hạng Vàng</Select.Option>
-              <Select.Option value="VIP">Hạng VIP</Select.Option>
-            </Select>
-          </Form.Item>
-        </Form>
+        <CustomersForm
+          form={addForm}
+          isEdit={false}
+          onFinish={handleSubmitAdd}
+        />
       </Modal>
     </div>
   )
@@ -629,7 +490,7 @@ function CustomersContent() {
 
 export default function ManagerCustomersPage() {
   return (
-    <ManagerLayout>
+    <ManagerLayout title="Quản lý khách hàng">
       <App>
         <CustomersContent />
       </App>

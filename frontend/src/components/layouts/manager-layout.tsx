@@ -30,7 +30,7 @@ const managerNavItems: NavItem[] = [
   { href: "/manager/warehouse", icon: Warehouse, label: "Quản lý kho hàng" },
   { href: "/manager/promotions", icon: Ticket, label: "Chương trình khuyến mãi" },
   { href: "/manager/invoices", icon: FileText, label: "Quản lý hóa đơn" },
-  { href: "/manager/templates", icon: FileCode, label: "Cài đặt mẫu hoá đơn" },
+  { href: "/manager/templates", icon: FileCode, label: "Quản lý mẫu in hoá đơn" },
   { href: "/manager/settings", icon: Settings, label: "Thiết lập cửa hàng" },
 ]
 
@@ -39,61 +39,41 @@ interface BreadcrumbItem {
   href?: string
 }
 
-const breadcrumbMap: Record<string, BreadcrumbItem[]> = {
-  "/manager/dashboard": [{ label: "Tổng quan" }],
-  "/manager/analytics": [{ label: "Phân tích" }],
-  "/manager/staffs": [{ label: "Danh sách nhân viên" }],
-  "/manager/categories": [{ label: "Danh mục sản phẩm" }],
-  "/manager/warehouse": [{ label: "Quản lý kho hàng" }],
-  "/manager/products": [{ label: "Danh sách sản phẩm" }],
-  "/manager/promotions": [{ label: "Chương trình khuyến mãi" }],
-  "/manager/invoices": [{ label: "Quản lý hóa đơn" }],
-  "/manager/templates": [{ label: "Cài đặt mẫu hoá đơn" }],
-  "/manager/settings": [{ label: "Cài đặt" }],
-}
-
-export function ManagerLayout({ children }: { children: React.ReactNode }) {
+export function ManagerLayout({ children, title }: { children: React.ReactNode; title?: string }) {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
   const pathname = usePathname()
-  const breadcrumbs = breadcrumbMap[pathname] || [{ label: "Quản lý" }]
 
   return (
-    <div className="min-h-screen w-full">
-      <Sidebar
-        navItems={managerNavItems}
-        isCollapsed={isSidebarCollapsed}
-        onToggle={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-      />
-      <main
-        className={`transition-all duration-300 ease-in-out ${
-          isSidebarCollapsed ? "ml-20" : "ml-64"
-        }`}
-      >
-        <div className={`fixed top-0 bg-white border-b border-gray-200 px-6 py-4 h-20 flex items-center z-40 transition-all duration-300 ease-in-out ${
-          isSidebarCollapsed ? "left-20 right-0" : "left-64 right-0"
-        }`}>
-          <div className="flex items-center gap-2">
-            {breadcrumbs.map((item, index) => (
-              <div key={index} className="flex items-center gap-2">
-                {index > 0 && <ChevronRight className="w-4 h-4 text-gray-400" />}
-                <span className={cn(
-                  "text-base font-medium",
-                  index === breadcrumbs.length - 1 
-                    ? "text-orange-600" 
-                    : "text-gray-600"
-                )}>
-                  {item.label}
-                </span>
+    <div className="min-h-screen w-full bg-slate-50">
+          <Sidebar
+            navItems={managerNavItems}
+            isCollapsed={isSidebarCollapsed}
+            onToggle={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+          />
+          <div
+            className={`transition-all duration-300 ease-in-out ${
+              isSidebarCollapsed ? "ml-20" : "ml-64"
+            }`}
+          >
+            {/* Header */}
+            <header className="sticky top-0 z-40 bg-white border-b border-gray-200 h-20">
+              <div className="flex items-end pb-1 justify-start h-full px-8">
+                {title && (
+                  <h1 className="text-3xl font-black text-slate-900" style={{ fontWeight: 700 }}>{title}</h1>
+                )}
               </div>
-            ))}
+              
+              <div className="absolute right-8 top-1/2 -translate-y-1/2 flex items-center gap-2">
+                                
+              </div>
+            </header>
+    
+            <main className="min-h-[calc(100vh-5rem)]">
+              <AntdProvider>
+                {children}
+              </AntdProvider>
+            </main>
           </div>
         </div>
-        <div className="pt-20">
-          <AntdProvider>
-            {children}
-          </AntdProvider>
-        </div>
-      </main>
-    </div>
   )
 }

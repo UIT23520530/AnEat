@@ -18,6 +18,7 @@ import {
   Row,
   Col,
   Statistic,
+  Tooltip,
 } from "antd";
 import {
   SearchOutlined,
@@ -31,9 +32,12 @@ import {
   MailOutlined,
   LoadingOutlined,
   CloseCircleOutlined,
+  EyeOutlined,
+  CopyOutlined,
 } from "@ant-design/icons";
 import type { TableColumnsType, TablePaginationConfig } from "antd";
 import { StaffForm } from "@/components/forms/manager/StaffForm";
+import StaffDetailModal from "@/components/forms/manager/StaffDetailModal";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useStaff } from "@/hooks/useStaff";
 import { StaffDTO } from "@/types/staff";
@@ -62,9 +66,15 @@ function StaffContent() {
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all");
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [selectedStaff, setSelectedStaff] = useState<StaffDTO | null>(null);
   const [isAuthReady, setIsAuthReady] = useState(false);
   const [stats, setStats] = useState({ total: 0, active: 0, inactive: 0 });
+
+  // Password Modal State
+  const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
+  const [generatedPassword, setGeneratedPassword] = useState('');
+  const [createdUserInfo, setCreatedUserInfo] = useState<StaffDTO | null>(null);
 
   // Display error message when error occurs
   useEffect(() => {
@@ -268,12 +278,23 @@ function StaffContent() {
       width: 120,
       render: (_: any, record: StaffDTO) => (
         <Space size="small">
-          <Button
-            type="text"
-            icon={<EditOutlined />}
-            onClick={() => handleEdit(record)}
-            title="Edit"
-          />
+          <Tooltip title="Xem chi tiết">
+            <Button
+              type="text"
+              icon={<EyeOutlined className="text-blue-500" />}
+              onClick={() => {
+                setSelectedStaff(record);
+                setIsDetailModalOpen(true);
+              }}
+            />
+          </Tooltip>
+          <Tooltip title="Chỉnh sửa">
+            <Button
+              type="text"
+              icon={<EditOutlined className="text-amber-500" />}
+              onClick={() => handleEdit(record)}
+            />
+          </Tooltip>
           <Popconfirm
             title="Xóa nhân viên"
             description="Bạn có chắc muốn xóa nhân viên này?"
@@ -282,7 +303,9 @@ function StaffContent() {
             cancelText="Hủy"
             okButtonProps={{ danger: true }}
           >
-            <Button type="text" danger icon={<DeleteOutlined />} title="Delete" />
+            <Tooltip title="Xóa">
+              <Button type="text" danger icon={<DeleteOutlined />} />
+            </Tooltip>
           </Popconfirm>
         </Space>
       ),
@@ -294,11 +317,6 @@ function StaffContent() {
       <Card className="border-0 shadow-sm">
         <CardHeader>
           <div className="flex flex-col gap-4">
-            <div>
-              <CardTitle className="text-2xl font-bold text-slate-900">
-                Quản lý Nhân viên
-              </CardTitle>
-            </div>
 
             {/* Stats Cards */}
             <Row gutter={16}>
@@ -343,16 +361,16 @@ function StaffContent() {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   style={{ flex: 1, maxWidth: 400 }}
-                  size="large"
+                  size="middle"
                   allowClear
                 />
                 <Select
                   value={statusFilter}
                   onChange={setStatusFilter}
-                  size="large"
-                  style={{ width: 200 }}
+                  size="middle"
+                  style={{ width: 250 }}
                   options={[
-                    { value: "all", label: `Tất cả (${stats.total})` },
+                    { value: "all", label: `Tất cả trạng thái (${stats.total})` },
                     { value: "active", label: `Đang hoạt động (${stats.active})` },
                     { value: "inactive", label: `Vô hiệu hóa (${stats.inactive})` },
                   ]}
@@ -361,7 +379,7 @@ function StaffContent() {
               <Button
                 type="primary"
                 icon={<PlusOutlined />}
-                size="large"
+                size="middle"
                 onClick={() => setIsAddModalOpen(true)}
               >
                 Thêm nhân viên mới
@@ -394,27 +412,42 @@ function StaffContent() {
 
       {/* Add Staff Modal */}
       <Modal
-        title={<span className="text-lg font-semibold">Thêm nhân viên mới</span>}
+        title={null}
         open={isAddModalOpen}
         onCancel={() => setIsAddModalOpen(false)}
         footer={null}
-        width={700}
+        width={850}
         destroyOnHidden
         centered
         maskClosable={false}
       >
-        <p className="text-slate-500 mb-6">Thêm nhân viên mới cho chi nhánh của bạn</p>
+        <h2 className="text-xl font-bold text-slate-800 mb-0">Thêm nhân viên mới</h2>
+        
         <StaffForm 
           onSuccess={async () => {
             setIsAddModalOpen(false);
           }}
             onSubmit={async (data) => {
               const result = await createStaff(data as any);
-              if (result) {
+              if (result.success) {
                 message.success('Thêm nhân viên thành công!');
+                
+                // If backend returned a password (meaning it was auto-generated) 
+                // or we just want to show the creation info
+                if ((data as any).password) {
+                  setGeneratedPassword((data as any).password);
+                } else {
+                  // If backend returns the password in the response (common in these systems)
+                  // or we assume a default if not returned. 
+                  // In typical implementations, the backend returns the plain password only once.
+                  setGeneratedPassword((result.data as any).password || 'Check Email');
+                }
+                
+                setCreatedUserInfo(result.data || null);
                 setIsAddModalOpen(false);
+                setIsPasswordModalOpen(true);
               } else {
-                message.error('Thêm nhân viên thất bại');
+                message.error(result.message || 'Thêm nhân viên thất bại');
               }
               return result;
             }}
@@ -423,19 +456,20 @@ function StaffContent() {
 
       {/* Edit Staff Modal */}
       <Modal
-        title={<span className="text-lg font-semibold">Chỉnh sửa thông tin: {selectedStaff?.name}</span>}
+        title={null}
         open={isEditModalOpen}
         onCancel={() => {
           setIsEditModalOpen(false);
           setSelectedStaff(null);
         }}
         footer={null}
-        width={700}
+        width={850}
         destroyOnHidden
         centered
         maskClosable={false}
       >
-        <p className="text-slate-500 mb-6">Cập nhật thông tin nhân viên</p>
+        <h2 className="text-xl font-bold text-slate-800 mb-0">Chỉnh sửa nhân viên</h2>
+        
         {selectedStaff && (
           <StaffForm 
             staff={selectedStaff} 
@@ -445,17 +479,96 @@ function StaffContent() {
             }}
             onSubmit={async (data) => {
               const result = await updateStaff(selectedStaff.id, data);
-              if (result) {
+              if (result.success) {
                 message.success('Cập nhật nhân viên thành công!');
                 setIsEditModalOpen(false);
                 setSelectedStaff(null);
               } else {
-                message.error( 'Cập nhật nhân viên thất bại');
+                message.error(result.message || 'Cập nhật nhân viên thất bại');
               }
               return result;
             }}
           />
         )}
+      </Modal>
+
+      {/* Detail Modal */}
+      <StaffDetailModal 
+        staff={selectedStaff}
+        open={isDetailModalOpen}
+        onCancel={() => {
+          setIsDetailModalOpen(false);
+          setSelectedStaff(null);
+        }}
+      />
+
+      {/* Password Display Modal */}
+      <Modal
+        title={null}
+        open={isPasswordModalOpen}
+        onCancel={() => {
+          setIsPasswordModalOpen(false)
+          setGeneratedPassword('')
+          setCreatedUserInfo(null)
+        }}
+        footer={[
+          <Button
+            key="close"
+            onClick={() => {
+              setIsPasswordModalOpen(false)
+              setGeneratedPassword('')
+              setCreatedUserInfo(null)
+            }}
+          >
+            Đóng
+          </Button>,
+          <Button
+            key="send"
+            type="primary"
+            icon={<MailOutlined />}
+            onClick={() => {
+              message.info('Chức năng gửi email sẽ được triển khai sau')
+            }}
+          >
+            Gửi Email
+          </Button>,
+        ]}
+        width={500}
+        centered
+      >
+        <div className="text-center py-6">
+          <div className="mb-6">
+            <MailOutlined className="text-blue-500" style={{ fontSize: '80px' }} />
+          </div>
+          <div className="mb-4">
+            <h3 className="text-xl font-semibold text-slate-800 mb-2">Người dùng đã được tạo!</h3>
+            <p className="text-slate-600">
+              Thông tin đăng nhập đã được tạo cho <span className="font-semibold">{createdUserInfo?.name}</span>
+            </p>
+          </div>
+          <div className="bg-slate-50 rounded-lg p-4 mb-4">
+            <div className="text-sm text-slate-600 mb-2">Email đăng nhập:</div>
+            <div className="font-mono text-base font-semibold text-slate-800 mb-3">{createdUserInfo?.email}</div>
+            <div className="text-sm text-slate-600 mb-2">Mật khẩu tạm thời:</div>
+            <div className="flex items-center justify-center gap-2">
+              <div className="font-mono text-lg font-bold text-blue-600 bg-blue-50 px-4 py-2 rounded border border-blue-200">
+                {generatedPassword}
+              </div>
+              <Button
+                icon={<CopyOutlined />}
+                onClick={() => {
+                  if (generatedPassword) {
+                    navigator.clipboard.writeText(generatedPassword)
+                    message.success('Đã sao chép mật khẩu')
+                  }
+                }}
+              />
+            </div>
+          </div>
+          <div className="text-amber-600 text-sm bg-amber-50 p-3 rounded">
+            ⚠️ Vui lòng sao chép và gửi thông tin này cho nhân viên. Mật khẩu sẽ không hiển thị lại.
+          </div>
+        </div>
       </Modal>
     </div>
   );
@@ -463,7 +576,7 @@ function StaffContent() {
 
 export default function StaffManagementPage() {
   return (
-    <ManagerLayout>
+    <ManagerLayout title="Quản lý nhân viên">
       <App>
       <StaffContent />
       </App>

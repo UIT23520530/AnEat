@@ -1,8 +1,11 @@
-"use client";
+"use client"
 
-import { useState, useEffect } from "react";
-import { ManagerLayout } from "@/components/layouts/manager-layout";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useState, useEffect } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
+import { ManagerLayout } from "@/components/layouts/manager-layout"
+import { Card, CardHeader } from "@/components/ui/card"
+import ProductsForm from "@/components/forms/admin/ProductsForm"
+import ProductsDetailModal from "@/components/forms/admin/ProductsDetailModal"
 import {
   Table,
   Button,
@@ -11,233 +14,304 @@ import {
   Space,
   Modal,
   App,
-  Image,
   Statistic,
-  Card as AntCard,
   Select,
   Form,
-  InputNumber,
-  Switch,
   Row,
   Col,
-  Upload,
   Spin,
-} from "antd";
+  Tooltip,
+  Image,
+} from "antd"
 import {
   SearchOutlined,
   PlusOutlined,
   EditOutlined,
   DeleteOutlined,
-  StarFilled,
-  StarOutlined,
+  EyeInvisibleOutlined,
+  EyeOutlined,
+  AppstoreOutlined,
+  ShoppingOutlined,
+  WarningOutlined,
+  StopOutlined,
   CheckCircleOutlined,
-  CloseCircleOutlined,
-  UploadOutlined,
-} from "@ant-design/icons";
-import type { TableColumnsType } from "antd";
-import { productService, type Product } from "@/services/product.service";
-import { categoryService, type Category } from "@/services/category.service";
+  ArrowRightOutlined,
+} from "@ant-design/icons"
+import type { TableColumnsType } from "antd"
+import {
+  managerProductService,
+} from "@/services/manager-product.service"
+import {
+  type Product,
+  type ProductStats,
+} from "@/services/admin-product.service"
+import { managerCategoryService } from "@/services/manager-category.service"
+import { type Category } from "@/services/admin-category.service"
+
+// Generate consistent color from string
+const stringToColor = (str: string) => {
+  let hash = 0
+  for (let i = 0; i < str.length; i++) {
+    hash = str.charCodeAt(i) + ((hash << 5) - hash)
+  }
+  const colors = ['blue', 'green', 'orange', 'purple', 'cyan', 'magenta', 'lime', 'gold']
+  return colors[Math.abs(hash) % colors.length]
+}
+
+// Stock status badge colors
+const getStockStatus = (quantity: number, isAvailable: boolean) => {
+  if (!isAvailable) return { text: "Đã ẩn tại CH", color: "volcano" }
+  if (quantity === 0) return { text: "Hết hàng", color: "error" }
+  if (quantity <= 10) return { text: "Sắp hết", color: "warning" }
+  return { text: "Đang bán", color: "success" }
+}
+
+// Search normalization helper
+const normalizeSearchString = (str: string) => {
+  return str
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/g, "d")
+    .replace(/\s+/g, "-")
+    .trim()
+}
 
 function ProductsContent() {
-  const { message } = App.useApp();
-  const [products, setProducts] = useState<Product[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState<string>("all");
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-  const [form] = Form.useForm();
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const { message, modal } = App.useApp()
+  const [products, setProducts] = useState<Product[]>([])
+  const [categories, setCategories] = useState<Category[]>([])
+  const [statistics, setStatistics] = useState<ProductStats | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [searchQuery, setSearchQuery] = useState("")
+  const [categoryFilter, setCategoryFilter] = useState<string | "all">("all")
+  const [statusFilter, setStatusFilter] = useState<"all" | "available" | "low-stock" | "hidden" | "out-of-stock">("all")
   const [pagination, setPagination] = useState({
     current: 1,
     pageSize: 10,
     total: 0,
-  });
+  })
+
+  // Modals
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false)
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false)
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false)
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
+
+  // Forms
+  const [editForm] = Form.useForm()
+  const [addForm] = Form.useForm()
+
+  // Handle query params on mount (for navigation from categories page)
+  useEffect(() => {
+    const categoryId = searchParams.get('categoryId')
+    if (categoryId) {
+      setCategoryFilter(categoryId)
+    }
+  }, [searchParams])
+
+  // Load data on mount
+  useEffect(() => {
+    loadProducts()
+    loadStatistics()
+    loadCategories()
+  }, [searchQuery, categoryFilter, statusFilter])
 
   // Load products
   const loadProducts = async () => {
-    setLoading(true);
+    setLoading(true)
     try {
-      const response = await productService.getProducts({
-        page: pagination.current,
-        limit: pagination.pageSize,
+      const response = await managerProductService.getProducts({
+        page: 1,
+        limit: 999,
         search: searchQuery || undefined,
-        categoryId: selectedCategory !== "all" ? selectedCategory : undefined,
-      });
+        categoryId: categoryFilter !== "all" ? categoryFilter : undefined,
+        status: statusFilter !== "all" ? statusFilter : undefined,
+      })
 
-      setProducts(response.data);
+      // Client-side search normalization if needed (backend might already handle it)
+      let filteredData = response.data
+
+      if (searchQuery) {
+        const normalizedQuery = normalizeSearchString(searchQuery)
+        filteredData = filteredData.filter((p: Product) => {
+          const normalizedName = normalizeSearchString(p.name)
+          const normalizedCode = normalizeSearchString(p.code)
+          return normalizedName.includes(normalizedQuery) || normalizedCode.includes(normalizedQuery)
+        })
+      }
+
+      setProducts(filteredData)
       setPagination({
         ...pagination,
-        total: response.meta.totalItems,
-      });
+        total: filteredData.length,
+      })
     } catch (error: any) {
-      message.error(error.response?.data?.message || "Không thể tải danh sách sản phẩm");
+      console.error("❌ Load products error:", error)
+      message.error(error.response?.data?.message || "Không thể tải danh sách sản phẩm")
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
+
+  // Load statistics
+  const loadStatistics = async () => {
+    try {
+      const response = await managerProductService.getProductStats()
+      setStatistics(response.data)
+    } catch (error: any) {
+      console.error("❌ Load statistics error:", error)
+    }
+  }
 
   // Load categories
   const loadCategories = async () => {
     try {
-      const response = await categoryService.getCategories({
-        limit: 100,
-        isActive: true,
-      });
-      setCategories(response.data);
+      const response = await managerCategoryService.getCategories({
+        page: 1,
+        limit: 999,
+      })
+      setCategories(response.data)
     } catch (error: any) {
-      message.error("Không thể tải danh mục");
+      console.error("❌ Load categories error:", error)
     }
-  };
+  }
 
-  useEffect(() => {
-    loadCategories();
-  }, []);
+  // Action handlers
+  const handleEditClick = (record: Product) => {
+    setSelectedProduct(record)
+    setIsEditModalOpen(true)
+  }
 
-  useEffect(() => {
-    loadProducts();
-  }, [pagination.current, pagination.pageSize, searchQuery, selectedCategory]);
+  const handleViewClick = (record: Product) => {
+    setSelectedProduct(record)
+    setIsDetailModalOpen(true)
+  }
 
-  // Statistics
-  const totalProducts = pagination.total;
-  const activeProducts = products.filter((p) => p.isAvailable).length;
-  const lowStockProducts = products.filter((p) => p.quantity < 10).length;
+  const handleDelete = (record: Product) => {
+    modal.confirm({
+      title: "Xác nhận xóa sản phẩm",
+      content: (
+        <div>
+          <p>
+            Bạn có chắc chắn muốn xóa sản phẩm <strong>{record.name}</strong>?
+          </p>
+          <p className="text-red-600 text-sm mt-2">
+            ⚠️ Thao tác này không thể hoàn tác!
+          </p>
+        </div>
+      ),
+      okText: "Xác nhận xóa",
+      cancelText: "Hủy",
+      okButtonProps: { danger: true },
+      onOk: async () => {
+        try {
+          await managerProductService.deleteProduct(record.id)
+          message.success("Đã xóa sản phẩm thành công")
+          loadProducts()
+          loadStatistics()
+        } catch (error: any) {
+          const errorMessage = error.response?.data?.message || "Không thể xóa sản phẩm"
+          message.error(errorMessage)
+        }
+      },
+    })
+  }
 
-  const getCategoryColor = (categoryName?: string) => {
-    if (!categoryName) return "default";
-    if (categoryName.includes("Burger")) return "blue";
-    if (categoryName.includes("Gà") || categoryName.includes("Chicken")) return "orange";
-    if (categoryName.includes("Kèm") || categoryName.includes("Side")) return "green";
-    if (categoryName.includes("Uống") || categoryName.includes("Beverage")) return "cyan";
-    if (categoryName.includes("Miệng") || categoryName.includes("Dessert")) return "pink";
-    if (categoryName.includes("Combo")) return "purple";
-    return "default";
-  };
-
-  const handleAdd = () => {
-    form.resetFields();
-    setIsAddModalOpen(true);
-  };
-
-  const handleEdit = (record: Product) => {
-    setSelectedProduct(record);
-    form.setFieldsValue({
-      ...record,
-      categoryId: record.category?.id,
-    });
-    setIsEditModalOpen(true);
-  };
-
-  const handleDelete = async (id: string) => {
+  const handleToggleActive = async (record: Product) => {
+    const action = record.isAvailable ? "ẩn" : "hiện"
     try {
-      await productService.deleteProduct(id);
-      message.success("Đã xóa sản phẩm");
-      loadProducts();
-    } catch (error: any) {
-      message.error(error.response?.data?.message || "Không thể xóa sản phẩm");
-    }
-  };
-
-  const handleToggleStatus = async (record: Product) => {
-    try {
-      await productService.updateProduct(record.id, {
+      await managerProductService.updateProduct(record.id, {
         isAvailable: !record.isAvailable,
-      });
-      message.success(
-        record.isAvailable ? "Đã ẩn sản phẩm" : "Đã kích hoạt sản phẩm"
-      );
-      loadProducts();
+      })
+      message.success(`Đã ${action} sản phẩm tại cửa hàng thành công`)
+      loadProducts()
+      loadStatistics()
     } catch (error: any) {
-      message.error(error.response?.data?.message || "Không thể cập nhật trạng thái");
+      const errorMessage = error.response?.data?.message || `Không thể ${action} sản phẩm`
+      message.error(errorMessage)
     }
-  };
+  }
+
+  const handleSubmitEdit = async (values: any) => {
+    if (!selectedProduct) return
+
+    try {
+      // Backend handles branchId auto-assignment for managers
+      await managerProductService.updateProduct(selectedProduct.id, {
+        ...values,
+        price: values.price * 100, // Convert to cents
+        costPrice: values.costPrice ? values.costPrice * 100 : undefined,
+      })
+      message.success("Đã cập nhật sản phẩm thành công")
+      setIsEditModalOpen(false)
+      loadProducts()
+      loadStatistics()
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.message || "Không thể cập nhật sản phẩm"
+      message.error(errorMessage)
+    }
+  }
 
   const handleSubmitAdd = async (values: any) => {
     try {
-      await productService.createProduct({
-        code: values.code,
-        name: values.name,
-        description: values.description,
-        price: values.price,
-        image: values.image,
-        categoryId: values.categoryId,
-        quantity: values.quantity || 0,
-        costPrice: values.costPrice || 0,
-        prepTime: values.prepTime || 15,
-        isAvailable: true,
-      });
-      message.success("Đã thêm sản phẩm mới");
-      setIsAddModalOpen(false);
-      form.resetFields();
-      loadProducts();
+      // Backend auto-assigns branchId
+      await managerProductService.createProduct({
+        ...values,
+        price: values.price * 100, // Convert to cents
+        costPrice: values.costPrice ? values.costPrice * 100 : undefined,
+      })
+      message.success("Đã thêm sản phẩm mới thành công")
+      setIsAddModalOpen(false)
+      addForm.resetFields()
+      loadProducts()
+      loadStatistics()
     } catch (error: any) {
-      message.error(error.response?.data?.message || "Không thể thêm sản phẩm");
+      const errorMessage = error.response?.data?.message || "Không thể thêm sản phẩm"
+      message.error(errorMessage)
     }
-  };
+  }
 
-  const handleSubmitEdit = async (values: any) => {
-    if (!selectedProduct) return;
-    
-    try {
-      await productService.updateProduct(selectedProduct.id, {
-        name: values.name,
-        description: values.description,
-        price: values.price,
-        image: values.image,
-        categoryId: values.categoryId,
-        quantity: values.quantity,
-        costPrice: values.costPrice,
-        prepTime: values.prepTime,
-      });
-      message.success("Đã cập nhật sản phẩm");
-      setIsEditModalOpen(false);
-      loadProducts();
-    } catch (error: any) {
-      message.error(error.response?.data?.message || "Không thể cập nhật sản phẩm");
-    }
-  };
-
+  // Table columns
   const columns: TableColumnsType<Product> = [
     {
       title: "Sản phẩm",
       key: "product",
       fixed: "left",
-      width: 300,
-      render: (_, record) => (
-        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+      width: 250,
+      render: (_, record: Product) => (
+        <div style={{ display: "flex", alignItems: "center", gap: "12px", opacity: record.isAvailable ? 1 : 0.6 }}>
           {record.image ? (
             <Image
               src={record.image}
               alt={record.name}
-              width={60}
-              height={60}
+              width={50}
+              height={50}
               style={{ borderRadius: "8px", objectFit: "cover" }}
             />
           ) : (
             <div
               style={{
-                width: 60,
-                height: 60,
+                width: 50,
+                height: 50,
                 borderRadius: "8px",
-                background: "#f0f0f0",
+                background: "#f5f5f5",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                fontSize: "24px",
               }}
             >
-              🍔
+              <ShoppingOutlined style={{ fontSize: "20px", color: "#bfbfbf" }} />
             </div>
           )}
           <div style={{ flex: 1 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-              <span style={{ fontWeight: 600, fontSize: "14px" }}>
-                {record.name}
-              </span>
+            <div style={{ fontWeight: 600, fontSize: "14px", color: record.isAvailable ? "#262626" : "#8c8c8c" }}>
+              {record.name}
             </div>
-            <div style={{ fontSize: "12px", color: "#6B7280", marginTop: "2px" }}>
-              SKU: {record.code}
+            <div style={{ fontSize: "12px", color: "#8c8c8c" }}>
+              {record.code}
             </div>
           </div>
         </div>
@@ -245,24 +319,29 @@ function ProductsContent() {
     },
     {
       title: "Danh mục",
+      dataIndex: ["category", "name"],
       key: "category",
-      width: 150,
-      render: (_, record) => (
-        <Tag color={getCategoryColor(record.category?.name)}>
-          {record.category?.name || "Chưa phân loại"}
-        </Tag>
-      ),
+      width: 140,
+      render: (categoryName: string, record: Product) => {
+        const categoryCode = record.category?.code || "DEFAULT"
+        return (
+          <Tag color={stringToColor(categoryCode)} style={{ opacity: record.isAvailable ? 1 : 0.6 }}>
+            {categoryName || "N/A"}
+          </Tag>
+        )
+      },
     },
     {
       title: "Giá bán",
       dataIndex: "price",
       key: "price",
-      width: 150,
+      width: 120,
       align: "right",
-      render: (price: number) => (
-        <div style={{ fontWeight: 600, fontSize: "14px" }}>
-          {price.toLocaleString()}đ
-        </div>
+      sorter: (a, b) => a.price - b.price,
+      render: (price: number, record: Product) => (
+        <span style={{ opacity: record.isAvailable ? 1 : 0.6, fontWeight: 600, color: "#f5222d" }}>
+          {(price / 100).toLocaleString("vi-VN")}đ
+        </span>
       ),
     },
     {
@@ -271,407 +350,268 @@ function ProductsContent() {
       key: "quantity",
       width: 100,
       align: "center",
-      render: (quantity: number) => (
-        <Tag color={quantity < 10 ? "red" : quantity < 50 ? "orange" : "green"}>
-          {quantity}
-        </Tag>
+      sorter: (a, b) => a.quantity - b.quantity,
+      render: (quantity: number, record: Product) => (
+        <span style={{ opacity: record.isAvailable ? 1 : 0.6 }}>
+          <Tag color={quantity <= 10 ? "red" : "blue"}>{quantity}</Tag>
+        </span>
       ),
     },
     {
-      title: "Thời gian",
+      title: "Chuẩn bị",
       dataIndex: "prepTime",
       key: "prepTime",
-      width: 120,
+      width: 100,
       align: "center",
-      render: (time: number) => `${time} phút`,
+      render: (time: number, record: Product) => (
+        <span style={{ opacity: record.isAvailable ? 1 : 0.6 }}>{time} ph</span>
+      ),
     },
     {
       title: "Trạng thái",
       dataIndex: "isAvailable",
       key: "isAvailable",
-      width: 130,
+      width: 150,
       align: "center",
-      render: (isAvailable: boolean) => (
-        <Tag
-          color={isAvailable ? "success" : "default"}
-          icon={
-            isAvailable ? (
-              <CheckCircleOutlined />
-            ) : (
-              <CloseCircleOutlined />
-            )
-          }
-        >
-          {isAvailable ? "Đang bán" : "Tạm ẩn"}
-        </Tag>
-      ),
+      render: (isAvailable: boolean, record: Product) => {
+        const status = getStockStatus(record.quantity, isAvailable)
+        return (
+          <Tag
+            icon={
+              status.text.includes("ẩn") ? <EyeInvisibleOutlined /> :
+                status.color === "error" ? <StopOutlined /> :
+                  status.color === "warning" ? <WarningOutlined /> :
+                    <CheckCircleOutlined />
+            }
+            color={status.color}
+          >
+            {status.text}
+          </Tag>
+        )
+      },
     },
     {
       title: "Thao tác",
       key: "actions",
-      fixed: "right",
-      width: 150,
+      width: 180,
       align: "center",
-      render: (_, record) => (
+      fixed: "right",
+      render: (_, record: Product) => (
         <Space size="small">
-          <Button
-            type="text"
-            icon={<EditOutlined />}
-            onClick={() => handleEdit(record)}
-            title="Sửa"
-          />
-          <Button
-            type="text"
-            danger={record.isAvailable}
-            icon={
-              record.isAvailable ? (
-                <CloseCircleOutlined />
-              ) : (
-                <CheckCircleOutlined />
-              )
-            }
-            onClick={() => handleToggleStatus(record)}
-            title={record.isAvailable ? "Ẩn" : "Kích hoạt"}
-          />
-          <Button
-            type="text"
-            danger
-            icon={<DeleteOutlined />}
-            onClick={() => handleDelete(record.id)}
-            title="Xóa"
-          />
+          <Tooltip title="Xem chi tiết">
+            <Button
+              type="text"
+              icon={<EyeOutlined />}
+              onClick={() => handleViewClick(record)}
+            />
+          </Tooltip>
+          <Tooltip title="Chỉnh sửa">
+            <Button
+              type="text"
+              icon={<EditOutlined />}
+              onClick={() => handleEditClick(record)}
+            />
+          </Tooltip>
+          <Tooltip title={record.isAvailable ? "Ẩn tại cửa hàng" : "Hiển thị lại"}>
+            <Button
+              type="text"
+              icon={record.isAvailable ? <EyeInvisibleOutlined /> : <CheckCircleOutlined />}
+              onClick={() => handleToggleActive(record)}
+            />
+          </Tooltip>
+          <Tooltip title="Xóa">
+            <Button
+              type="text"
+              danger
+              icon={<DeleteOutlined />}
+              onClick={() => handleDelete(record)}
+            />
+          </Tooltip>
         </Space>
       ),
     },
-  ];
+  ]
 
   return (
     <div className="p-8">
-      <Card className="border-0 shadow-sm">
-        <CardHeader>
-          <div className="flex flex-col gap-4">
-            <div>
-              <CardTitle className="text-2xl font-bold text-slate-900">
-                Quản lý Sản phẩm
-              </CardTitle>
-            </div>
+      <Spin spinning={loading}>
+        <Card className="border-0 shadow-sm">
+          <CardHeader>
+            <div className="flex flex-col gap-4">
+              {/* Stats Cards */}
+              {statistics && (
+                <Row gutter={[24, 16]} className="-mx-2">
+                  <Col span={8}>
+                    <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
+                      <Statistic
+                        title="Tổng số sản phẩm"
+                        value={statistics.totalProducts}
+                        prefix={<ShoppingOutlined />}
+                        valueStyle={{ color: "#1890ff" }}
+                      />
+                    </div>
+                  </Col>
+                  <Col span={8}>
+                    <div className="bg-green-50 p-4 rounded-lg border border-green-100">
+                      <Statistic
+                        title="Sản phẩm đang bán"
+                        value={statistics.availableProducts}
+                        prefix={<CheckCircleOutlined />}
+                        valueStyle={{ color: "#52c41a" }}
+                      />
+                    </div>
+                  </Col>
+                  <Col span={8}>
+                    <div className="bg-orange-50 p-4 rounded-lg border border-orange-100">
+                      <Statistic
+                        title="Sản phẩm đã ẩn"
+                        value={statistics.unavailableProducts}
+                        prefix={<StopOutlined />}
+                        valueStyle={{ color: "#ff7a45" }}
+                      />
+                    </div>
+                  </Col>
+                </Row>
+              )}
 
-            {/* Stats Cards */}
-            <Row gutter={16}>
-              <Col span={8}>
-                <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
-                  <Statistic
-                    title="Tổng sản phẩm"
-                    value={totalProducts}
-                    prefix={<PlusOutlined />}
-                    valueStyle={{ color: "#1890ff" }}
+              {/* Filters */}
+              <div className="flex justify-between items-center gap-2">
+                <Space size="middle">
+                  <Input
+                    placeholder="Tìm kiếm sản phẩm..."
+                    prefix={<SearchOutlined />}
+                    style={{ width: 250 }}
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    allowClear
                   />
-                </div>
-              </Col>
-              <Col span={8}>
-                <div className="bg-green-50 p-4 rounded-lg border border-green-100">
-                  <Statistic
-                    title="Đang bán"
-                    value={activeProducts}
-                    prefix={<CheckCircleOutlined />}
-                    valueStyle={{ color: "#52c41a" }}
-                  />
-                </div>
-              </Col>
-              <Col span={8}>
-                <div className="bg-orange-50 p-4 rounded-lg border border-orange-100">
-                  <Statistic
-                    title="Sắp hết hàng"
-                    value={lowStockProducts}
-                    prefix={<CloseCircleOutlined />}
-                    valueStyle={{ color: "#faad14" }}
-                  />
-                </div>
-              </Col>
-            </Row>
+                  <Select
+                    value={categoryFilter}
+                    onChange={setCategoryFilter}
+                    style={{ width: 200 }}
+                    className={categoryFilter !== "all" ? "[&>.ant-select-selector]:!bg-blue-50 [&>.ant-select-selector]:!border-blue-500" : ""}
+                  >
+                    <Select.Option value="all">Tất cả danh mục</Select.Option>
+                    {categories.map((cat) => (
+                      <Select.Option key={cat.id} value={cat.id}>
+                        {cat.name}
+                      </Select.Option>
+                    ))}
+                  </Select>
+                    <Select
+                      value={statusFilter}
+                      onChange={setStatusFilter}
+                      style={{ width: 180 }}
+                      className={statusFilter !== "all" ? "[&>.ant-select-selector]:!bg-blue-50 [&>.ant-select-selector]:!border-blue-500" : ""}
+                    >
+                      <Select.Option value="all">Tất cả trạng thái</Select.Option>
+                      <Select.Option value="available">Đang bán</Select.Option>
+                      <Select.Option value="low-stock">Sắp hết</Select.Option>
+                      <Select.Option value="out-of-stock">Hết hàng</Select.Option>
+                      <Select.Option value="hidden">Đã ẩn</Select.Option>
+                    </Select>
+                </Space>
 
-            {/* Filters */}
-            <div className="flex justify-between items-center">
-              <Space>
-                <Input
-                  placeholder="Tìm kiếm theo tên hoặc mã sản phẩm"
-                  prefix={<SearchOutlined />}
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  style={{ width: 300 }}
-                  size="large"
-                  allowClear
-                />
-                <Select
-                  value={selectedCategory}
-                  onChange={setSelectedCategory}
-                  style={{ width: 180 }}
-                  size="large"
+                <Button
+                  type="primary"
+                  icon={<PlusOutlined />}
+                  onClick={() => setIsAddModalOpen(true)}
                 >
-                  <Select.Option value="all">Tất cả danh mục</Select.Option>
-                  {categories.map((cat) => (
-                    <Select.Option key={cat.id} value={cat.id}>
-                      {cat.name}
-                    </Select.Option>
-                  ))}
-                </Select>
-              </Space>
-              <Button
-                type="primary"
-                icon={<PlusOutlined />}
-                onClick={handleAdd}
-                size="large"
-              >
-                Thêm sản phẩm
-              </Button>
+                  Thêm sản phẩm
+                </Button>
+              </div>
             </div>
-          </div>
-        </CardHeader>
+          </CardHeader>
 
-        <CardContent>
-          <Spin spinning={loading}>
-            <Table
-              columns={columns}
-              dataSource={products}
-              rowKey="id"
-              pagination={{
-                current: pagination.current,
-                pageSize: pagination.pageSize,
+          {/* Table */}
+          <Table
+            columns={columns}
+            dataSource={products}
+            rowKey="id"
+            scroll={{ x: 1400 }}
+            className="ant-table-custom"
+            pagination={{
+              ...pagination,
+              showTotal: (total) => `Hiển thị ${total} sản phẩm`,
+              showSizeChanger: true,
+            }}
+            onChange={(newPagination) => {
+              setPagination({
+                current: newPagination.current || 1,
+                pageSize: newPagination.pageSize || 10,
                 total: pagination.total,
-                showSizeChanger: true,
-                showTotal: (total) => `Tổng ${total} sản phẩm`,
-                onChange: (page, pageSize) => {
-                  setPagination({ ...pagination, current: page, pageSize });
-                },
-              }}
-              scroll={{ x: 1400 }}
-              bordered={false}
-              className="ant-table-custom"
-            />
-          </Spin>
-        </CardContent>
-      </Card>
+              })
+            }}
+          />
+        </Card>
+      </Spin>
 
-      {/* Add Product Modal */}
+      {/* Modals */}
       <Modal
-        title="Thêm sản phẩm mới"
+        title="Thêm món ăn mới"
         open={isAddModalOpen}
-        onCancel={() => setIsAddModalOpen(false)}
-        footer={null}
+        onCancel={() => {
+          setIsAddModalOpen(false)
+          addForm.resetFields()
+        }}
+        footer={[
+          <Button key="cancel" onClick={() => setIsAddModalOpen(false)}>
+            Hủy
+          </Button>,
+          <Button key="submit" type="primary" onClick={() => addForm.submit()}>
+            Thêm món
+          </Button>
+        ]}
         width={700}
       >
-        <Form form={form} onFinish={handleSubmitAdd} layout="vertical">
-          <Row gutter={16}>
-            <Col span={12}>
-              <Form.Item
-                name="name"
-                label="Tên sản phẩm"
-                rules={[{ required: true, message: "Vui lòng nhập tên" }]}
-              >
-                <Input size="large" />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item
-                name="code"
-                label="Mã sản phẩm"
-                rules={[{ required: true, message: "Vui lòng nhập mã" }]}
-              >
-                <Input size="large" placeholder="PROD-XXX" />
-              </Form.Item>
-            </Col>
-          </Row>
+        <ProductsForm
+          form={addForm}
+          onFinish={handleSubmitAdd}
+          isEdit={false}
+          categories={categories}
+          branches={[]}
+          hideBranch={true}
+        />
+      </Modal >
 
-          <Row gutter={16}>
-            <Col span={12}>
-              <Form.Item
-                name="categoryId"
-                label="Danh mục"
-                rules={[{ required: true, message: "Vui lòng chọn danh mục" }]}
-              >
-                <Select size="large" placeholder="Chọn danh mục">
-                  {categories.map((cat) => (
-                    <Select.Option key={cat.id} value={cat.id}>
-                      {cat.name}
-                    </Select.Option>
-                  ))}
-                </Select>
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item
-                name="price"
-                label="Giá bán (đ)"
-                rules={[{ required: true, message: "Vui lòng nhập giá" }]}
-              >
-                <InputNumber
-                  min={0}
-                  style={{ width: "100%" }}
-                  size="large"
-                  formatter={(value) =>
-                    `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ",")
-                  }
-                />
-              </Form.Item>
-            </Col>
-          </Row>
-
-          <Row gutter={16}>
-            <Col span={12}>
-              <Form.Item name="quantity" label="Số lượng tồn kho">
-                <InputNumber min={0} style={{ width: "100%" }} size="large" />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item name="costPrice" label="Giá vốn (đ)">
-                <InputNumber
-                  min={0}
-                  style={{ width: "100%" }}
-                  size="large"
-                  formatter={(value) =>
-                    `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ",")
-                  }
-                />
-              </Form.Item>
-            </Col>
-          </Row>
-
-          <Row gutter={16}>
-            <Col span={12}>
-              <Form.Item name="prepTime" label="Thời gian chuẩn bị (phút)" initialValue={15}>
-                <InputNumber min={0} style={{ width: "100%" }} size="large" />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item name="image" label="URL hình ảnh">
-                <Input size="large" placeholder="https://..." />
-              </Form.Item>
-            </Col>
-          </Row>
-
-          <Form.Item name="description" label="Mô tả">
-            <Input.TextArea rows={4} />
-          </Form.Item>
-
-          <Form.Item className="mb-0">
-            <Space className="w-full justify-end">
-              <Button onClick={() => setIsAddModalOpen(false)}>Hủy</Button>
-              <Button type="primary" htmlType="submit">
-                Thêm sản phẩm
-              </Button>
-            </Space>
-          </Form.Item>
-        </Form>
-      </Modal>
-
-      {/* Edit Product Modal */}
       <Modal
-        title="Chỉnh sửa sản phẩm"
+        title="Chỉnh sửa chi tiết món ăn"
         open={isEditModalOpen}
-        onCancel={() => setIsEditModalOpen(false)}
-        footer={null}
+        onCancel={() => {
+          setIsEditModalOpen(false)
+        }}
+        footer={[
+          <Button key="cancel" onClick={() => setIsEditModalOpen(false)}>Hủy</Button>,
+          <Button key="submit" type="primary" onClick={() => editForm.submit()}>Lưu thay đổi</Button>
+        ]}
         width={700}
       >
-        <Form form={form} onFinish={handleSubmitEdit} layout="vertical">
-          <Row gutter={16}>
-            <Col span={12}>
-              <Form.Item
-                name="name"
-                label="Tên sản phẩm"
-                rules={[{ required: true, message: "Vui lòng nhập tên" }]}
-              >
-                <Input size="large" />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item
-                name="categoryId"
-                label="Danh mục"
-                rules={[{ required: true, message: "Vui lòng chọn danh mục" }]}
-              >
-                <Select size="large" placeholder="Chọn danh mục">
-                  {categories.map((cat) => (
-                    <Select.Option key={cat.id} value={cat.id}>
-                      {cat.name}
-                    </Select.Option>
-                  ))}
-                </Select>
-              </Form.Item>
-            </Col>
-          </Row>
-
-          <Row gutter={16}>
-            <Col span={12}>
-              <Form.Item
-                name="price"
-                label="Giá bán (đ)"
-                rules={[{ required: true, message: "Vui lòng nhập giá" }]}
-              >
-                <InputNumber
-                  min={0}
-                  style={{ width: "100%" }}
-                  size="large"
-                  formatter={(value) =>
-                    `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ",")
-                  }
-                />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item name="quantity" label="Số lượng tồn kho">
-                <InputNumber min={0} style={{ width: "100%" }} size="large" />
-              </Form.Item>
-            </Col>
-          </Row>
-
-          <Row gutter={16}>
-            <Col span={12}>
-              <Form.Item name="costPrice" label="Giá vốn (đ)">
-                <InputNumber
-                  min={0}
-                  style={{ width: "100%" }}
-                  size="large"
-                  formatter={(value) =>
-                    `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ",")
-                  }
-                />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item name="prepTime" label="Thời gian chuẩn bị (phút)">
-                <InputNumber min={0} style={{ width: "100%" }} size="large" />
-              </Form.Item>
-            </Col>
-          </Row>
-
-          <Form.Item name="image" label="URL hình ảnh">
-            <Input size="large" placeholder="https://..." />
-          </Form.Item>
-
-          <Form.Item name="description" label="Mô tả">
-            <Input.TextArea rows={4} />
-          </Form.Item>
-
-          <Form.Item className="mb-0">
-            <Space className="w-full justify-end">
-              <Button onClick={() => setIsEditModalOpen(false)}>Hủy</Button>
-              <Button type="primary" htmlType="submit">
-                Cập nhật
-              </Button>
-            </Space>
-          </Form.Item>
-        </Form>
+        <ProductsForm
+          form={editForm}
+          onFinish={handleSubmitEdit}
+          isEdit={true}
+          selectedProduct={selectedProduct}
+          categories={categories}
+          branches={[]}
+          hideBranch={true}
+        />
       </Modal>
-    </div>
-  );
+
+      <ProductsDetailModal
+        product={selectedProduct}
+        open={isDetailModalOpen}
+        onCancel={() => setIsDetailModalOpen(false)}
+      />
+    </div >
+  )
 }
 
 export default function ProductsPage() {
   return (
-    <ManagerLayout>
+    <ManagerLayout title="Quản lý sản phẩm">
       <App>
         <ProductsContent />
       </App>
     </ManagerLayout>
-  );
+  )
 }
