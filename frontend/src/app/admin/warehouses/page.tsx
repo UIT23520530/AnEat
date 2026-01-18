@@ -2,23 +2,30 @@
 
 import { AdminLayout } from "@/components/layouts/admin-layout";
 import { useState, useEffect } from "react";
-import { Table, Space, Button, Tag, Modal, App, Statistic, Row, Col, Select, Input, Form, InputNumber, Spin, Descriptions, Tooltip } from "antd";
+import { Table, Space, Button, Tag, App, Statistic, Row, Col, Select, Input, Tooltip, Spin } from "antd";
 import type { TableColumnsType } from "antd";
-import { EyeOutlined, CheckOutlined, CloseOutlined, SearchOutlined, InboxOutlined, ClockCircleOutlined, CheckCircleOutlined, CloseCircleOutlined, TruckOutlined, StopOutlined } from "@ant-design/icons";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { EyeOutlined, CheckOutlined, CloseOutlined, SearchOutlined, InboxOutlined, ClockCircleOutlined, CheckCircleOutlined, CloseCircleOutlined, TruckOutlined, StopOutlined, EditOutlined } from "@ant-design/icons";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import dayjs from "dayjs";
 import { adminWarehouseService, type WarehouseRequest, type LogisticsStaff, type WarehouseStatistics } from "@/services/admin-warehouse.service";
 import apiClient from "@/lib/api-client";
 
+// Import Modal Components
+import { ApproveRequestModal } from "@/components/forms/admin/ApproveRequestModal";
+import { RejectRequestModal } from "@/components/forms/admin/RejectRequestModal";
+import { AssignLogisticsModal } from "@/components/forms/admin/AssignLogisticsModal";
+import { CancelRequestModal } from "@/components/forms/admin/CancelRequestModal";
+import { RequestDetailModal } from "@/components/forms/admin/RequestDetailModal";
+import { CreateShipmentModal } from "@/components/forms/admin/CreateShipmentModal";
+
 const { Option } = Select;
-const { TextArea } = Input;
 
 interface WarehouseRequestTableData extends WarehouseRequest {
   key: string;
 }
 
 function WarehouseContent() {
-  const { message, modal } = App.useApp();
+  const { message } = App.useApp();
   const [requests, setRequests] = useState<WarehouseRequestTableData[]>([]);
   const [selectedRequest, setSelectedRequest] = useState<WarehouseRequest | null>(null);
   const [logisticsStaff, setLogisticsStaff] = useState<LogisticsStaff[]>([]);
@@ -27,22 +34,18 @@ function WarehouseContent() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [branchFilter, setBranchFilter] = useState<string | null>(null);
-  const [branches, setBranches] = useState<Array<{id: string; name: string; code: string}>>([]);
+  const [branches, setBranches] = useState<Array<{ id: string; name: string; code: string }>>([]);
   const [searchText, setSearchText] = useState<string>("");
-  
-  // Modals
+
+  // Modals state
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [isApproveModalOpen, setIsApproveModalOpen] = useState(false);
   const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
-  
-  // Forms
-  const [approveForm] = Form.useForm();
-  const [rejectForm] = Form.useForm();
-  const [assignForm] = Form.useForm();
-  const [cancelForm] = Form.useForm();
-  
+  const [isReassignModalOpen, setIsReassignModalOpen] = useState(false);
+  const [isCreateShipmentModalOpen, setIsCreateShipmentModalOpen] = useState(false);
+
   const [pagination, setPagination] = useState({
     current: 1,
     pageSize: 10,
@@ -74,10 +77,8 @@ function WarehouseContent() {
         params.search = searchText;
       }
 
-      console.log('Fetching requests with params:', params);
       const response = await adminWarehouseService.getWarehouseRequests(params);
-      console.log('Response:', response);
-      
+
       const tableData: WarehouseRequestTableData[] = response.data.map(req => ({
         ...req,
         key: req.id,
@@ -106,24 +107,13 @@ function WarehouseContent() {
     }
   };
 
-  const fetchLogisticsStaff = async () => {
-    try {
-      const response = await adminWarehouseService.getLogisticsStaff();
-      setLogisticsStaff(response.data);
-    } catch (error: any) {
-      console.error("Failed to fetch logistics staff:", error);
-    }
-  };
-
   const fetchBranches = async () => {
     try {
       const response = await apiClient.get('/admin/branches', {
         params: { limit: 1000 },
       });
-      console.log('Branches response:', response.data);
       if (response.data.status === "success" || response.data.success) {
         setBranches(response.data.data);
-        console.log('Branches loaded:', response.data.data.length);
       }
     } catch (error: any) {
       console.error("Failed to fetch branches:", error);
@@ -132,7 +122,6 @@ function WarehouseContent() {
 
   useEffect(() => {
     fetchStatistics();
-    fetchLogisticsStaff();
     fetchBranches();
   }, []);
 
@@ -145,142 +134,169 @@ function WarehouseContent() {
   }, [statusFilter, typeFilter, branchFilter, searchText]);
 
   // Handlers
+
   const handleViewDetail = async (request: WarehouseRequest) => {
     setIsDetailModalOpen(true);
-    setLoading(true);
+    // Fetch full detail when viewing to ensure we have latest shipments info
     try {
-      // Fetch full request details including shipments
       const response = await adminWarehouseService.getWarehouseRequestById(request.id);
       setSelectedRequest(response.data);
-      console.log('Detail request:', response.data);
-    } catch (error: any) {
-      message.error("Không thể tải chi tiết yêu cầu");
-      console.error("Failed to fetch request details:", error);
-      setSelectedRequest(request); // Fallback to table data
-    } finally {
-      setLoading(false);
+    } catch (error) {
+      setSelectedRequest(request);
     }
   };
 
-  const handleOpenApprove = (request: WarehouseRequest) => {
+  const handleOpenApprove = async (request: WarehouseRequest) => {
     setSelectedRequest(request);
-    approveForm.setFieldsValue({
-      approvedQuantity: request.requestedQuantity,
-    });
     setIsApproveModalOpen(true);
+
+    // Fetch logistics staff for this branch (for optional assignment based on approval)
+    try {
+      const response = await adminWarehouseService.getLogisticsStaff(
+        request.branchId,
+        request.expectedDate || undefined // Filter availability by expected date
+      );
+      setLogisticsStaff(response.data);
+    } catch (error: any) {
+      console.warn("Could not fetch logistics staff for approval modal", error);
+    }
   };
 
   const handleOpenReject = (request: WarehouseRequest) => {
     setSelectedRequest(request);
-    rejectForm.resetFields();
     setIsRejectModalOpen(true);
   };
 
   const handleOpenAssign = async (request: WarehouseRequest) => {
     setSelectedRequest(request);
-    assignForm.resetFields();
     setIsAssignModalOpen(true);
-    
-    // Fetch logistics staff for this branch only
+
+    // Fetch logistics staff for this branch
     try {
-      const response = await adminWarehouseService.getLogisticsStaff(request.branchId);
+      const response = await adminWarehouseService.getLogisticsStaff(
+        request.branchId,
+        request.expectedDate || undefined // Filter availability
+      );
       setLogisticsStaff(response.data);
     } catch (error: any) {
       message.error("Không thể tải danh sách nhân viên logistics");
-      console.error("Failed to fetch logistics staff:", error);
+    }
+  };
+
+  const handleOpenReassign = async (request: WarehouseRequest) => {
+    setSelectedRequest(request);
+    setIsReassignModalOpen(true);
+
+    try {
+      const response = await adminWarehouseService.getLogisticsStaff(
+        request.branchId,
+        request.expectedDate || undefined // Filter availability
+      );
+      setLogisticsStaff(response.data);
+    } catch (error: any) {
+      message.error("Không thể tải danh sách nhân viên logistics");
     }
   };
 
   const handleOpenCancel = (request: WarehouseRequest) => {
     setSelectedRequest(request);
-    cancelForm.resetFields();
     setIsCancelModalOpen(true);
   };
 
-  const handleApprove = async (values: any) => {
+  const handleApprove = async (values: { approvedQuantity: number; notes?: string; logisticsStaffId?: string }) => {
     if (!selectedRequest) return;
-    
+
     setLoading(true);
     try {
+      // 1. Approve request
       await adminWarehouseService.approveRequest(selectedRequest.id, {
         approvedQuantity: values.approvedQuantity,
         notes: values.notes,
       });
-      
-      message.success("Đã duyệt yêu cầu thành công");
+
+      // 2. Assign to logistics if selected
+      if (values.logisticsStaffId) {
+        try {
+          await adminWarehouseService.assignToLogistics(selectedRequest.id, {
+            logisticsStaffId: values.logisticsStaffId,
+            notes: values.notes,
+          });
+          message.success("Đã duyệt và giao việc thành công");
+        } catch (assignError) {
+          console.error("Assign error after approval:", assignError);
+          message.warning("Đã duyệt yêu cầu nhưng không thể giao việc. Vui lòng thử lại chức năng giao việc.");
+        }
+      } else {
+        message.success("Đã duyệt yêu cầu thành công");
+      }
+
       setIsApproveModalOpen(false);
-      approveForm.resetFields();
       fetchRequests(pagination.current, pagination.pageSize);
       fetchStatistics();
     } catch (error: any) {
       message.error(error.response?.data?.message || "Không thể duyệt yêu cầu");
-      console.error("Failed to approve request:", error);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleReject = async (values: any) => {
+  const handleReject = async (values: { rejectedReason: string }) => {
     if (!selectedRequest) return;
-    
+
     setLoading(true);
     try {
       await adminWarehouseService.rejectRequest(selectedRequest.id, {
         rejectedReason: values.rejectedReason,
       });
-      
+
       message.success("Đã từ chối yêu cầu");
       setIsRejectModalOpen(false);
-      rejectForm.resetFields();
       fetchRequests(pagination.current, pagination.pageSize);
       fetchStatistics();
     } catch (error: any) {
       message.error(error.response?.data?.message || "Không thể từ chối yêu cầu");
-      console.error("Failed to reject request:", error);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleAssign = async (values: any) => {
+  const handleAssign = async (values: { logisticsStaffId: string; notes?: string }) => {
     if (!selectedRequest) return;
-    
+
     setLoading(true);
     try {
+      // Logic for assignment: uses existing assignToLogistics endpoint
       await adminWarehouseService.assignToLogistics(selectedRequest.id, {
         logisticsStaffId: values.logisticsStaffId,
         notes: values.notes,
       });
-      
+
       message.success("Đã giao cho nhân viên logistics thành công");
       setIsAssignModalOpen(false);
-      assignForm.resetFields();
+      setIsReassignModalOpen(false);
       fetchRequests(pagination.current, pagination.pageSize);
     } catch (error: any) {
       message.error(error.response?.data?.message || "Không thể giao cho logistics");
-      console.error("Failed to assign to logistics:", error);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleCancel = async (values: any) => {
+  const handleCancel = async (values: { cancelReason: string }) => {
     if (!selectedRequest) return;
-    
+
     setLoading(true);
     try {
       await adminWarehouseService.cancelRequest(selectedRequest.id, {
         cancelReason: values.cancelReason,
       });
-      
+
       message.success("Đã hủy yêu cầu thành công");
       setIsCancelModalOpen(false);
-      cancelForm.resetFields();
       fetchRequests(pagination.current, pagination.pageSize);
       fetchStatistics();
     } catch (error: any) {
       message.error(error.response?.data?.message || "Không thể hủy yêu cầu");
-      console.error("Failed to cancel request:", error);
     } finally {
       setLoading(false);
     }
@@ -372,7 +388,6 @@ function WarehouseContent() {
       width: 100,
       align: "center",
       sorter: (a, b) => a.requestedQuantity - b.requestedQuantity,
-      showSorterTooltip: { title: "Sắp xếp theo số lượng yêu cầu" },
     },
     {
       title: "SL duyệt",
@@ -381,7 +396,6 @@ function WarehouseContent() {
       width: 100,
       align: "center",
       sorter: (a, b) => (a.approvedQuantity || 0) - (b.approvedQuantity || 0),
-      showSorterTooltip: { title: "Sắp xếp theo số lượng duyệt" },
       render: (qty: number | null) => qty || "-",
     },
     {
@@ -401,7 +415,6 @@ function WarehouseContent() {
         if (!b.requestedDate) return 1;
         return dayjs(a.requestedDate).unix() - dayjs(b.requestedDate).unix();
       },
-      showSorterTooltip: { title: "Sắp xếp theo ngày yêu cầu" },
       render: (date: string) => (date ? dayjs(date).format("DD/MM/YYYY") : "-"),
     },
     {
@@ -416,57 +429,78 @@ function WarehouseContent() {
       width: 140,
       align: "center",
       fixed: "right",
-      render: (_, record) => (
-        <Space>
-          <Tooltip title="Xem chi tiết">
-            <Button
-              type="text"
-              icon={<EyeOutlined />}
-              onClick={() => handleViewDetail(record)}
-            />
-          </Tooltip>
-          {record.status === "PENDING" && (
-            <>
-              <Tooltip title="Duyệt yêu cầu">
-                <Button
-                  type="primary"
-                  icon={<CheckOutlined />}
-                  size="small"
-                  onClick={() => handleOpenApprove(record)}
-                />
-              </Tooltip>
-              <Tooltip title="Từ chối yêu cầu">
+      render: (_, record) => {
+        // Check if allow reassign (approved + has shipments but none delivered/picked up yet)
+        const canReassign = record.status === 'APPROVED' &&
+          record.shipments &&
+          record.shipments.length > 0 &&
+          record.shipments.every((s: any) => s.status !== 'DELIVERED' && s.status !== 'PICKED_UP');
+
+        return (
+          <Space>
+            <Tooltip title="Xem chi tiết">
+              <Button
+                type="text"
+                icon={<EyeOutlined />}
+                onClick={() => handleViewDetail(record)}
+              />
+            </Tooltip>
+            {record.status === "PENDING" && (
+              <>
+                <Tooltip title="Duyệt yêu cầu">
+                  <Button
+                    type="primary"
+                    icon={<CheckOutlined />}
+                    size="small"
+                    onClick={() => handleOpenApprove(record)}
+                  />
+                </Tooltip>
+                <Tooltip title="Từ chối yêu cầu">
+                  <Button
+                    danger
+                    icon={<CloseOutlined />}
+                    size="small"
+                    onClick={() => handleOpenReject(record)}
+                  />
+                </Tooltip>
+              </>
+            )}
+            {record.status === "APPROVED" && (
+              <>
+                <Tooltip title="Giao cho logistics">
+                  <Button
+                    type="primary"
+                    icon={<TruckOutlined />}
+                    size="small"
+                    onClick={() => handleOpenAssign(record)}
+                  />
+                </Tooltip>
+
+                {/* Re-assign button */}
+                {canReassign && (
+                  <Tooltip title="Đổi nhân viên vận chuyển">
+                    <Button
+                      icon={<EditOutlined />}
+                      size="small"
+                      onClick={() => handleOpenReassign(record)}
+                    />
+                  </Tooltip>
+                )}
+              </>
+            )}
+            {(record.status === "PENDING" || record.status === "APPROVED") && (
+              <Tooltip title="Hủy yêu cầu">
                 <Button
                   danger
-                  icon={<CloseOutlined />}
+                  icon={<StopOutlined />}
                   size="small"
-                  onClick={() => handleOpenReject(record)}
+                  onClick={() => handleOpenCancel(record)}
                 />
               </Tooltip>
-            </>
-          )}
-          {record.status === "APPROVED" && (
-            <Tooltip title="Giao cho logistics">
-              <Button
-                type="primary"
-                icon={<TruckOutlined />}
-                size="small"
-                onClick={() => handleOpenAssign(record)}
-              />
-            </Tooltip>
-          )}
-          {(record.status === "PENDING" || record.status === "APPROVED") && (
-            <Tooltip title="Hủy yêu cầu">
-              <Button
-                danger
-                icon={<StopOutlined />}
-                size="small"
-                onClick={() => handleOpenCancel(record)}
-              />
-            </Tooltip>
-          )}
-        </Space>
-      ),
+            )}
+          </Space>
+        );
+      },
     },
   ];
 
@@ -551,7 +585,7 @@ function WarehouseContent() {
                 prefix={<SearchOutlined />}
                 style={{ width: 300 }}
                 value={searchText}
-                onChange={(e) => setSearchText(e.target.value)}          
+                onChange={(e) => setSearchText(e.target.value)}
               />
               <Select
                 value={statusFilter}
@@ -595,6 +629,13 @@ function WarehouseContent() {
                 }))}
               />
             </Space>
+            <Button
+              type="primary"
+              icon={<TruckOutlined />}
+              onClick={() => setIsCreateShipmentModalOpen(true)}
+            >
+              Tạo vận đơn
+            </Button>
           </div>
 
           {/* Table */}
@@ -616,269 +657,64 @@ function WarehouseContent() {
         </CardContent>
       </Card>
 
-      {/* Detail Modal */}
-      <Modal
-        title="Chi tiết yêu cầu"
-        open={isDetailModalOpen}
-        onCancel={() => setIsDetailModalOpen(false)}
-        footer={null}
-        width={700}
-      >
-        {selectedRequest && (
-          <Descriptions bordered column={2}>
-            <Descriptions.Item label="Mã yêu cầu" span={2}>
-              <Tag color="blue">{selectedRequest.requestNumber}</Tag>
-            </Descriptions.Item>
-            <Descriptions.Item label="Chi nhánh" span={2}>
-              {selectedRequest.branch.name} ({selectedRequest.branch.code})
-            </Descriptions.Item>
-            <Descriptions.Item label="Sản phẩm" span={2}>
-              <div className="flex items-center gap-2">
-                {selectedRequest.product.image && (
-                  <img
-                    src={selectedRequest.product.image}
-                    alt={selectedRequest.product.name}
-                    className="w-12 h-12 rounded object-cover"
-                  />
-                )}
-                <div>
-                  <div className="font-medium">{selectedRequest.product.name}</div>
-                  <div className="text-sm text-gray-500">SKU: {selectedRequest.product.code}</div>
-                </div>
-              </div>
-            </Descriptions.Item>
-            <Descriptions.Item label="Loại yêu cầu">
-              {getTypeText(selectedRequest.type)}
-            </Descriptions.Item>
-            <Descriptions.Item label="Trạng thái">
-              {getStatusTag(selectedRequest.status)}
-            </Descriptions.Item>
-            <Descriptions.Item label="Số lượng yêu cầu">
-              {selectedRequest.requestedQuantity}
-            </Descriptions.Item>
-            <Descriptions.Item label="Số lượng duyệt">
-              {selectedRequest.approvedQuantity || "-"}
-            </Descriptions.Item>
-            <Descriptions.Item label="Ngày yêu cầu">
-              {selectedRequest.requestedDate
-                ? dayjs(selectedRequest.requestedDate).format("DD/MM/YYYY HH:mm")
-                : "-"}
-            </Descriptions.Item>
-            <Descriptions.Item label="Ngày dự kiến">
-              {selectedRequest.expectedDate
-                ? dayjs(selectedRequest.expectedDate).format("DD/MM/YYYY")
-                : "-"}
-            </Descriptions.Item>
-            <Descriptions.Item label="Người yêu cầu" span={2}>
-              {selectedRequest.requestedBy.name} ({selectedRequest.requestedBy.email})
-            </Descriptions.Item>
-            {selectedRequest.approvedBy && (
-              <Descriptions.Item label="Người duyệt" span={2}>
-                {selectedRequest.approvedBy.name} ({selectedRequest.approvedBy.email})
-              </Descriptions.Item>
-            )}
-            {selectedRequest.status === "COMPLETED" && selectedRequest.shipments && selectedRequest.shipments.length > 0 && (
-              <Descriptions.Item label="Nhân viên logistics" span={2}>
-                <div className="space-y-2">
-                  {selectedRequest.shipments.map((shipment: any) => (
-                    <div key={shipment.id} className="flex items-center gap-2">
-                      <Tag color="green">{shipment.shipmentNumber}</Tag>
-                      <span>
-                        {shipment.assignedTo?.name || "Chưa giao"}
-                        {shipment.assignedTo?.email && ` (${shipment.assignedTo.email})`}
-                        {shipment.assignedTo?.phone && ` - ${shipment.assignedTo.phone}`}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </Descriptions.Item>
-            )}
-            {selectedRequest.notes && (
-              <Descriptions.Item label="Ghi chú" span={2}>
-                {selectedRequest.notes}
-              </Descriptions.Item>
-            )}
-            {selectedRequest.rejectedReason && (
-              <Descriptions.Item label="Lý do từ chối" span={2}>
-                <span className="text-red-500">{selectedRequest.rejectedReason}</span>
-              </Descriptions.Item>
-            )}
-          </Descriptions>
-        )}
-      </Modal>
-
-      {/* Approve Modal */}
-      <Modal
-        title="Duyệt yêu cầu"
+      {/* Modals */}
+      <ApproveRequestModal
         open={isApproveModalOpen}
-        onCancel={() => {
-          setIsApproveModalOpen(false);
-          approveForm.resetFields();
-        }}
-        footer={null}
-        width={500}
-      >
-        <Form
-          form={approveForm}
-          layout="vertical"
-          onFinish={handleApprove}
-        >
-          <Form.Item
-            label="Số lượng duyệt"
-            name="approvedQuantity"
-            rules={[
-              { required: true, message: "Vui lòng nhập số lượng duyệt!" },
-              { type: "number", min: 1, message: "Số lượng phải lớn hơn 0!" },
-            ]}
-          >
-            <InputNumber
-              style={{ width: "100%" }}
-              placeholder="Nhập số lượng duyệt"
-            />
-          </Form.Item>
-          <Form.Item label="Ghi chú" name="notes">
-            <TextArea rows={3} placeholder="Ghi chú thêm (không bắt buộc)" />
-          </Form.Item>
-          <Form.Item className="mb-0">
-            <Space className="w-full justify-end">
-              <Button onClick={() => setIsApproveModalOpen(false)}>
-                Hủy
-              </Button>
-              <Button type="primary" htmlType="submit" loading={loading}>
-                Duyệt yêu cầu
-              </Button>
-            </Space>
-          </Form.Item>
-        </Form>
-      </Modal>
+        loading={loading}
+        onCancel={() => setIsApproveModalOpen(false)}
+        onApprove={handleApprove}
+        initialQuantity={selectedRequest?.requestedQuantity}
+        logisticsStaff={logisticsStaff}
+      />
 
-      {/* Reject Modal */}
-      <Modal
-        title="Từ chối yêu cầu"
+      <RejectRequestModal
         open={isRejectModalOpen}
-        onCancel={() => {
-          setIsRejectModalOpen(false);
-          rejectForm.resetFields();
-        }}
-        footer={null}
-        width={500}
-      >
-        <Form
-          form={rejectForm}
-          layout="vertical"
-          onFinish={handleReject}
-        >
-          <Form.Item
-            label="Lý do từ chối"
-            name="rejectedReason"
-            rules={[{ required: true, message: "Vui lòng nhập lý do từ chối!" }]}
-          >
-            <TextArea rows={4} placeholder="Nhập lý do từ chối..." />
-          </Form.Item>
-          <Form.Item className="mb-0">
-            <Space className="w-full justify-end">
-              <Button onClick={() => setIsRejectModalOpen(false)}>
-                Hủy
-              </Button>
-              <Button type="primary" danger htmlType="submit" loading={loading}>
-                Từ chối yêu cầu
-              </Button>
-            </Space>
-          </Form.Item>
-        </Form>
-      </Modal>
+        loading={loading}
+        onCancel={() => setIsRejectModalOpen(false)}
+        onReject={handleReject}
+      />
 
-      {/* Assign to Logistics Modal */}
-      <Modal
-        title="Giao cho nhân viên Logistics"
+      <AssignLogisticsModal
         open={isAssignModalOpen}
-        onCancel={() => {
-          setIsAssignModalOpen(false);
-          assignForm.resetFields();
-        }}
-        footer={null}
-        width={500}
-      >
-        <Form
-          form={assignForm}
-          layout="vertical"
-          onFinish={handleAssign}
-        >
-          <Form.Item
-            label="Nhân viên Logistics"
-            name="logisticsStaffId"
-            rules={[{ required: true, message: "Vui lòng chọn nhân viên!" }]}
-          >
-            <Select
-              placeholder="Chọn nhân viên logistics"
-              showSearch
-              filterOption={(input, option) =>
-                (option?.children as unknown as string)
-                  ?.toLowerCase()
-                  .includes(input.toLowerCase())
-              }
-            >
-              {logisticsStaff.map((staff) => (
-                <Option key={staff.id} value={staff.id}>
-                  {staff.name} - {staff.email}
-                </Option>
-              ))}
-            </Select>
-          </Form.Item>
-          <Form.Item label="Ghi chú" name="notes">
-            <TextArea rows={3} placeholder="Ghi chú cho logistics (không bắt buộc)" />
-          </Form.Item>
-          <Form.Item className="mb-0">
-            <Space className="w-full justify-end">
-              <Button onClick={() => setIsAssignModalOpen(false)}>
-                Hủy
-              </Button>
-              <Button type="primary" htmlType="submit" loading={loading}>
-                Giao cho Logistics
-              </Button>
-            </Space>
-          </Form.Item>
-        </Form>
-      </Modal>
+        loading={loading}
+        logisticsStaff={logisticsStaff}
+        onCancel={() => setIsAssignModalOpen(false)}
+        onAssign={handleAssign}
+        title="Giao cho nhân viên Logistics"
+      />
 
-      {/* Cancel Modal */}
-      <Modal
-        title="Hủy yêu cầu"
+      <AssignLogisticsModal
+        open={isReassignModalOpen}
+        loading={loading}
+        logisticsStaff={logisticsStaff}
+        onCancel={() => setIsReassignModalOpen(false)}
+        onAssign={handleAssign}
+        title="Thay đổi nhân viên vận chuyển"
+        submitText="Cập nhật"
+      />
+
+      <CancelRequestModal
         open={isCancelModalOpen}
-        onCancel={() => {
-          setIsCancelModalOpen(false);
-          cancelForm.resetFields();
+        loading={loading}
+        onCancel={() => setIsCancelModalOpen(false)}
+        onConfirmCancel={handleCancel}
+      />
+
+      <RequestDetailModal
+        open={isDetailModalOpen}
+        request={selectedRequest}
+        onCancel={() => setIsDetailModalOpen(false)}
+      />
+
+      <CreateShipmentModal
+        open={isCreateShipmentModalOpen}
+        onCancel={() => setIsCreateShipmentModalOpen(false)}
+        onSuccess={() => {
+          setIsCreateShipmentModalOpen(false);
+          fetchRequests(pagination.current, pagination.pageSize);
+          fetchStatistics();
         }}
-        footer={null}
-        width={500}
-      >
-        <Form
-          form={cancelForm}
-          layout="vertical"
-          onFinish={handleCancel}
-        >
-          <Form.Item
-            label="Lý do hủy"
-            name="cancelReason"
-            rules={[
-              { required: true, message: "Vui lòng nhập lý do hủy!" },
-              { min: 5, message: "Lý do phải có ít nhất 5 ký tự!" },
-            ]}
-          >
-            <TextArea rows={4} placeholder="Nhập lý do hủy..." />
-          </Form.Item>
-          <Form.Item className="mb-0">
-            <Space className="w-full justify-end">
-              <Button onClick={() => setIsCancelModalOpen(false)}>
-                Đóng
-              </Button>
-              <Button type="primary" danger htmlType="submit" loading={loading}>
-                Xác nhận hủy
-              </Button>
-            </Space>
-          </Form.Item>
-        </Form>
-      </Modal>
+      />
     </div>
   );
 }

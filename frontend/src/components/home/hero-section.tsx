@@ -6,6 +6,9 @@ import Image from "next/image";
 import { ChevronLeft, ChevronRight, Package, Truck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { bannerService, type Banner } from "@/services/banner.service";
+import { useRouter } from "next/navigation";
+import { useBranch } from "@/contexts/branch-context";
+import { BranchSelectorDialog } from "../branch/branch-selector-dialog";
 
 export function HeroSection() {
   const router = useRouter();

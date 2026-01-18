@@ -77,6 +77,7 @@ import {
   getWarehouseStatistics,
   getLogisticsStaff,
   cancelWarehouseRequest,
+  createQuickShipment,
 } from '../controllers/admin/warehouse-request.controller';
 import {
   getAllBanners,
@@ -737,6 +738,23 @@ router.get('/warehouse-requests/statistics', getWarehouseStatistics);
  * @access  Admin only
  */
 router.get('/warehouse-requests/logistics-staff', getLogisticsStaff);
+
+/**
+ * @route   POST /api/v1/admin/warehouse-requests/shipment
+ * @desc    Tạo nhanh đơn vận chuyển (Quick Shipment)
+ * @access  Admin only
+ */
+router.post(
+  '/warehouse-requests/shipment',
+  [
+    body('branchId').notEmpty().withMessage('Chi nhánh là bắt buộc'),
+    body('items').isArray().withMessage('Items phải là mảng'),
+    body('items.*.productId').notEmpty().withMessage('Sản phẩm là bắt buộc'),
+    body('items.*.quantity').isInt({ min: 1 }).withMessage('Số lượng phải lớn hơn 0'),
+  ],
+  validate,
+  createQuickShipment
+);
 
 /**
  * @route   GET /api/v1/admin/warehouse-requests

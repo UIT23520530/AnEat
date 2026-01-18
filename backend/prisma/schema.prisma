@@ -474,3 +474,119 @@ model SystemSetting {
   @@map("SystemSetting")
 }
 
+model AboutUs {
+  id        String   @id @default(cuid())
+  title     String
+  content   String
+  image     String?
+  mission   String?
+  vision    String?
+  values    String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("AboutUs")
+}
+
+enum UserRole {
+  ADMIN_SYSTEM
+  ADMIN_BRAND
+  STAFF
+  CUSTOMER
+  LOGISTICS_STAFF
+}
+
+enum OrderStatus {
+  PENDING
+  PREPARING
+  READY
+  COMPLETED
+  CANCELLED
+}
+
+enum TableStatus {
+  EMPTY
+  OCCUPIED
+  RESERVED
+}
+
+enum PromotionType {
+  PERCENTAGE
+  FIXED
+}
+
+enum PaymentMethod {
+  CASH
+  CARD
+  BANK_TRANSFER
+  E_WALLET
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+enum CustomerTier {
+  BRONZE
+  SILVER
+  GOLD
+  VIP
+}
+
+enum StockRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  COMPLETED
+  CANCELLED
+}
+
+enum StockRequestType {
+  RESTOCK
+  ADJUSTMENT
+  RETURN
+}
+
+enum BillStatus {
+  DRAFT
+  ISSUED
+  PAID
+  CANCELLED
+  REFUNDED
+}
+
+enum ShipmentStatus {
+  READY
+  IN_TRANSIT
+  DELIVERED
+  COMPLETED
+  CANCELLED
+}
+
+enum TemplateStatus {
+  ACTIVE
+  INACTIVE
+  ARCHIVED
+}
+
+enum TemplateCategory {
+  SMS
+  EMAIL
+  NOTIFICATION
+  INVOICE
+  ORDER
+  RECEIPT
+  REPORT
+}
+
+enum OrderType {
+  DINE_IN
+  TAKE_AWAY
+  DELIVERY
+  PICKUP
+}
+

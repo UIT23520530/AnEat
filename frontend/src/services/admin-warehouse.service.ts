@@ -118,6 +118,17 @@ export interface CancelRequestDto {
   cancelReason: string;
 }
 
+export interface CreateQuickShipmentDto {
+  branchId: string;
+  items: Array<{
+    productId: string;
+    quantity: number;
+  }>;
+  logisticsStaffId?: string;
+  notes?: string;
+  deliveryDate?: string;
+}
+
 export const adminWarehouseService = {
   // Get all warehouse requests
   getWarehouseRequests: async (params?: {
@@ -148,9 +159,13 @@ export const adminWarehouseService = {
   },
 
   // Get logistics staff
-  getLogisticsStaff: async (branchId?: string): Promise<LogisticsStaffResponse> => {
+  getLogisticsStaff: async (branchId?: string, date?: string): Promise<LogisticsStaffResponse> => {
+    const params: any = {};
+    if (branchId) params.branchId = branchId;
+    if (date) params.date = date;
+
     const response = await apiClient.get('/admin/warehouse-requests/logistics-staff', {
-      params: branchId ? { branchId } : undefined,
+      params,
     });
     return response.data;
   },
@@ -176,6 +191,12 @@ export const adminWarehouseService = {
   // Cancel request
   cancelRequest: async (id: string, data: CancelRequestDto): Promise<WarehouseRequestResponse> => {
     const response = await apiClient.put(`/admin/warehouse-requests/${id}/cancel`, data);
+    return response.data;
+  },
+
+  // Create quick shipment
+  createQuickShipment: async (data: CreateQuickShipmentDto): Promise<any> => {
+    const response = await apiClient.post('/admin/warehouse-requests/shipment', data);
     return response.data;
   },
 };

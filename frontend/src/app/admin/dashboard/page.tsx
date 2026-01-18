@@ -133,7 +133,7 @@ function DashboardContent() {
 
   // Filter visible alerts
   const visibleAlerts = alerts.filter((alert) => !dismissedAlerts.has(alert.id))
-  
+
   // Debug: Log filtering
   console.log("👁️ Total alerts:", alerts.length, "Visible alerts:", visibleAlerts.length)
 
@@ -163,16 +163,25 @@ function DashboardContent() {
   const loadDashboard = async () => {
     setLoading(true)
     try {
-      const [statsRes, branchRes, revenueRes, productsRes, alertsRes, growthRes] = await Promise.all([
+      // Load alerts separately to not block main stats
+      let alertsData: SystemAlert[] = []
+      try {
+        const alertsRes = await adminDashboardService.getSystemAlerts({
+          revenuePercent: thresholds.revenuePercent,
+          minStaff: thresholds.minStaff,
+          minStock: thresholds.minStock,
+        })
+        alertsData = alertsRes.data
+        console.log("🔔 Alerts received:", alertsData)
+      } catch (error) {
+        console.error("Failed to load alerts:", error)
+      }
+
+      const [statsRes, branchRes, revenueRes, productsRes, growthRes] = await Promise.all([
         adminDashboardService.getSystemStats(),
         adminDashboardService.getBranchPerformance(),
         adminDashboardService.getSystemRevenueData({ period }),
         adminDashboardService.getTopProductsSystemWide(10),
-        adminDashboardService.getSystemAlerts({
-          revenuePercent: thresholds.revenuePercent,
-          minStaff: thresholds.minStaff,
-          minStock: thresholds.minStock,
-        }),
         adminDashboardService.getGrowthMetrics(),
       ])
 
@@ -180,11 +189,11 @@ function DashboardContent() {
       setBranchPerformance(branchRes.data)
       setRevenueData(revenueRes.data)
       setTopProducts(productsRes.data)
-      setAlerts(alertsRes.data)
+      setAlerts(alertsData)
       setGrowthMetrics(growthRes.data)
-      
+
       // Debug: Log alerts data
-      console.log("🔔 Alerts received:", alertsRes.data)
+
       console.log("📝 Dismissed alerts from sessionStorage:", Array.from(dismissedAlerts))
     } catch (error: any) {
       message.error("Không thể tải dữ liệu dashboard")
@@ -380,9 +389,8 @@ function DashboardContent() {
       width: 60,
       render: (_, __, index) => (
         <div
-          className={`h-8 w-8 rounded-full flex items-center justify-center font-bold text-white ${
-            index === 0 ? "bg-yellow-500" : index === 1 ? "bg-slate-400" : index === 2 ? "bg-orange-600" : "bg-slate-300"
-          }`}
+          className={`h-8 w-8 rounded-full flex items-center justify-center font-bold text-white ${index === 0 ? "bg-yellow-500" : index === 1 ? "bg-slate-400" : index === 2 ? "bg-orange-600" : "bg-slate-300"
+            }`}
         >
           {index + 1}
         </div>
@@ -422,11 +430,11 @@ function DashboardContent() {
   // Customer tier data for pie chart
   const customerTierData = stats
     ? [
-        { name: "Bronze", value: stats.totalCustomers.byTier.BRONZE, color: "#CD7F32" },
-        { name: "Silver", value: stats.totalCustomers.byTier.SILVER, color: "#C0C0C0" },
-        { name: "Gold", value: stats.totalCustomers.byTier.GOLD, color: "#FFD700" },
-        { name: "VIP", value: stats.totalCustomers.byTier.VIP, color: "#8B5CF6" },
-      ]
+      { name: "Bronze", value: stats.totalCustomers.byTier.BRONZE, color: "#CD7F32" },
+      { name: "Silver", value: stats.totalCustomers.byTier.SILVER, color: "#C0C0C0" },
+      { name: "Gold", value: stats.totalCustomers.byTier.GOLD, color: "#FFD700" },
+      { name: "VIP", value: stats.totalCustomers.byTier.VIP, color: "#8B5CF6" },
+    ]
     : []
 
   return (
@@ -881,11 +889,10 @@ function DashboardContent() {
 
                 <div className="bg-gray-50 p-2 rounded">
                   <span className="text-xs font-medium">Tổng: </span>
-                  <span className={`text-xs font-bold ${
-                    tempThresholds.revenueWeight + tempThresholds.aovWeight + tempThresholds.efficiencyWeight + tempThresholds.retentionWeight === 100
-                      ? "text-green-600"
-                      : "text-red-600"
-                  }`}>
+                  <span className={`text-xs font-bold ${tempThresholds.revenueWeight + tempThresholds.aovWeight + tempThresholds.efficiencyWeight + tempThresholds.retentionWeight === 100
+                    ? "text-green-600"
+                    : "text-red-600"
+                    }`}>
                     {tempThresholds.revenueWeight + tempThresholds.aovWeight + tempThresholds.efficiencyWeight + tempThresholds.retentionWeight}%
                   </span>
                 </div>

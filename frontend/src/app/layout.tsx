@@ -6,6 +6,7 @@ import './globals.css'
 import { CartProvider } from '@/contexts/cart-context'
 import { Toaster } from '@/components/ui/toaster'
 import './fonts.css'
+import { BranchProvider } from '@/contexts/branch-context'
 
 // Import dev helper in development mode
 if (process.env.NODE_ENV === 'development') {

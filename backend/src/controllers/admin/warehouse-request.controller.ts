@@ -359,7 +359,7 @@ export const getWarehouseStatistics = async (req: Request, res: Response): Promi
 
     stats.forEach((stat) => {
       statistics.totalRequests += stat._count;
-      
+
       switch (stat.status) {
         case StockRequestStatus.PENDING:
           statistics.pendingRequests = stat._count;
@@ -398,18 +398,48 @@ export const getWarehouseStatistics = async (req: Request, res: Response): Promi
 /**
  * Get all logistics staff
  */
+/**
+ * Get all logistics staff
+ */
 export const getLogisticsStaff = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { branchId } = req.query;
+    const { date } = req.query;
 
     const whereClause: any = {
       role: 'LOGISTICS_STAFF',
       deletedAt: null,
     };
 
-    // Filter by branchId if provided
-    if (branchId) {
-      whereClause.branchId = branchId as string;
+    // Filter by availability if date is provided
+    if (date) {
+      const checkDate = new Date(date as string);
+      // Assume a delivery takes 2 hours (1 hour before and 1 hour after)
+      const startWindow = new Date(checkDate.getTime() - 2 * 60 * 60 * 1000);
+      const endWindow = new Date(checkDate.getTime() + 2 * 60 * 60 * 1000);
+
+      const busyShipments = await prisma.shipment.findMany({
+        where: {
+          assignedToId: { not: null },
+          status: { notIn: ['COMPLETED', 'CANCELLED', 'DELIVERED'] }, // Filter out finished tasks
+          stockRequest: {
+            expectedDate: {
+              gte: startWindow,
+              lte: endWindow,
+            },
+          },
+        },
+        select: {
+          assignedToId: true,
+        },
+      });
+
+      const busyStaffIds = busyShipments
+        .map((s) => s.assignedToId)
+        .filter((id): id is string => id !== null);
+
+      if (busyStaffIds.length > 0) {
+        whereClause.id = { notIn: busyStaffIds };
+      }
     }
 
     const logisticsStaff = await prisma.user.findMany({
@@ -470,8 +500,8 @@ export const cancelWarehouseRequest = async (req: Request, res: Response): Promi
     }
 
     // Admin can cancel PENDING or APPROVED requests
-    if (existingRequest.status !== StockRequestStatus.PENDING && 
-        existingRequest.status !== StockRequestStatus.APPROVED) {
+    if (existingRequest.status !== StockRequestStatus.PENDING &&
+      existingRequest.status !== StockRequestStatus.APPROVED) {
       res.status(400).json({
         success: false,
         code: 400,
@@ -488,8 +518,8 @@ export const cancelWarehouseRequest = async (req: Request, res: Response): Promi
     if (cancelReason) {
       await prisma.stockRequest.update({
         where: { id },
-        data: { 
-          notes: `${existingRequest.notes || ''}\n[Admin cancelled] ${cancelReason}`.trim() 
+        data: {
+          notes: `${existingRequest.notes || ''}\n[Admin cancelled] ${cancelReason}`.trim()
         },
       });
     }
@@ -510,11 +540,131 @@ export const cancelWarehouseRequest = async (req: Request, res: Response): Promi
   }
 };
 
+/**
+ * Create quick shipment (Admin pushes stock to branch)
+ */
+export const createQuickShipment = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { branchId, items, logisticsStaffId, notes, deliveryDate } = req.body;
+
+    if (!req.user) {
+      res.status(401).json({
+        success: false,
+        code: 401,
+        message: 'Unauthorized',
+      });
+      return;
+    }
+
+    if (!branchId || !items || !Array.isArray(items) || items.length === 0) {
+      res.status(400).json({
+        success: false,
+        code: 400,
+        message: 'Branch and at least one item are required',
+      });
+      return;
+    }
+
+    // Verify branch exists
+    const branch = await prisma.branch.findUnique({
+      where: { id: branchId },
+    });
+
+    if (!branch) {
+      res.status(404).json({
+        success: false,
+        code: 404,
+        message: 'Branch not found',
+      });
+      return;
+    }
+
+    const createdShipments: any[] = [];
+
+    // Process each item
+    for (const item of items) {
+      const { productId, quantity } = item;
+
+      if (!productId || !quantity || quantity <= 0) continue;
+
+      const product = await prisma.product.findUnique({
+        where: { id: productId },
+      });
+
+      if (!product) continue;
+
+      // 1. Create StockRequest (Auto Approved)
+      // Generate request number
+      const today = new Date();
+      const dateStr = `${today.getFullYear()}${(today.getMonth() + 1).toString().padStart(2, '0')}`;
+      const count = await prisma.stockRequest.count();
+      const requestNumber: string = `REQ${dateStr}${String(count + 1 + createdShipments.length).padStart(4, '0')}`;
+
+      const stockRequest = await prisma.stockRequest.create({
+        data: {
+          requestNumber,
+          type: 'RESTOCK',
+          status: StockRequestStatus.COMPLETED, // Since we are shipping immediately
+          requestedQuantity: quantity,
+          approvedQuantity: quantity,
+          notes: notes || 'Quick shipment created by Admin',
+          requestedDate: new Date(),
+          expectedDate: deliveryDate ? new Date(deliveryDate) : undefined,
+          productId: productId,
+          branchId: branchId,
+          requestedById: req.user.id, // Admin is requester
+          approvedById: req.user.id,  // Admin is approver
+          completedDate: new Date(),
+        },
+      });
+
+      // 2. Create Shipment if logistics staff is selected
+      if (logisticsStaffId) {
+        const shipment = await prisma.shipment.create({
+          data: {
+            shipmentNumber: await generateShipmentNumber(),
+            status: 'READY',
+            priority: false,
+            productName: product.name,
+            quantity: quantity,
+            fromLocation: 'Kho Trung Tâm',
+            toLocation: branch.name,
+            branchCode: branch.code,
+            notes: notes ? `${notes} (Delivery: ${deliveryDate || 'N/A'})` : `Delivery: ${deliveryDate || 'N/A'}`,
+            assignedAt: new Date(),
+            branchId: branchId,
+            assignedToId: logisticsStaffId,
+            stockRequestId: stockRequest.id,
+          },
+          include: {
+            assignedTo: true,
+          },
+        });
+        createdShipments.push(shipment);
+      }
+    }
+
+    res.status(201).json({
+      success: true,
+      code: 201,
+      message: `Created ${createdShipments.length} shipments successfully`,
+      data: createdShipments,
+    });
+  } catch (error) {
+    console.error('Create quick shipment error:', error);
+    res.status(500).json({
+      success: false,
+      code: 500,
+      message: 'Failed to create quick shipment',
+    });
+  }
+};
+
 // Helper function to generate shipment number
 async function generateShipmentNumber(): Promise<string> {
   const today = new Date();
   const prefix = `SH${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}`;
-  
+
   const lastShipment = await prisma.shipment.findFirst({
     where: {
       shipmentNumber: {
@@ -531,6 +681,11 @@ async function generateShipmentNumber(): Promise<string> {
     const lastSequence = parseInt(lastShipment.shipmentNumber.slice(-4));
     sequence = lastSequence + 1;
   }
+
+  // Add random component to avoid collision in loop if needed, but sequential await should handle it
+  // Just to be safe in loop
+  // Actually in loop await generateShipmentNumber() might get same number if transaction not committed?
+  // Prisma operations are awaited sequentially in the loop, so it should be fine.
 
   return `${prefix}${String(sequence).padStart(4, '0')}`;
 }

@@ -40,7 +40,7 @@ export default function AdminSettingsPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [bannerToDelete, setBannerToDelete] = useState<string | null>(null);
   const [initDialogOpen, setInitDialogOpen] = useState(false);
-  
+
   // Banner form state
   const [editingBanner, setEditingBanner] = useState<Banner | null>(null);
   const [bannerForm, setBannerForm] = useState<BannerFormData>({
@@ -94,7 +94,7 @@ export default function AdminSettingsPage() {
       setContactSettings(contact);
       setBusinessSettings(business);
       setAboutSettings(about);
-      
+
     } catch (error: any) {
       console.error(error);
       toast({
@@ -242,7 +242,7 @@ export default function AdminSettingsPage() {
   const handleInitializeDefaults = async () => {
     setInitDialogOpen(true);
   };
-  
+
   const performInitializeDefaults = async () => {
     try {
       await systemSettingService.initializeDefaultSettings();
@@ -364,7 +364,7 @@ export default function AdminSettingsPage() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          <Badge variant={banner.isActive ? "default" : "secondary"}>
+                          <Badge className={`${banner.isActive ? "bg-green-600 hover:bg-green-700" : "bg-slate-500 hover:bg-slate-600"} text-white`}>
                             {banner.isActive ? "Hiển thị" : "Ẩn"}
                           </Badge>
                         </TableCell>
@@ -400,10 +400,10 @@ export default function AdminSettingsPage() {
           </div>
 
           {/* Right Column - System Settings */}
-          <div className="space-y-6">
+          <div className="space-y-4">
             {/* General Settings */}
             <Card>
-              <CardHeader>
+              <CardHeader className="pb-2">
                 <CardTitle className="text-gray-800">Thông tin chung</CardTitle>
                 <CardDescription className="text-gray-600">Thông tin cơ bản về cửa hàng</CardDescription>
               </CardHeader>
@@ -431,9 +431,10 @@ export default function AdminSettingsPage() {
               </CardContent>
             </Card>
 
+
             {/* Contact Settings */}
             <Card>
-              <CardHeader>
+              <CardHeader className="pb-2">
                 <CardTitle className="text-gray-800">Thông tin liên hệ</CardTitle>
                 <CardDescription className="text-gray-600">Thông tin liên lạc với khách hàng</CardDescription>
               </CardHeader>
@@ -472,7 +473,7 @@ export default function AdminSettingsPage() {
 
             {/* About Us */}
             <Card>
-              <CardHeader>
+              <CardHeader className="pb-2">
                 <CardTitle className="text-gray-800">Giới thiệu</CardTitle>
                 <CardDescription className="text-gray-600">Nội dung trang About Us</CardDescription>
               </CardHeader>
@@ -495,7 +496,7 @@ export default function AdminSettingsPage() {
 
             {/* Business Settings */}
             <Card>
-              <CardHeader>
+              <CardHeader className="pb-2">
                 <CardTitle className="text-gray-800">Cài đặt kinh doanh</CardTitle>
                 <CardDescription className="text-gray-600">Các thông số kinh doanh</CardDescription>
               </CardHeader>
@@ -536,7 +537,7 @@ export default function AdminSettingsPage() {
 
             {/* Initialize Defaults */}
             <Card>
-              <CardHeader>
+              <CardHeader className="pb-2">
                 <CardTitle className="text-gray-800">Khởi tạo mặc định</CardTitle>
                 <CardDescription className="text-gray-600">Khởi tạo các cài đặt mặc định nếu chưa có</CardDescription>
               </CardHeader>
@@ -577,8 +578,8 @@ export default function AdminSettingsPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Xác nhận khởi tạo</AlertDialogTitle>
             <AlertDialogDescription>
-              Bạn có chắc chắn muốn khởi tạo lại toàn bộ cài đặt mặc định? 
-              <br/>
+              Bạn có chắc chắn muốn khởi tạo lại toàn bộ cài đặt mặc định?
+              <br />
               Các cài đặt hiện tại sẽ được giữ nguyên nếu đã tồn tại.
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -593,7 +594,7 @@ export default function AdminSettingsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </AdminLayout>
+    </AdminLayout >
   );
 }
 
