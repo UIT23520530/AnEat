@@ -142,14 +142,17 @@ export function Sidebar({
         </div>
         <div className="flex-shrink-0 border-t border-gray-100">
           {currentUser && (
-            <div className={cn(
-              "p-4 mx-3 my-3 bg-gradient-to-br from-orange-50 to-green-50 rounded-xl border border-orange-100",
-              isCollapsed && "mx-2 p-2"
-            )}>
+            <Link 
+              href={currentUser.role === "CUSTOMER" ? "/customer/profile-user" : "/profile"}
+              className={cn(
+                "block p-4 mx-3 my-3 bg-gradient-to-br from-orange-50 to-green-50 rounded-xl border border-orange-100 hover:shadow-md transition-all cursor-pointer",
+                isCollapsed && "mx-2 p-2"
+              )}
+            >
               {!isCollapsed ? (
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-orange-500 to-green-500 flex items-center justify-center text-white font-bold shadow-md">
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-orange-500 to-green-500 flex items-center justify-center text-white font-bold shadow-md flex-shrink-0">
                       {currentUser.name.charAt(0).toUpperCase()}
                     </div>
                     <div className="flex-1 min-w-0">
@@ -177,11 +180,11 @@ export function Sidebar({
                   )}
                 </div>
               ) : (
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-orange-500 to-green-500 flex items-center justify-center text-white font-bold shadow-md mx-auto">
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-orange-500 to-green-500 flex items-center justify-center text-white font-bold shadow-md mx-auto">
                   {currentUser.name.charAt(0).toUpperCase()}
                 </div>
               )}
-            </div>
+            </Link>
           )}
           <div className="px-3 pb-3 space-y-1">
           

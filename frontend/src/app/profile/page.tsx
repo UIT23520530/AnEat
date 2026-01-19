@@ -139,7 +139,7 @@ export default function ProfilePage() {
               {/* Avatar Circle */}
               <div className="mb-6 w-24 h-24 mx-auto bg-white rounded-full shadow-lg flex items-center justify-center">
                 <Avatar className="h-20 w-20">
-                  <AvatarImage src={user.avatar || "/placeholder.svg"} />
+                  <AvatarImage src="/avt/avt-profile.jpg" />
                   <AvatarFallback className="text-2xl">{user.name.charAt(0).toUpperCase()}</AvatarFallback>
                 </Avatar>
               </div>

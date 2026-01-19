@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
@@ -20,11 +20,12 @@ import {
   ReceiptText,
   ArrowRightFromLine,
 } from "lucide-react";
-import { logout } from "@/lib/auth";
+import { logout, getCurrentUser } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 import { AntdProvider } from "@/components/providers/AntdProvider"
 import { usePendingOrders } from "@/hooks/use-pending-orders";
 import { Toaster } from "sonner";
+import type { User } from "@/types";
 import 'antd/dist/reset.css'
 import '@/styles/antd-custom.css'
 
@@ -32,6 +33,12 @@ export function StaffLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
   const { pendingCount } = usePendingOrders(true, 30000);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+
+  useEffect(() => {
+    const user = getCurrentUser();
+    setCurrentUser(user);
+  }, []);
 
   const navItems = [
     { href: "/staff/dashboard", icon: LayoutGrid, label: "Tổng quan" },
@@ -136,6 +143,39 @@ export function StaffLayout({ children }: { children: ReactNode }) {
 
           {/* Spacer để đẩy logout xuống dưới cùng */}
           <div className="flex-1" />
+
+          {/* User Profile Section */}
+          {currentUser && (
+            <div className={cn("mb-2", collapsed ? "px-2" : "px-4")}>
+              <Link 
+                href="/profile"
+                className={cn(
+                  "block p-3 bg-gradient-to-br from-orange-50 to-amber-50 rounded-xl border border-orange-100 hover:shadow-md transition-all cursor-pointer",
+                  collapsed && "p-2"
+                )}
+              >
+                {!collapsed ? (
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-orange-500 to-green-500 flex items-center justify-center text-white font-bold text-sm shadow-md flex-shrink-0">
+                      {currentUser.name.charAt(0).toUpperCase()}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-semibold text-gray-900 truncate">
+                        {currentUser.name}
+                      </p>
+                      <p className="text-[10px] text-gray-600">
+                        {currentUser.role === "STAFF" ? "Nhân viên" : currentUser.role}
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-orange-500 to-green-500 flex items-center justify-center text-white font-bold text-sm shadow-md mx-auto">
+                    {currentUser.name.charAt(0).toUpperCase()}
+                  </div>
+                )}
+              </Link>
+            </div>
+          )}
 
           {/* Divider before Logout */}
           <div className="px-4 my-1">
