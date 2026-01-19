@@ -176,35 +176,13 @@
         
         async function loadUsers() {
             try {
-                // Fetch users from backend or use hardcoded list
-                const response = await fetch(`${API_URL}/auth/login`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        email: 'manager1@aneat.com',
-                        password: 'password123'
-                    })
-                });
+                // Load tokens from tokens.json
+                const response = await fetch('/tokens.json');
+                if (!response.ok) {
+                    throw new Error('Cannot load tokens.json');
+                }
                 
-                // Hardcoded list for quick access
-                const users = [
-                    { name: 'Admin Hệ Thống', email: 'admin@aneat.com', role: 'ADMIN_SYSTEM', branch: null },
-                    { name: 'Trần Quản Lý 1', email: 'manager1@aneat.com', role: 'ADMIN_BRAND', branch: 'AnEat - Hoàn Kiếm (Hà Nội)' },
-                    { name: 'Phạm Quản Lý 2', email: 'manager2@aneat.com', role: 'ADMIN_BRAND', branch: 'AnEat - Tây Hồ (Hà Nội)' },
-                    { name: 'Võ Quản Lý 3', email: 'manager3@aneat.com', role: 'ADMIN_BRAND', branch: 'AnEat - Ngô Quyền (Hải Phòng)' },
-                    { name: 'Bùi Quản Lý 4', email: 'manager4@aneat.com', role: 'ADMIN_BRAND', branch: 'AnEat - Thanh Khê (Đà Nẵng)' },
-                    { name: 'Nhân viên 1 - BR001', email: 'staff.BR001.0@aneat.com', role: 'STAFF', branch: 'AnEat - Hoàn Kiếm (Hà Nội)' },
-                    { name: 'Nhân viên 2 - BR001', email: 'staff.BR001.1@aneat.com', role: 'STAFF', branch: 'AnEat - Hoàn Kiếm (Hà Nội)' },
-                    { name: 'Nhân viên 1 - BR002', email: 'staff.BR002.0@aneat.com', role: 'STAFF', branch: 'AnEat - Tây Hồ (Hà Nội)' },
-                    // Logistics Staff (auto-login by token)
-                    {
-                        name: 'Nguyễn Văn Logistics',
-                        email: 'logistics001@aneat.com',
-                        role: 'LOGISTICS_STAFF',
-                        branch: null,
-                        token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJjbWtoM2hhazcwMDAwOGszcnl5M2lvZTRoIiwiZW1haWwiOiJsb2dpc3RpY3MwMDFAYW5lYXQuY29tIiwicm9sZSI6IkxPR0lTVElDU19TVEFGRiIsImJyYW5jaElkIjpudWxsLCJpYXQiOjE3Njg1ODEwODcsImV4cCI6MTc2OTE4NTg4N30.A_3c3PRJobV0st0gIgGdGUNfi5kF8pt15_NVck8uo20'
-                    },
-                ];
+                const users = await response.json();
                 
                 renderUsers(users);
             } catch (error) {
@@ -267,7 +245,7 @@
                         `;
                     } else {
                         html += `
-                            <button class="user-card ${roleClass}" onclick="login('${user.email}', 'password123')">
+                            <button class="user-card ${roleClass}" onclick="login('${user.email}', 'password123', '${role}')">
                                 <div class="user-name">${user.name}</div>
                                 <div class="user-email">${user.email}</div>
                                 ${user.branch ? `<div class=\"user-branch\">🏪 ${user.branch}</div>` : ''}
@@ -281,21 +259,32 @@
             document.getElementById('content').innerHTML = html;
         }
 
-        function autoLoginByToken(token, name, email, role) {
-            const user = { name, email, role };
+        function autoLoginByToken(userData) {
+            const { token, id, name, email, role, branchId, branchName } = userData;
+            
+            // Prepare user object with all info
+            const user = {
+                id,
+                name,
+                email,
+                role,
+                branchId,
+                branchName
+            };
             
             // Save to localStorage
             localStorage.setItem('token', token);
+            localStorage.setItem('currentUser', JSON.stringify(user));
             localStorage.setItem('user', JSON.stringify(user));
             
             // IMPORTANT: Save to cookie for middleware authentication (MUST encode JSON)
             document.cookie = `user=${encodeURIComponent(JSON.stringify(user))}; path=/; max-age=604800`; // 7 days
             
             console.log('✅ Token saved to localStorage:', localStorage.getItem('token'));
-            console.log('✅ User saved to localStorage:', localStorage.getItem('user'));
+            console.log('✅ User saved to localStorage:', localStorage.getItem('currentUser'));
             console.log('✅ Cookie saved:', document.cookie);
             
-            alert(`✅ Đăng nhập nhanh bằng token!\n\n👤 ${name}\n📧 ${email}\n🔑 ${role}\n\n🔍 Check console để xem token`);
+            alert(`✅ Đăng nhập nhanh bằng token!\n\n👤 ${name}\n📧 ${email}\n🔑 ${role}\n${branchName ? `🏪 ${branchName}` : ''}\n\n🔍 Check console để xem token`);
             
             // Small delay to ensure localStorage is saved
             setTimeout(() => {
@@ -303,9 +292,12 @@
             }, 100);
         }
         
-        async function login(email, password) {
+        async function login(email, password, role) {
             try {
-                const response = await fetch(`${API_URL}/auth/login`, {
+                // Determine endpoint based on role
+                const endpoint = role === 'CUSTOMER' ? '/auth/login' : '/auth/system/login';
+                
+                const response = await fetch(`${API_URL}${endpoint}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ email, password })
@@ -331,10 +323,10 @@
                     
                     // Redirect theo role
                     const roleRoutes = {
-                        'ADMIN_SYSTEM': '/admin/dashboard',
-                        'ADMIN_BRAND': '/manager/dashboard',
-                        'STAFF': '/staff/dashboard',
-                        'LOGISTICS_STAFF': '/logistics/dashboard',
+                        'ADMIN_SYSTEM': '/admin',
+                        'ADMIN_BRAND': '/manager',
+                        'STAFF': '/staff',
+                        'LOGISTICS_STAFF': '/logistics',
                     };
                     
                     const redirectUrl = roleRoutes[data.data.user.role] || '/';

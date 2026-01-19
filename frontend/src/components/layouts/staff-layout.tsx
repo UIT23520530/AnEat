@@ -17,21 +17,26 @@ import {
   Package,
   ChevronLeft,
   ChevronRight,
+  ReceiptText,
   ArrowRightFromLine,
 } from "lucide-react";
 import { logout } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 import { AntdProvider } from "@/components/providers/AntdProvider"
+import { usePendingOrders } from "@/hooks/use-pending-orders";
+import { Toaster } from "sonner";
 import 'antd/dist/reset.css'
 import '@/styles/antd-custom.css'
 
 export function StaffLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
+  const { pendingCount } = usePendingOrders(true, 30000);
 
   const navItems = [
     { href: "/staff/dashboard", icon: LayoutGrid, label: "Tổng quan" },
     { href: "/staff/orders", icon: ShoppingCart, label: "Thực hiện Order" },
+    { href: "/staff/tracking-order", icon: ReceiptText, label: "Theo dõi đơn" },
     { href: "/staff/customers", icon: Users, label: "Khách hàng" },
     { href: "/staff/bills-history", icon: Receipt, label: "Lịch sử đơn hàng" },
     { href: "/staff/warehouse", icon: Package, label: "Kho hàng" },
@@ -75,11 +80,14 @@ export function StaffLayout({ children }: { children: ReactNode }) {
             {navItems.map((item) => {
               const Icon = item.icon;
               const isActive = pathname.startsWith(item.href);
+              const isTrackingOrder = item.href === "/staff/tracking-order";
+              const showBadge = isTrackingOrder && pendingCount > 0;
+              
               return (
                 <Link key={item.href} href={item.href}>
                   <button
                     className={cn(
-                      "w-full h-11 rounded-lg flex items-center gap-3 transition-all",
+                      "w-full h-11 rounded-lg flex items-center gap-3 transition-all relative",
                       collapsed ? "justify-center px-0" : "px-3",
                       isActive
                         ? "bg-orange-50 text-orange-500"
@@ -88,7 +96,19 @@ export function StaffLayout({ children }: { children: ReactNode }) {
                   >
                     <Icon className={cn("h-5 w-5 flex-shrink-0", isActive && "text-orange-500")} />
                     {!collapsed && (
-                      <span className={cn("text-sm font-medium", isActive && "text-orange-500")}>{item.label}</span>
+                      <>
+                        <span className={cn("text-sm font-medium", isActive && "text-orange-500")}>{item.label}</span>
+                        {showBadge && (
+                          <span className="ml-auto bg-red-500 text-white text-xs font-bold rounded-full h-5 min-w-[20px] px-1.5 flex items-center justify-center animate-pulse">
+                            {pendingCount}
+                          </span>
+                        )}
+                      </>
+                    )}
+                    {collapsed && showBadge && (
+                      <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full h-5 min-w-[20px] px-1.5 flex items-center justify-center animate-pulse">
+                        {pendingCount}
+                      </span>
                     )}
                   </button>
                 </Link>
@@ -142,6 +162,7 @@ export function StaffLayout({ children }: { children: ReactNode }) {
           <AntdProvider>
             <div className="h-full">{children}</div>
           </AntdProvider>
+          <Toaster position="top-right" richColors />
         </main>
       </div>
     </div>

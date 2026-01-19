@@ -279,10 +279,10 @@ export default function StaffOrderDetailPage() {
                           )}
                           <div className="flex items-center justify-between mt-2">
                             <span className="text-sm text-gray-600">
-                              {(item.price || 0).toLocaleString("vi-VN")}₫ × {item.quantity || 0}
+                              {((item.price || 0) / 100).toLocaleString("vi-VN")}₫ × {item.quantity || 0}
                             </span>
                             <span className="font-semibold text-orange-600">
-                              {((item.price || 0) * (item.quantity || 0)).toLocaleString("vi-VN")}₫
+                              {(((item.price || 0) * (item.quantity || 0)) / 100).toLocaleString("vi-VN")}₫
                             </span>
                           </div>
                         </div>
@@ -361,7 +361,7 @@ export default function StaffOrderDetailPage() {
                 <CardContent className="space-y-3">
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-600">Tạm tính</span>
-                    <span className="font-medium">{(order.subtotal || 0).toLocaleString("vi-VN")}₫</span>
+                    <span className="font-medium">{((order.subtotal || 0) / 100).toLocaleString("vi-VN")}₫</span>
                   </div>
                   
                   {order.discountAmount > 0 && (
@@ -373,14 +373,14 @@ export default function StaffOrderDetailPage() {
                         )}
                       </span>
                       <span className="font-medium text-orange-600">
-                        -{(order.discountAmount || 0).toLocaleString("vi-VN")}₫
+                        -{((order.discountAmount || 0) / 100).toLocaleString("vi-VN")}₫
                       </span>
                     </div>
                   )}
                   
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-600">VAT (8%)</span>
-                    <span className="font-medium">{(vat || 0).toLocaleString("vi-VN")}₫</span>
+                    <span className="font-medium">{((vat || 0) / 100).toLocaleString("vi-VN")}₫</span>
                   </div>
                   
                   <Separator />
@@ -388,7 +388,7 @@ export default function StaffOrderDetailPage() {
                   <div className="flex justify-between">
                     <span className="font-bold text-lg">Tổng cộng</span>
                     <span className="font-bold text-lg text-orange-600">
-                      {(order.total || 0).toLocaleString("vi-VN")}₫
+                      {((order.total || 0) / 100).toLocaleString("vi-VN")}₫
                     </span>
                   </div>
                 </CardContent>

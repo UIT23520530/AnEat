@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { body } from 'express-validator';
-import { register, login, getCurrentUser, logout } from '../controllers/shared/auth.controller';
+import { register, login, systemLogin, getCurrentUser, logout } from '../controllers/shared/auth.controller';
 import { authenticate } from '../middleware';
 import { validate } from '../middleware';
 
@@ -27,7 +27,7 @@ router.post(
 
 /**
  * @route   POST /api/v1/auth/login
- * @desc    Login user
+ * @desc    Login for CUSTOMER only
  * @access  Public
  */
 router.post(
@@ -38,6 +38,21 @@ router.post(
   ],
   validate,
   login
+);
+
+/**
+ * @route   POST /api/v1/auth/system/login
+ * @desc    System login for STAFF, ADMIN_BRAND, ADMIN_SYSTEM, LOGISTICS_STAFF
+ * @access  Public
+ */
+router.post(
+  '/system/login',
+  [
+    body('email').isEmail().withMessage('Please provide a valid email'),
+    body('password').notEmpty().withMessage('Password is required'),
+  ],
+  validate,
+  systemLogin
 );
 
 /**

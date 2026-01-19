@@ -28,8 +28,8 @@ export async function autoLoginForDev(): Promise<boolean> {
 
     console.log('🔐 Auto-logging in with dev account:', DEV_CREDENTIALS.email);
 
-    // Gọi API login
-    const response = await axios.post(`${API_BASE_URL}/auth/login`, {
+    // Gọi API system login (for manager/staff/admin)
+    const response = await axios.post(`${API_BASE_URL}/auth/system/login`, {
       email: DEV_CREDENTIALS.email,
       password: DEV_CREDENTIALS.password,
     });

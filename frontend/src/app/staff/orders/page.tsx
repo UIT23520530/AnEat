@@ -212,8 +212,14 @@ export default function StaffOrdersPage() {
 
   const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0)
   const discount = appliedDiscount
-  const vat = Math.round(subtotal * 0.08)
+  const vat = Math.round((subtotal - discount) * 0.08)
   const total = subtotal - discount + vat
+
+  // Display values (convert from cents to VND)
+  const displaySubtotal = subtotal / 100
+  const displayDiscount = discount / 100
+  const displayVat = vat / 100
+  const displayTotal = total / 100
 
   const handleCancelOrder = () => {
     if (confirm("Bạn có chắc muốn hủy đơn hàng này?")) {
@@ -473,11 +479,11 @@ export default function StaffOrdersPage() {
                         <div className="flex items-center gap-2">
                           {item.promotionPrice && item.promotionPrice < item.price ? (
                             <>
-                              <span className="text-orange-600 font-bold">{item.promotionPrice.toLocaleString()}₫</span>
-                              <span className="text-gray-400 line-through text-sm">{item.price.toLocaleString()}₫</span>
+                              <span className="text-orange-600 font-bold">{(item.promotionPrice / 100).toLocaleString()}₫</span>
+                              <span className="text-gray-400 line-through text-sm">{(item.price / 100).toLocaleString()}₫</span>
                             </>
                           ) : (
-                            <span className="text-orange-600 font-bold">{item.price.toLocaleString()}₫</span>
+                            <span className="text-orange-600 font-bold">{(item.price / 100).toLocaleString()}₫</span>
                           )}
                         </div>
                       </div>
@@ -592,7 +598,7 @@ export default function StaffOrdersPage() {
                         {item.options && (
                           <p className="text-xs text-gray-500 truncate">{item.options}</p>
                         )}
-                        <p className="text-sm text-orange-600 font-semibold">{item.price.toLocaleString()}₫</p>
+                        <p className="text-sm text-orange-600 font-semibold">{(item.price / 100).toLocaleString()}₫</p>
                         <div className="flex items-center gap-2 mt-2">
                           <button
                             onClick={() => updateQuantity(item.id, -1)}
@@ -653,7 +659,7 @@ export default function StaffOrdersPage() {
               <div className="space-y-1.5 mb-3">
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600">Tạm tính</span>
-                  <span className="font-medium">{subtotal.toLocaleString()}₫</span>
+                  <span className="font-medium">{displaySubtotal.toLocaleString()}₫</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600">
@@ -662,15 +668,15 @@ export default function StaffOrdersPage() {
                       <span className="text-xs text-orange-600 ml-1">({discountInfo.code})</span>
                     )}
                   </span>
-                  <span className="font-medium text-orange-600">-{discount.toLocaleString()}₫</span>
+                  <span className="font-medium text-orange-600">-{displayDiscount.toLocaleString()}₫</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600">VAT (8%)</span>
-                  <span className="font-medium">{vat.toLocaleString()}₫</span>
+                  <span className="font-medium">{displayVat.toLocaleString()}₫</span>
                 </div>
                 <div className="flex justify-between text-lg font-bold border-t pt-2">
                   <span>Tổng cộng</span>
-                  <span className="text-orange-600">{total.toLocaleString()}₫</span>
+                  <span className="text-orange-600">{displayTotal.toLocaleString()}₫</span>
                 </div>
               </div>
 

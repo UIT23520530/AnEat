@@ -35,8 +35,8 @@ export default function SystemLoginPage() {
     setError("")
 
     try {
-      // Call real API
-      const response = await apiClient.post("/auth/login", {
+      // Call system login API for staff/admin/manager/logistics
+      const response = await apiClient.post("/auth/system/login", {
         email,
         password,
         role, // Send role for internal verification

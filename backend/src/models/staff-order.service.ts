@@ -196,7 +196,7 @@ export class StaffOrderService {
    * Lấy đơn hàng theo ID
    */
   static async getOrderById(id: string) {
-    return await prisma.order.findUnique({
+    const order = await prisma.order.findUnique({
       where: { id },
       include: {
         items: {
@@ -206,7 +206,6 @@ export class StaffOrderService {
                 id: true,
                 name: true,
                 code: true,
-                price: true,
                 image: true,
               }
             }
@@ -238,10 +237,36 @@ export class StaffOrderService {
           select: {
             id: true,
             name: true,
+            address: true,
           }
         }
       },
     });
+
+    // Map items to include proper name and image from product
+    // Use OrderItem.price (price at order time), not Product.price (current price)
+    if (order) {
+      return {
+        ...order,
+        items: order.items.map(item => ({
+          id: item.id,
+          productId: item.productId,
+          orderId: item.orderId,
+          quantity: item.quantity,
+          price: item.price, // Price at order time from OrderItem
+          notes: item.notes,
+          createdAt: item.createdAt,
+          name: item.product.name, // Product name
+          product: {
+            id: item.product.id,
+            name: item.product.name,
+            image: item.product.image, // Product image
+          }
+        }))
+      };
+    }
+
+    return order;
   }
 
   /**

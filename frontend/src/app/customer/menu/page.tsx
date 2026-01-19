@@ -526,7 +526,7 @@ export default function MenuPage() {
 
         <div className="container mx-auto px-4 py-8 max-w-7xl">
           {/* Categories - Sticky */}
-          <div className="sticky top-28 z-30 bg-orange-50 pb-4 mb-6">
+          <div className={`sticky ${orderType === "DELIVERY" ? "top-28" : "top-16"} z-30 bg-orange-50 pb-4 mb-6 flex justify-center`}>
             <CategoriesFilter
               categories={categories}
               selectedCategory={selectedCategory}

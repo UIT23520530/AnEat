@@ -53,6 +53,13 @@ import {
   cancelStaffOrder,
   validatePromotionCode,
 } from '../controllers/staff/staff-order-management.controller';
+import {
+  getPendingOrders,
+  getPreparingOrders,
+  acceptOrder,
+  editOrderItems,
+  cancelOrder,
+} from '../controllers/staff/staff-order-tracking.controller';
 import { authenticate, isStaff, validate } from '../middleware';
 
 const router = Router();
@@ -524,6 +531,88 @@ router.post(
   [param('orderId').isString().notEmpty().withMessage('Order ID is required')],
   validate,
   cancelStaffOrder
+);
+
+// ==================== ORDER TRACKING ROUTES ====================
+
+/**
+ * @route   GET /api/v1/staff/orders-tracking/pending
+ * @desc    Get pending orders waiting for staff confirmation (from customer web)
+ * @query   page (optional) - Page number (default: 1)
+ * @query   limit (optional) - Items per page (default: 20)
+ * @access  Staff only
+ */
+router.get('/orders-tracking/pending', getPendingOrders);
+
+/**
+ * @route   GET /api/v1/staff/orders-tracking/preparing
+ * @desc    Get orders being prepared (accepted by staff)
+ * @query   page (optional) - Page number (default: 1)
+ * @query   limit (optional) - Items per page (default: 20)
+ * @access  Staff only
+ */
+router.get('/orders-tracking/preparing', getPreparingOrders);
+
+/**
+ * @route   POST /api/v1/staff/orders-tracking/:orderId/accept
+ * @desc    Accept a pending order (move to PREPARING status)
+ * @access  Staff only
+ */
+router.post(
+  '/orders-tracking/:orderId/accept',
+  [param('orderId').isString().notEmpty().withMessage('Order ID is required')],
+  validate,
+  acceptOrder
+);
+
+/**
+ * @route   PUT /api/v1/staff/orders-tracking/:orderId/items
+ * @desc    Edit order items (adjust quantities, remove items due to stock issues)
+ * @body    { items: Array<{ productId: string, quantity: number }>, reason: string }
+ * @access  Staff only
+ */
+router.put(
+  '/orders-tracking/:orderId/items',
+  [
+    param('orderId').isString().notEmpty().withMessage('Order ID is required'),
+    body('items')
+      .isArray({ min: 1 })
+      .withMessage('Danh sách sản phẩm không hợp lệ'),
+    body('items.*.productId')
+      .isString()
+      .notEmpty()
+      .withMessage('Product ID is required'),
+    body('items.*.quantity')
+      .isInt({ min: 1 })
+      .withMessage('Số lượng phải lớn hơn 0'),
+    body('reason')
+      .optional()
+      .isString()
+      .withMessage('Lý do chỉnh sửa phải là chuỗi'),
+  ],
+  validate,
+  editOrderItems
+);
+
+/**
+ * @route   POST /api/v1/staff/orders-tracking/:orderId/cancel
+ * @desc    Cancel an order with reason (different from staff order cancel)
+ * @body    { reason: string }
+ * @access  Staff only
+ */
+router.post(
+  '/orders-tracking/:orderId/cancel',
+  [
+    param('orderId').isString().notEmpty().withMessage('Order ID is required'),
+    body('reason')
+      .isString()
+      .notEmpty()
+      .withMessage('Vui lòng nhập lý do hủy đơn')
+      .isLength({ min: 10, max: 500 })
+      .withMessage('Lý do hủy phải từ 10-500 ký tự'),
+  ],
+  validate,
+  cancelOrder
 );
 
 /**

@@ -362,6 +362,7 @@ export class ProductService {
           image: true,
           prepTime: true,
           quantity: true,
+          isAvailable: true,
           categoryId: true,
           category: {
             select: {
@@ -397,15 +398,17 @@ export class ProductService {
         name: product.name,
         description: product.description,
         price: product.price,
-        imageUrl: product.image,
+        image: product.image,
         prepTime: product.prepTime,
-        inStock: product.quantity > 0,
-        stockQuantity: product.quantity,
+        isAvailable: product.isAvailable,
+        quantity: product.quantity,
+        categoryId: product.categoryId,
         category: product.category ? {
           id: product.category.id,
           code: product.category.code,
           name: product.category.name,
         } : null,
+        options: product.options,
       })),
       pagination: {
         page,

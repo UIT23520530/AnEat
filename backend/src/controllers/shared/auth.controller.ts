@@ -136,7 +136,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
 
 /**
  * Login user
- * For CUSTOMER role: Also returns Customer info (points, tier, etc.)
+ * For CUSTOMER role ONLY: Also returns Customer info (points, tier, etc.)
  */
 export const login = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -160,6 +160,15 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       res.status(401).json({
         status: 'error',
         message: 'Invalid credentials',
+      });
+      return;
+    }
+
+    // Only allow CUSTOMER role for this endpoint
+    if (user.role !== UserRole.CUSTOMER) {
+      res.status(403).json({
+        status: 'error',
+        message: 'Please use system login for staff accounts',
       });
       return;
     }
@@ -190,26 +199,24 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       data: { lastLogin: new Date() },
     });
 
-    // If CUSTOMER role, get Customer info
+    // Get Customer info
     let customerInfo = null;
-    if (user.role === UserRole.CUSTOMER) {
-      const customer = await prisma.customer.findUnique({
-        where: { phone: user.phone },
-        select: {
-          id: true,
-          points: true,
-          tier: true,
-          totalSpent: true,
-        },
-      });
-      if (customer) {
-        customerInfo = {
-          id: customer.id,
-          points: customer.points,
-          tier: customer.tier,
-          totalSpent: customer.totalSpent,
-        };
-      }
+    const customer = await prisma.customer.findUnique({
+      where: { phone: user.phone },
+      select: {
+        id: true,
+        points: true,
+        tier: true,
+        totalSpent: true,
+      },
+    });
+    if (customer) {
+      customerInfo = {
+        id: customer.id,
+        points: customer.points,
+        tier: customer.tier,
+        totalSpent: customer.totalSpent,
+      };
     }
 
     // Generate token
@@ -238,6 +245,101 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     res.status(500).json({
       status: 'error',
       message: 'Login failed',
+    });
+  }
+};
+
+/**
+ * System Login
+ * For STAFF, ADMIN_BRAND, ADMIN_SYSTEM, LOGISTICS_STAFF roles
+ */
+export const systemLogin = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { email, password } = req.body;
+
+    // Find user
+    const user = await prisma.user.findUnique({
+      where: { email },
+      include: {
+        branch: {
+          select: {
+            id: true,
+            name: true,
+            code: true,
+          },
+        },
+      },
+    });
+
+    if (!user) {
+      res.status(401).json({
+        status: 'error',
+        message: 'Invalid credentials',
+      });
+      return;
+    }
+
+    // Only allow system roles (not CUSTOMER)
+    const systemRoles = [UserRole.STAFF, UserRole.ADMIN_BRAND, UserRole.ADMIN_SYSTEM, UserRole.LOGISTICS_STAFF];
+    if (!systemRoles.includes(user.role)) {
+      res.status(403).json({
+        status: 'error',
+        message: 'This endpoint is only for staff/admin accounts',
+      });
+      return;
+    }
+
+    // Check if user is active
+    if (!user.isActive) {
+      res.status(401).json({
+        status: 'error',
+        message: 'Account is inactive',
+      });
+      return;
+    }
+
+    // Verify password
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+
+    if (!isPasswordValid) {
+      res.status(401).json({
+        status: 'error',
+        message: 'Invalid credentials',
+      });
+      return;
+    }
+
+    // Update last login
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { lastLogin: new Date() },
+    });
+
+    // Generate token
+    const token = generateToken(user.id, user.email, user.role, user.branchId);
+
+    res.status(200).json({
+      status: 'success',
+      message: 'System login successful',
+      data: {
+        user: {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          phone: user.phone,
+          role: user.role,
+          avatar: user.avatar,
+          branchId: user.branchId,
+          branchName: user.branch?.name || null,
+        },
+        token,
+      },
+    });
+  } catch (error) {
+    console.error('System login error:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'System login failed',
     });
   }
 };
