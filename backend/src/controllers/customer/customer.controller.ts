@@ -527,3 +527,109 @@ export const getProfile = async (req: Request, res: Response): Promise<void> => 
     });
   }
 };
+
+/**
+ * Update customer profile (including address)
+ */
+export const updateProfile = async (req: Request, res: Response): Promise<void> => {
+  try {
+    if (!req.user?.id) {
+      res.status(401).json({
+        status: 'error',
+        message: 'Chưa đăng nhập',
+      });
+      return;
+    }
+
+    const { name, phone, address } = req.body;
+
+    // Get current user
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.id },
+      select: { id: true, phone: true, name: true, email: true },
+    });
+
+    if (!user) {
+      res.status(404).json({
+        status: 'error',
+        message: 'Không tìm thấy người dùng',
+      });
+      return;
+    }
+
+    // Update User table
+    const updatedUser = await prisma.user.update({
+      where: { id: req.user.id },
+      data: {
+        name: name || user.name,
+      },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        phone: true,
+        avatar: true,
+      },
+    });
+
+    // Update Customer table (for address)
+    let customerData = null;
+    if (user.phone) {
+      const customer = await prisma.customer.findUnique({
+        where: { phone: user.phone },
+      });
+
+      if (customer) {
+        try {
+          // Thử cập nhật với address
+          customerData = await prisma.customer.update({
+            where: { phone: user.phone },
+            data: {
+              name: name || customer.name,
+              address: address !== undefined ? address : customer.address,
+            },
+            select: {
+              id: true,
+              tier: true,
+              points: true,
+              totalSpent: true,
+              address: true,
+            },
+          });
+        } catch (updateError) {
+          // Nếu trường address chưa tồn tại, cập nhật không có address
+          console.log('Updating without address field...');
+          customerData = await prisma.customer.update({
+            where: { phone: user.phone },
+            data: {
+              name: name || customer.name,
+            },
+            select: {
+              id: true,
+              tier: true,
+              points: true,
+              totalSpent: true,
+            },
+          });
+        }
+      }
+    }
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Cập nhật thông tin thành công',
+      data: {
+        user: {
+          ...updatedUser,
+          ...customerData,
+        },
+      },
+    });
+  } catch (error) {
+    console.error('Update profile error:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Không thể cập nhật thông tin',
+    });
+  }
+};

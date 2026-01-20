@@ -64,7 +64,20 @@ function findImageByName(productName: string, assetsDir: string): string | null 
   return null;
 }
 
+// Mapping thủ công cho các sản phẩm không match tự động
+const manualImageMapping: Record<string, string> = {
+  'kem vani (cúp)': '/assets/kem-sua-tuoi-cup.webp',
+  'kem vani': '/assets/kem-sua-tuoi-cup.webp',
+};
+
 function getProductImage(productName: string): string {
+  const lowerName = productName.toLowerCase();
+  
+  // Kiểm tra mapping thủ công trước
+  if (manualImageMapping[lowerName]) {
+    return manualImageMapping[lowerName];
+  }
+  
   const assetsDir = path.join(process.cwd(), '..', 'frontend', 'public', 'assets');
   const foundImage = findImageByName(productName, assetsDir);
   if (foundImage) {
@@ -1464,6 +1477,52 @@ async function seedSystemSettings() {
   return settings.length;
 }
 
+// ============ SEED ABOUT US ============
+
+async function seedAboutUs() {
+  console.log('\n📖 Seeding About Us...');
+  
+  await prisma.aboutUs.create({
+    data: {
+      title: 'Về AnEat',
+      content: `
+        <p>Chào mừng bạn đến với <strong>AnEat</strong> - chuỗi nhà hàng gà rán và burger mới nổi tại Việt Nam!</p>
+        
+        <p>Được thành lập từ năm 2025, AnEat đã không ngừng phát triển và mở rộng với mục tiêu mang đến cho khách hàng những món ăn nhanh ngon miệng, chất lượng với giá cả hợp lý nhất.</p>
+        
+        <h3>Câu chuyện của chúng tôi</h3>
+        <p>AnEat bắt đầu từ một cửa hàng nhỏ tại Quận 1, TP.HCM với niềm đam mê mang đến những món gà rán giòn rụm, thơm ngon theo công thức độc quyền. Sau hơn 4 tháng hoạt động, chúng tôi đã phát triển thành chuỗi cửa hàng với nhiều chi nhánh.</p>
+        
+        <h3>Cam kết chất lượng</h3>
+        <p>Tại AnEat, chúng tôi luôn:</p>
+        <ul>
+          <li>Sử dụng nguyên liệu tươi ngon, có nguồn gốc rõ ràng</li>
+          <li>Chế biến theo quy trình đảm bảo an toàn vệ sinh thực phẩm</li>
+          <li>Phục vụ nhanh chóng, chu đáo</li>
+          <li>Giá cả minh bạch, hợp lý</li>
+        </ul>
+        
+        <p>Hãy đến AnEat để trải nghiệm những món ăn tuyệt vời cùng gia đình và bạn bè!</p>
+      `,
+      image: '/assets/burger-com.webp',
+      mission: 'Mang đến cho khách hàng những món ăn nhanh ngon miệng, an toàn với giá cả hợp lý. Tạo ra trải nghiệm ẩm thực vui vẻ và tiện lợi cho mọi người.',
+      vision: 'Trở thành chuỗi nhà hàng gà rán và burger được yêu thích nhất Việt Nam vào năm 2030, mở rộng ra khu vực Đông Nam Á.',
+      values: JSON.stringify([
+        'Chất lượng là ưu tiên hàng đầu',
+        'Khách hàng là trung tâm mọi hoạt động',
+        'Sáng tạo và cải tiến không ngừng',
+        'Trung thực và minh bạch trong kinh doanh',
+        'Đoàn kết và hỗ trợ lẫn nhau',
+        'Bảo vệ môi trường và phát triển bền vững'
+      ]),
+      isActive: true,
+    },
+  });
+  
+  console.log('  ✅ Created About Us content');
+  return 1;
+}
+
 // ============ MAIN FUNCTION ============
 
 async function main() {
@@ -1481,6 +1540,7 @@ async function main() {
     const categoriesCreated = await seedCategories();
     const allProducts = await seedProducts(branches);
     await seedBanners();
+    await seedAboutUs();
     const promotions = await seedPromotions();
     const orderCount = await seedOrders(branches, customers, staff, allProducts, promotions);
     const reviewCount = await seedReviews(customers, allProducts);

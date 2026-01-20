@@ -62,7 +62,7 @@ function createSlugFromName(name: string): string {
 
 // Map API response sang Product format cho ProductDetailClient
 function mapToProduct(apiProduct: ProductResponse, slug: string) {
-  const basePrice = apiProduct.price / 100; // Convert từ cent sang VND
+  const basePrice = apiProduct.price; // Giá đã là VND
   const taxPercentage = 10; // Mặc định 10%
   const priceAfterTax = Math.round(basePrice * (1 + taxPercentage / 100));
 
@@ -76,7 +76,7 @@ function mapToProduct(apiProduct: ProductResponse, slug: string) {
     id: option.id,
     name: option.name,
     description: option.description || "",
-    price: option.price / 100, // Convert từ cent sang VND
+    price: option.price, // Giá đã là VND
     type: option.type,
     isRequired: option.isRequired,
     isAvailable: option.isAvailable,

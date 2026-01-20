@@ -28,7 +28,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
     if (!email || !password || !name || !phone) {
       res.status(400).json({
         status: 'error',
-        message: 'Email, password, name, and phone are required',
+        message: 'Vui lòng nhập đầy đủ email, mật khẩu, họ tên và số điện thoại',
       });
       return;
     }
@@ -41,7 +41,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
     if (existingUser) {
       res.status(400).json({
         status: 'error',
-        message: 'User with this email already exists',
+        message: 'Email này đã được đăng ký',
       });
       return;
     }
@@ -55,7 +55,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
       if (existingCustomer) {
         res.status(400).json({
           status: 'error',
-          message: 'Phone number already registered',
+          message: 'Số điện thoại này đã được đăng ký',
         });
         return;
       }
@@ -108,7 +108,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
 
     res.status(201).json({
       status: 'success',
-      message: 'User registered successfully',
+      message: 'Đăng ký thành công',
       data: {
         user: result,
         token,
@@ -120,16 +120,20 @@ export const register = async (req: Request, res: Response): Promise<void> => {
     // Handle Prisma unique constraint violation
     if (error.code === 'P2002') {
       const field = error.meta?.target?.[0] || 'field';
+      const fieldMessages: Record<string, string> = {
+        email: 'Email này đã được sử dụng',
+        phone: 'Số điện thoại này đã được sử dụng',
+      };
       res.status(400).json({
         status: 'error',
-        message: `${field} already exists`,
+        message: fieldMessages[field] || `${field} đã tồn tại`,
       });
       return;
     }
 
     res.status(500).json({
       status: 'error',
-      message: 'Registration failed',
+      message: 'Đăng ký thất bại. Vui lòng thử lại sau',
     });
   }
 };
@@ -159,7 +163,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     if (!user) {
       res.status(401).json({
         status: 'error',
-        message: 'Invalid credentials',
+        message: 'Email hoặc mật khẩu không đúng',
       });
       return;
     }
@@ -168,7 +172,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     if (user.role !== UserRole.CUSTOMER) {
       res.status(403).json({
         status: 'error',
-        message: 'Please use system login for staff accounts',
+        message: 'Vui lòng sử dụng trang đăng nhập dành cho nhân viên',
       });
       return;
     }
@@ -177,7 +181,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     if (!user.isActive) {
       res.status(401).json({
         status: 'error',
-        message: 'Account is inactive',
+        message: 'Tài khoản đã bị vô hiệu hóa',
       });
       return;
     }
@@ -188,7 +192,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     if (!isPasswordValid) {
       res.status(401).json({
         status: 'error',
-        message: 'Invalid credentials',
+        message: 'Email hoặc mật khẩu không đúng',
       });
       return;
     }
@@ -224,7 +228,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
 
     res.status(200).json({
       status: 'success',
-      message: 'Login successful',
+      message: 'Đăng nhập thành công',
       data: {
         user: {
           id: user.id,
@@ -244,7 +248,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     console.error('Login error:', error);
     res.status(500).json({
       status: 'error',
-      message: 'Login failed',
+      message: 'Đăng nhập thất bại. Vui lòng thử lại sau',
     });
   }
 };
@@ -274,7 +278,7 @@ export const systemLogin = async (req: Request, res: Response): Promise<void> =>
     if (!user) {
       res.status(401).json({
         status: 'error',
-        message: 'Invalid credentials',
+        message: 'Email hoặc mật khẩu không đúng',
       });
       return;
     }
@@ -284,7 +288,7 @@ export const systemLogin = async (req: Request, res: Response): Promise<void> =>
     if (!systemRoles.includes(user.role)) {
       res.status(403).json({
         status: 'error',
-        message: 'This endpoint is only for staff/admin accounts',
+        message: 'Trang này chỉ dành cho tài khoản nhân viên/quản trị',
       });
       return;
     }
@@ -293,7 +297,7 @@ export const systemLogin = async (req: Request, res: Response): Promise<void> =>
     if (!user.isActive) {
       res.status(401).json({
         status: 'error',
-        message: 'Account is inactive',
+        message: 'Tài khoản đã bị vô hiệu hóa',
       });
       return;
     }
@@ -304,7 +308,7 @@ export const systemLogin = async (req: Request, res: Response): Promise<void> =>
     if (!isPasswordValid) {
       res.status(401).json({
         status: 'error',
-        message: 'Invalid credentials',
+        message: 'Email hoặc mật khẩu không đúng',
       });
       return;
     }
@@ -320,7 +324,7 @@ export const systemLogin = async (req: Request, res: Response): Promise<void> =>
 
     res.status(200).json({
       status: 'success',
-      message: 'System login successful',
+      message: 'Đăng nhập thành công',
       data: {
         user: {
           id: user.id,
@@ -339,7 +343,7 @@ export const systemLogin = async (req: Request, res: Response): Promise<void> =>
     console.error('System login error:', error);
     res.status(500).json({
       status: 'error',
-      message: 'System login failed',
+      message: 'Đăng nhập thất bại. Vui lòng thử lại sau',
     });
   }
 };
@@ -352,7 +356,7 @@ export const getCurrentUser = async (req: Request, res: Response): Promise<void>
     if (!req.user) {
       res.status(401).json({
         status: 'error',
-        message: 'Not authenticated',
+        message: 'Chưa đăng nhập',
       });
       return;
     }
@@ -383,7 +387,7 @@ export const getCurrentUser = async (req: Request, res: Response): Promise<void>
     if (!user) {
       res.status(404).json({
         status: 'error',
-        message: 'User not found',
+        message: 'Không tìm thấy người dùng',
       });
       return;
     }
@@ -392,20 +396,41 @@ export const getCurrentUser = async (req: Request, res: Response): Promise<void>
 
     // Nếu là CUSTOMER, lấy thêm thông tin từ bảng Customer
     if (user.role === 'CUSTOMER' && user.phone) {
-      const customer = await prisma.customer.findUnique({
-        where: { phone: user.phone },
-        select: {
-          tier: true,
-          points: true,
-          totalSpent: true,
-        }
-      });
+      try {
+        const customer = await prisma.customer.findUnique({
+          where: { phone: user.phone },
+          select: {
+            tier: true,
+            points: true,
+            totalSpent: true,
+            address: true,
+          }
+        });
 
-      if (customer) {
-        responseData = {
-          ...responseData,
-          ...customer
-        };
+        if (customer) {
+          responseData = {
+            ...responseData,
+            ...customer
+          };
+        }
+      } catch (customerError) {
+        // Nếu trường address chưa tồn tại, thử lại không có address
+        console.log('Trying without address field...');
+        const customer = await prisma.customer.findUnique({
+          where: { phone: user.phone },
+          select: {
+            tier: true,
+            points: true,
+            totalSpent: true,
+          }
+        });
+
+        if (customer) {
+          responseData = {
+            ...responseData,
+            ...customer
+          };
+        }
       }
     }
 
@@ -417,7 +442,7 @@ export const getCurrentUser = async (req: Request, res: Response): Promise<void>
     console.error('Get current user error:', error);
     res.status(500).json({
       status: 'error',
-      message: 'Failed to get user profile',
+      message: 'Không thể lấy thông tin người dùng',
     });
   }
 };
@@ -428,6 +453,6 @@ export const getCurrentUser = async (req: Request, res: Response): Promise<void>
 export const logout = async (req: Request, res: Response): Promise<void> => {
   res.status(200).json({
     status: 'success',
-    message: 'Logout successful',
+    message: 'Đăng xuất thành công',
   });
 };

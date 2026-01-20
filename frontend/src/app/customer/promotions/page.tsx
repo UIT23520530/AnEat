@@ -88,9 +88,8 @@ const formatDiscount = (type: string, value: number): string => {
   if (type === "PERCENTAGE") {
     return `Giảm ${value}%`;
   } else {
-    // FIXED - value là số tiền tính theo cent
-    const amount = value / 100; // Convert từ cent sang VND
-    return `${amount.toLocaleString("vi-VN")}đ`;
+    // FIXED - value là số tiền VND
+    return `${value.toLocaleString("vi-VN")}đ`;
   }
 };
 
@@ -107,13 +106,11 @@ const mapToPromotion = (apiPromotion: PromotionResponse): Promotion => {
   if (apiPromotion.type === "PERCENTAGE") {
     description = `Giảm ${apiPromotion.value}% cho đơn hàng của bạn`;
   } else {
-    const amount = apiPromotion.value / 100;
-    description = `Giảm ${amount.toLocaleString("vi-VN")}đ cho đơn hàng của bạn`;
+    description = `Giảm ${apiPromotion.value.toLocaleString("vi-VN")}đ cho đơn hàng của bạn`;
   }
 
   if (apiPromotion.minOrderAmount) {
-    const minAmount = apiPromotion.minOrderAmount / 100;
-    description += ` (áp dụng cho đơn từ ${minAmount.toLocaleString("vi-VN")}đ)`;
+    description += ` (áp dụng cho đơn từ ${apiPromotion.minOrderAmount.toLocaleString("vi-VN")}đ)`;
   }
 
   // Format dates

@@ -256,7 +256,7 @@ export default function StaffOrderTrackingPage() {
                 {new Date(order.createdAt).toLocaleString('vi-VN')}
               </div>
               <div className="text-lg font-bold text-orange-600 mt-1">
-                {(order.total / 100).toLocaleString('vi-VN')}₫
+                {order.total.toLocaleString('vi-VN')}₫
               </div>
             </div>
           </div>
@@ -508,7 +508,7 @@ export default function StaffOrderTrackingPage() {
                       <div className="flex-1">
                         <p className="font-medium text-sm">{item.name}</p>
                         <p className="text-xs text-gray-500">
-                          {(item.price / 100).toLocaleString('vi-VN')}₫ x {item.quantity}
+                          {item.price.toLocaleString('vi-VN')}₫ x {item.quantity}
                         </p>
                         {!item.isAvailable && (
                           <div className="flex items-center gap-1 text-xs text-red-600 mt-1">
@@ -524,7 +524,7 @@ export default function StaffOrderTrackingPage() {
                         )}
                       </div>
                       <p className="font-semibold">
-                        {((item.price * item.quantity) / 100).toLocaleString('vi-VN')}₫
+                        {(item.price * item.quantity).toLocaleString('vi-VN')}₫
                       </p>
                     </div>
                   ))}
@@ -537,19 +537,19 @@ export default function StaffOrderTrackingPage() {
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
                   <span>Tạm tính</span>
-                  <span>{(selectedOrder.subtotal / 100).toLocaleString('vi-VN')}₫</span>
+                  <span>{selectedOrder.subtotal.toLocaleString('vi-VN')}₫</span>
                 </div>
                 {selectedOrder.discountAmount > 0 && (
                   <div className="flex justify-between text-sm text-orange-600">
                     <span>Giảm giá</span>
-                    <span>-{(selectedOrder.discountAmount / 100).toLocaleString('vi-VN')}₫</span>
+                    <span>-{selectedOrder.discountAmount.toLocaleString('vi-VN')}₫</span>
                   </div>
                 )}
                 <Separator />
                 <div className="flex justify-between font-bold text-lg">
                   <span>Tổng cộng</span>
                   <span className="text-orange-600">
-                    {(selectedOrder.total / 100).toLocaleString('vi-VN')}₫
+                    {selectedOrder.total.toLocaleString('vi-VN')}₫
                   </span>
                 </div>
               </div>
@@ -641,7 +641,7 @@ export default function StaffOrderTrackingPage() {
                         <div className="flex-1 min-w-0">
                           <p className="font-medium text-sm truncate">{item.name}</p>
                           <p className="text-xs text-gray-500">
-                            {(item.price / 100).toLocaleString('vi-VN')}₫
+                            {item.price.toLocaleString('vi-VN')}₫
                           </p>
                         </div>
                         <div className="flex items-center gap-2">

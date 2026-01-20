@@ -160,18 +160,18 @@ export default function OrderDetailPage({
             status: orderData.status.toLowerCase(),
             statusText: mapStatusText(orderData.status),
             currentStep: getStatusStep(orderData.status),
-            total: orderData.total / 100,
-            subtotal: orderData.total / 100,
+            total: orderData.total,
+            subtotal: orderData.total,
             tax: 0,
             discount: 0,
             items: orderData.items.map((item) => ({
               name: item.product.name,
               quantity: item.quantity,
-              price: item.price / 100,
+              price: item.price,
               notes: item.notes || "",
               options: item.options?.map(opt => ({
                 name: opt.optionName,
-                price: opt.optionPrice / 100
+                price: opt.optionPrice
               }))
             })),
             customer: {
@@ -276,13 +276,13 @@ export default function OrderDetailPage({
 
           {/* Order Progress */}
           <Card className="mb-6 border-none shadow-premium overflow-hidden bg-white rounded-xl">
-            <CardHeader className="border-b border-gray-50 py-3">
+            <CardHeader className="py-2 pb-0">
               <CardTitle className="text-lg font-bold flex items-center gap-2">
                 <Package className="h-4 w-4 text-orange-500" />
                 Trạng thái đơn hàng
               </CardTitle>
             </CardHeader>
-            <CardContent className="py-3">
+            <CardContent className="pt-2 pb-3">
               <div className="relative max-w-2xl mx-auto px-2">
                 {/* Progress Line */}
                 <div className="absolute top-5 left-0 right-0 h-1 bg-gray-100 rounded-full mx-6">
@@ -322,6 +322,26 @@ export default function OrderDetailPage({
                       </div>
                     );
                   })}
+                </div>
+              </div>
+
+              {/* Branch Info */}
+              <div className="mt-6 pt-4 border-t border-gray-100">
+                <div className="flex items-start gap-3 bg-blue-50/50 p-3 rounded-lg">
+                  <div className="bg-blue-100 p-2 rounded-lg">
+                    <MapPin className="h-4 w-4 text-blue-600" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Chi nhánh phục vụ</p>
+                    <p className="font-bold text-gray-800">{order.branch.name}</p>
+                    <p className="text-sm text-gray-600">{order.branch.address}</p>
+                    {order.branch.phone && (
+                      <p className="text-sm text-gray-500 mt-1 flex items-center gap-1">
+                        <Phone className="h-3 w-3" />
+                        {order.branch.phone}
+                      </p>
+                    )}
+                  </div>
                 </div>
               </div>
             </CardContent>
@@ -502,14 +522,6 @@ export default function OrderDetailPage({
                   </CardContent>
                 </Card>
 
-                {/* Serving Branch Info */}
-                <Card className="border-none shadow-sm rounded-2xl overflow-hidden bg-white/50 backdrop-blur-sm border border-white">
-                  <CardContent className="p-4">
-                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Được phục vụ bởi</p>
-                    <p className="font-bold text-gray-800 text-sm mb-1">{order.branch.name}</p>
-                    <p className="text-[11px] text-gray-500 leading-tight">{order.branch.address}</p>
-                  </CardContent>
-                </Card>
               </div>
             </div>
           </div>

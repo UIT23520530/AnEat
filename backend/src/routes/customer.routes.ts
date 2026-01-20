@@ -7,6 +7,7 @@ import {
   createOrder,
   getMenu,
   getProfile,
+  updateProfile,
   initiateMoMoPayment,
 } from '../controllers/customer/customer.controller';
 
@@ -24,6 +25,13 @@ router.use(authenticate);
  * @access  Customer only
  */
 router.get('/profile', getProfile);
+
+/**
+ * @route   PUT /api/v1/customer/profile
+ * @desc    Update customer profile
+ * @access  Customer only
+ */
+router.put('/profile', updateProfile);
 
 /**
  * @route   GET /api/v1/customer/orders

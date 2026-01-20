@@ -63,7 +63,7 @@ export default function LoginPage() {
         router.push(ROLE_ROUTES[user.role as UserRole])
       }
     } catch (err: any) {
-      const errorMessage = err.response?.data?.message || "Login failed. Please try again."
+      const errorMessage = err.response?.data?.message || "Đăng nhập thất bại. Vui lòng thử lại."
       setError(errorMessage)
     } finally {
       setLoading(false)

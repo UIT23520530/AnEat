@@ -42,6 +42,7 @@ interface OrderResponse {
   total: number; // Tổng tiền tính theo cent
   status: "PENDING" | "PREPARING" | "READY" | "COMPLETED" | "CANCELLED";
   deliveryAddress: string | null;
+  deliveryPhone: string | null;
   createdAt: string;
   items: OrderItemResponse[];
   branch: {
@@ -154,14 +155,14 @@ const mapToOrder = (apiOrder: OrderResponse): Order => {
   const items = apiOrder.items.map((item) => ({
     name: item.product.name,
     quantity: item.quantity,
-    price: item.price / 100, // Convert từ cent sang VND
+    price: item.price, // Giá đã là VND
   }));
 
   // Lấy address từ deliveryAddress hoặc branch address
   const address = apiOrder.deliveryAddress || apiOrder.branch.address;
 
-  // Lấy phone từ customer hoặc branch
-  const phone = apiOrder.customer?.phone || apiOrder.branch.phone;
+  // Lấy phone từ deliveryPhone hoặc customer hoặc branch
+  const phone = apiOrder.deliveryPhone || apiOrder.customer?.phone || apiOrder.branch.phone;
 
   return {
     id: apiOrder.orderNumber,
@@ -169,7 +170,7 @@ const mapToOrder = (apiOrder: OrderResponse): Order => {
     time: formatTime(apiOrder.createdAt),
     status: status,
     statusText: statusText,
-    total: apiOrder.total / 100, // Convert từ cent sang VND
+    total: apiOrder.total, // Giá đã là VND
     items: items,
     address: address,
     phone: phone,

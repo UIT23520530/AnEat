@@ -108,7 +108,7 @@ const createSlug = (name: string): string => {
 
 // Map API response sang Product type
 const mapToProduct = (apiProduct: FeaturedProductResponse): Product => {
-  const basePrice = apiProduct.price / 100; // Convert từ cent sang VND
+  const basePrice = apiProduct.price; // Giá đã là VND
   const taxPercentage = 10; // Mặc định 10%
   const priceAfterTax = Math.round(basePrice * (1 + taxPercentage / 100));
 

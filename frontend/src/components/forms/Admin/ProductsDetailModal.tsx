@@ -84,7 +84,7 @@ export default function ProductsDetailModal({
               </Descriptions.Item>
               <Descriptions.Item label="Giá bán">
                 <Text type="danger" strong>
-                  {(product.price / 100).toLocaleString("vi-VN")}đ
+                  {product.price.toLocaleString("vi-VN")}đ
                 </Text>
               </Descriptions.Item>
               <Descriptions.Item label="Tồn kho">
@@ -95,7 +95,7 @@ export default function ProductsDetailModal({
               </Descriptions.Item>
               <Descriptions.Item label="Giá vốn">
                 <Text>
-                  {product.costPrice ? (product.costPrice / 100).toLocaleString("vi-VN") + "đ" : "N/A"}
+                  {product.costPrice ? product.costPrice.toLocaleString("vi-VN") + "đ" : "N/A"}
                 </Text>
               </Descriptions.Item>
               <Descriptions.Item label="Thời gian chuẩn bị" span={2}>

@@ -42,8 +42,13 @@ apiClient.interceptors.response.use(
   async (error: AxiosError<any>) => {
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
 
+    // Không redirect nếu đang ở trang login/register (lỗi 401 là do sai credentials)
+    const isAuthEndpoint = originalRequest.url?.includes('/auth/login') || 
+                           originalRequest.url?.includes('/auth/register');
+
     // Handle 401 Unauthorized - Clear token and redirect to login
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    // Chỉ redirect nếu KHÔNG phải đang đăng nhập/đăng ký
+    if (error.response?.status === 401 && !originalRequest._retry && !isAuthEndpoint) {
       originalRequest._retry = true;
 
       // Clear all auth data

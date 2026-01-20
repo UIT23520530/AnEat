@@ -258,7 +258,7 @@ function WarehouseContent() {
       key: "costPrice",
       width: 120,
       align: "right",
-      render: (price: number) => `${(price / 100).toLocaleString("vi-VN")} ₫`,
+      render: (price: number) => `${price.toLocaleString("vi-VN")} ₫`,
     },
     {
       title: "Thao tác",

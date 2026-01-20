@@ -242,8 +242,8 @@ function ProductsContent() {
       // Backend handles branchId auto-assignment for managers
       await managerProductService.updateProduct(selectedProduct.id, {
         ...values,
-        price: values.price * 100, // Convert to cents
-        costPrice: values.costPrice ? values.costPrice * 100 : undefined,
+        price: values.price, // Giá đã là VND
+        costPrice: values.costPrice || undefined,
       })
       message.success("Đã cập nhật sản phẩm thành công")
       setIsEditModalOpen(false)
@@ -260,8 +260,8 @@ function ProductsContent() {
       // Backend auto-assigns branchId
       await managerProductService.createProduct({
         ...values,
-        price: values.price * 100, // Convert to cents
-        costPrice: values.costPrice ? values.costPrice * 100 : undefined,
+        price: values.price, // Giá đã là VND
+        costPrice: values.costPrice || undefined,
       })
       message.success("Đã thêm sản phẩm mới thành công")
       setIsAddModalOpen(false)
@@ -340,7 +340,7 @@ function ProductsContent() {
       sorter: (a, b) => a.price - b.price,
       render: (price: number, record: Product) => (
         <span style={{ opacity: record.isAvailable ? 1 : 0.6, fontWeight: 600, color: "#f5222d" }}>
-          {(price / 100).toLocaleString("vi-VN")}đ
+          {price.toLocaleString("vi-VN")}đ
         </span>
       ),
     },

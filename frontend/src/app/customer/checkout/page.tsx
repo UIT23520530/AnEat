@@ -20,6 +20,7 @@ import {
 import { homeService, Branch } from "@/services/home.service";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
+import apiClient from "@/lib/api-client";
 
 export default function CheckoutInfoPage() {
   const router = useRouter();
@@ -53,6 +54,42 @@ export default function CheckoutInfoPage() {
 
   const [branchDetail, setBranchDetail] = useState<Branch | null>(null);
   const [isLoadingBranch, setIsLoadingBranch] = useState(false);
+
+  // Fetch customer profile để tự động điền thông tin
+  useEffect(() => {
+    const fetchCustomerProfile = async () => {
+      const token = localStorage.getItem("token");
+      if (!token) return;
+
+      try {
+        const response = await apiClient.get("/auth/me");
+        if (response.data.status === "success" && response.data.data?.user) {
+          const user = response.data.data.user;
+          
+          // Chỉ set nếu chưa có giá trị (không ghi đè nếu user đã nhập)
+          if (!phoneNumber && user.phone) {
+            setPhoneNumber(user.phone);
+          }
+          
+          // Lấy địa chỉ từ API (database) trước, nếu không có thì lấy từ localStorage
+          if (!deliveryAddress) {
+            if (user.address) {
+              setDeliveryAddress(user.address);
+            } else {
+              const savedAddress = localStorage.getItem("customerDefaultAddress");
+              if (savedAddress) {
+                setDeliveryAddress(savedAddress);
+              }
+            }
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching customer profile:", error);
+      }
+    };
+
+    fetchCustomerProfile();
+  }, []); // Chỉ chạy 1 lần khi mount
 
   // Fetch branch details
   useEffect(() => {
@@ -221,11 +258,17 @@ export default function CheckoutInfoPage() {
                     <Input
                       placeholder="Số nhà, tên đường, phường/xã..."
                       value={deliveryAddress}
-                      onChange={(e) => setDeliveryAddress(e.target.value)}
+                      onChange={(e) => {
+                        setDeliveryAddress(e.target.value);
+                        // Lưu địa chỉ mặc định
+                        if (e.target.value) {
+                          localStorage.setItem("customerDefaultAddress", e.target.value);
+                        }
+                      }}
                       className="border-gray-200 focus:border-orange-500 focus:ring-orange-500 rounded-xl py-5"
                     />
-                    <p className="text-[11px] text-red-500 italic">
-                      * Vui lòng nhập địa chỉ chi tiết
+                    <p className="text-[11px] text-gray-500 italic">
+                      * Địa chỉ sẽ được lưu cho lần đặt hàng tiếp theo
                     </p>
                   </div>
                 )}

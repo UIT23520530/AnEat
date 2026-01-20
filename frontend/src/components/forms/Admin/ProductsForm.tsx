@@ -31,14 +31,14 @@ export default function ProductsForm({
         code: selectedProduct.code,
         name: selectedProduct.name,
         description: selectedProduct.description,
-        price: selectedProduct.price / 100, // Convert cents to currency units
+        price: selectedProduct.price, // Giá đã là VND
         image: selectedProduct.image,
         categoryId: selectedProduct.categoryId,
         branchId: selectedProduct.branchId || undefined,
         quantity: selectedProduct.quantity,
         prepTime: selectedProduct.prepTime || undefined,
         isAvailable: selectedProduct.isAvailable,
-        costPrice: selectedProduct.costPrice ? selectedProduct.costPrice / 100 : undefined,
+        costPrice: selectedProduct.costPrice || undefined,
       })
     } else if (!isEdit) {
       form.resetFields()

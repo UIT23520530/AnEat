@@ -110,11 +110,11 @@ export default function CheckoutPaymentPage() {
           return {
             productId: item.id,
             quantity: item.quantity,
-            price: item.price * 100,
+            price: item.price, // Giá đã là VND
             options: cartItem?.options?.map((opt) => ({
               optionId: opt.id,
               optionName: opt.name,
-              optionPrice: opt.price * 100,
+              optionPrice: opt.price,
             })) || [],
           };
         }),

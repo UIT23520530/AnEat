@@ -198,6 +198,7 @@ model Customer {
   name          String
   email         String?      @unique
   avatar        String?
+  address       String?
   tier          CustomerTier @default(BRONZE)
   totalSpent    Int          @default(0)
   points        Int          @default(0)

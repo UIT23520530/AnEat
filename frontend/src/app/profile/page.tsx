@@ -46,6 +46,9 @@ export default function ProfilePage() {
       try {
         setLoading(true)
         
+        // Lấy địa chỉ đã lưu từ localStorage
+        const savedAddress = localStorage.getItem("customerDefaultAddress") || ""
+        
         // 1. Thử lấy từ local storage trước để hiển thị ngay
         const localUser = getCurrentUser()
         if (localUser) {
@@ -54,7 +57,7 @@ export default function ProfilePage() {
             name: localUser.name,
             email: localUser.email,
             phone: localUser.phone || "",
-            address: localUser.address || "",
+            address: savedAddress,
           })
         }
 
@@ -71,7 +74,7 @@ export default function ProfilePage() {
             name: userData.name,
             email: userData.email,
             phone: userData.phone || "",
-            address: userData.address || "",
+            address: savedAddress,
           })
         }
       } catch (error) {
@@ -88,17 +91,45 @@ export default function ProfilePage() {
     fetchProfile()
   }, [router])
 
-  const handleSave = () => {
-    if (user) {
-      const updatedUser = {
-        ...user,
+  const handleSave = async () => {
+    if (!user) return
+    
+    setSaving(true)
+    try {
+      // Gọi API cập nhật profile
+      const response = await apiClient.put("/customer/profile", {
         name: formData.name,
-        email: formData.email,
-        phone: formData.phone,
+        address: formData.address,
+      })
+
+      if (response.data.status === "success") {
+        const updatedUser = {
+          ...user,
+          name: formData.name,
+          address: formData.address,
+        }
+        setCurrentUser(updatedUser)
+        setUser(updatedUser)
+        
+        // Cũng lưu vào localStorage để checkout sử dụng
+        if (formData.address) {
+          localStorage.setItem("customerDefaultAddress", formData.address)
+        }
+        
+        toast({
+          title: "Thành công",
+          description: "Cập nhật thông tin thành công!",
+        })
       }
-      setCurrentUser(updatedUser)
-      setUser(updatedUser)
-      alert("Cập nhật thông tin thành công!")
+    } catch (error: any) {
+      console.error("Update profile error:", error)
+      toast({
+        title: "Lỗi",
+        description: error.response?.data?.message || "Không thể cập nhật thông tin",
+        variant: "destructive",
+      })
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -248,10 +279,15 @@ export default function ProfilePage() {
               <div className="flex flex-col sm:flex-row gap-4">
                 <Button
                   onClick={handleSave}
-                  className="flex-1 py-6 bg-orange-500 hover:bg-orange-600 text-white font-semibold rounded-lg text-base"
+                  disabled={saving}
+                  className="flex-1 py-6 bg-orange-500 hover:bg-orange-600 text-white font-semibold rounded-lg text-base disabled:opacity-50"
                 >
-                  <Save className="h-4 w-4 mr-2" />
-                  LƯU THAY ĐỔI
+                  {saving ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Save className="h-4 w-4 mr-2" />
+                  )}
+                  {saving ? "ĐANG LƯU..." : "LƯU THAY ĐỔI"}
                 </Button>
                 <Button
                   variant="outline"

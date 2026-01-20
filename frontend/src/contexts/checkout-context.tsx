@@ -112,11 +112,11 @@ export const CheckoutProvider = ({ children }: { children: ReactNode }) => {
       items: items.map(item => ({
         productId: item.id,
         quantity: item.quantity,
-        price: Math.round(item.price * 100),
+        price: item.price, // Giá đã là VND
         options: item.options?.map(opt => ({
           optionId: opt.id,
           optionName: opt.name,
-          optionPrice: Math.round(opt.price * 100),
+          optionPrice: opt.price,
         })) || [],
       })),
       deliveryAddress: orderType === "DELIVERY" ? deliveryAddress : "Lấy tại cửa hàng",

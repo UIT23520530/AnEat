@@ -215,11 +215,11 @@ export default function StaffOrdersPage() {
   const vat = Math.round((subtotal - discount) * 0.08)
   const total = subtotal - discount + vat
 
-  // Display values (convert from cents to VND)
-  const displaySubtotal = subtotal / 100
-  const displayDiscount = discount / 100
-  const displayVat = vat / 100
-  const displayTotal = total / 100
+  // Display values (đã là VND)
+  const displaySubtotal = subtotal
+  const displayDiscount = discount
+  const displayVat = vat
+  const displayTotal = total
 
   const handleCancelOrder = () => {
     if (confirm("Bạn có chắc muốn hủy đơn hàng này?")) {
@@ -479,11 +479,11 @@ export default function StaffOrdersPage() {
                         <div className="flex items-center gap-2">
                           {item.promotionPrice && item.promotionPrice < item.price ? (
                             <>
-                              <span className="text-orange-600 font-bold">{(item.promotionPrice / 100).toLocaleString()}₫</span>
-                              <span className="text-gray-400 line-through text-sm">{(item.price / 100).toLocaleString()}₫</span>
+                              <span className="text-orange-600 font-bold">{item.promotionPrice.toLocaleString()}₫</span>
+                              <span className="text-gray-400 line-through text-sm">{item.price.toLocaleString()}₫</span>
                             </>
                           ) : (
-                            <span className="text-orange-600 font-bold">{(item.price / 100).toLocaleString()}₫</span>
+                            <span className="text-orange-600 font-bold">{item.price.toLocaleString()}₫</span>
                           )}
                         </div>
                       </div>
@@ -598,7 +598,7 @@ export default function StaffOrdersPage() {
                         {item.options && (
                           <p className="text-xs text-gray-500 truncate">{item.options}</p>
                         )}
-                        <p className="text-sm text-orange-600 font-semibold">{(item.price / 100).toLocaleString()}₫</p>
+                        <p className="text-sm text-orange-600 font-semibold">{item.price.toLocaleString()}₫</p>
                         <div className="flex items-center gap-2 mt-2">
                           <button
                             onClick={() => updateQuantity(item.id, -1)}

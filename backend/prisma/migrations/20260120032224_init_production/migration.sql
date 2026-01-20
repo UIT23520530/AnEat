@@ -197,6 +197,7 @@ CREATE TABLE "Customer" (
     "name" TEXT NOT NULL,
     "email" TEXT,
     "avatar" TEXT,
+    "address" TEXT,
     "tier" "CustomerTier" NOT NULL DEFAULT 'BRONZE',
     "totalSpent" INTEGER NOT NULL DEFAULT 0,
     "points" INTEGER NOT NULL DEFAULT 0,

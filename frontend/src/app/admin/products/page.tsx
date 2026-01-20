@@ -376,7 +376,7 @@ function ProductsContent() {
       showSorterTooltip: { title: 'Sắp xếp theo giá bán' },
       render: (price: number, record: Product) => (
         <span style={{ opacity: record.isAvailable ? 1 : 0.5, fontWeight: 500 }}>
-          {(price / 100).toLocaleString("vi-VN")}đ
+          {price.toLocaleString("vi-VN")}đ
         </span>
       ),
     },
