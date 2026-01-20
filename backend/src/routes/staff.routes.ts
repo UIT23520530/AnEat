@@ -59,7 +59,17 @@ import {
   acceptOrder,
   editOrderItems,
   cancelOrder,
+  completeOrder,
+  updatePaymentMethod,
 } from '../controllers/staff/staff-order-tracking.controller';
+import {
+  getStaffStockRequests,
+  getStaffStockRequestById,
+  createStaffStockRequest,
+  cancelStaffStockRequest,
+  getStaffStockRequestStats,
+  updateStaffStockRequest,
+} from '../controllers/staff/staff-stock-request.controller';
 import { authenticate, isStaff, validate } from '../middleware';
 
 const router = Router();
@@ -430,6 +440,99 @@ router.get('/warehouse', getInventoryList);
  */
 router.get('/warehouse/stats', getInventoryStats);
 
+// ==================== STOCK REQUEST ROUTES ====================
+
+/**
+ * @route   GET /api/v1/staff/stock-requests
+ * @desc    Get stock requests for staff's branch
+ * @query   page (optional) - Page number (default: 1)
+ * @query   limit (optional) - Items per page (default: 20)
+ * @query   status (optional) - Filter by status
+ * @query   productId (optional) - Filter by product
+ * @query   search (optional) - Search by product name or request code
+ * @access  Staff only
+ */
+router.get('/stock-requests', getStaffStockRequests);
+
+/**
+ * @route   GET /api/v1/staff/stock-requests/stats
+ * @desc    Get stock request statistics for staff's branch
+ * @access  Staff only
+ */
+router.get('/stock-requests/stats', getStaffStockRequestStats);
+
+/**
+ * @route   GET /api/v1/staff/stock-requests/:id
+ * @desc    Get stock request detail by ID
+ * @access  Staff only
+ */
+router.get(
+  '/stock-requests/:id',
+  [param('id').isString().notEmpty().withMessage('Request ID is required')],
+  validate,
+  getStaffStockRequestById
+);
+
+/**
+ * @route   POST /api/v1/staff/stock-requests
+ * @desc    Create new stock request
+ * @body    { productId, type, requestedQuantity, notes?, expectedDate? }
+ * @access  Staff only
+ */
+router.post(
+  '/stock-requests',
+  [
+    body('productId')
+      .isString()
+      .notEmpty()
+      .withMessage('Product ID là bắt buộc'),
+    body('type')
+      .optional()
+      .isIn(['RESTOCK', 'TRANSFER', 'ADJUSTMENT'])
+      .withMessage('Loại yêu cầu không hợp lệ'),
+    body('requestedQuantity')
+      .isInt({ min: 1 })
+      .withMessage('Số lượng phải >= 1'),
+    body('notes').optional().isString(),
+    body('expectedDate').optional().isISO8601(),
+  ],
+  validate,
+  createStaffStockRequest
+);
+
+/**
+ * @route   PUT /api/v1/staff/stock-requests/:id
+ * @desc    Update stock request (only pending requests)
+ * @body    { requestedQuantity?, notes?, expectedDate? }
+ * @access  Staff only
+ */
+router.put(
+  '/stock-requests/:id',
+  [
+    param('id').isString().notEmpty().withMessage('Request ID is required'),
+    body('requestedQuantity')
+      .optional()
+      .isInt({ min: 1 })
+      .withMessage('Số lượng phải >= 1'),
+    body('notes').optional().isString(),
+    body('expectedDate').optional().isISO8601(),
+  ],
+  validate,
+  updateStaffStockRequest
+);
+
+/**
+ * @route   PUT /api/v1/staff/stock-requests/:id/cancel
+ * @desc    Cancel stock request (only pending requests)
+ * @access  Staff only
+ */
+router.put(
+  '/stock-requests/:id/cancel',
+  [param('id').isString().notEmpty().withMessage('Request ID is required')],
+  validate,
+  cancelStaffStockRequest
+);
+
 // ==================== ORDER MANAGEMENT ROUTES ====================
 
 /**
@@ -613,6 +716,35 @@ router.post(
   ],
   validate,
   cancelOrder
+);
+
+/**
+ * @route   POST /api/v1/staff/orders-tracking/:orderId/complete
+ * @desc    Complete an order (mark as COMPLETED and create bill)
+ * @access  Staff only
+ */
+router.post(
+  '/orders-tracking/:orderId/complete',
+  [
+    param('orderId').isString().notEmpty().withMessage('Order ID is required'),
+  ],
+  validate,
+  completeOrder
+);
+
+/**
+ * @route   PATCH /api/v1/staff/orders-tracking/:orderId/payment-method
+ * @desc    Update payment method for an order
+ * @access  Staff only
+ */
+router.patch(
+  '/orders-tracking/:orderId/payment-method',
+  [
+    param('orderId').isString().notEmpty().withMessage('Order ID is required'),
+    body('paymentMethod').isString().notEmpty().withMessage('Payment method is required'),
+  ],
+  validate,
+  updatePaymentMethod
 );
 
 /**

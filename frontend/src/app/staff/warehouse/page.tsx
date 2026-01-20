@@ -70,11 +70,18 @@ export default function WarehousePage() {
         sort: 'name',
         order: 'asc'
       })
-      setInventoryItems(response.data)
-      setInventoryTotalPages(response.meta.total_pages)
+      // Ensure data is always an array
+      setInventoryItems(Array.isArray(response.data) ? response.data : [])
+      setInventoryTotalPages(response.meta?.total_pages || 1)
     } catch (err: any) {
       console.error('Load inventory error:', err)
-      setInventoryError('Không thể tải danh sách kho')
+      // Only show error for actual API failures
+      if (err.response?.status === 500 || err.code === 'ECONNABORTED' || err.code === 'ERR_NETWORK') {
+        setInventoryError('Không thể kết nối đến máy chủ. Vui lòng thử lại sau.')
+      } else {
+        setInventoryError('Không thể tải danh sách kho hàng')
+      }
+      setInventoryItems([]) // Set empty array on error
     } finally {
       setInventoryLoading(false)
     }
@@ -98,11 +105,18 @@ export default function WarehousePage() {
         limit: 20,
         search: searchQuery || undefined
       })
-      setStockRequests(response.data)
-      setRequestsTotalPages(response.meta.totalPages)
+      // Ensure data is always an array
+      setStockRequests(Array.isArray(response.data) ? response.data : [])
+      setRequestsTotalPages(response.meta?.totalPages || 1)
     } catch (err: any) {
       console.error('Load stock requests error:', err)
-      setRequestsError('Không thể tải danh sách yêu cầu')
+      // Only show error for actual API failures
+      if (err.response?.status === 500 || err.code === 'ECONNABORTED' || err.code === 'ERR_NETWORK') {
+        setRequestsError('Không thể kết nối đến máy chủ. Vui lòng thử lại sau.')
+      } else {
+        setRequestsError('Không thể tải danh sách yêu cầu nhập kho')
+      }
+      setStockRequests([]) // Set empty array on error
     } finally {
       setRequestsLoading(false)
     }
@@ -269,7 +283,7 @@ export default function WarehousePage() {
                   />
                 </div>
                 <Button 
-                  className="bg-orange-500 hover:bg-orange-600 text-white ml-4" 
+                  className="bg-orange-500 hover:bg-orange-600 !text-white ml-4" 
                   onClick={() => {
                     setSelectedProduct(null)
                     setModalMode("request")
@@ -298,14 +312,20 @@ export default function WarehousePage() {
               )}
 
               {!inventoryLoading && !inventoryError && inventoryItems.length === 0 && (
-                <div className="text-center py-12 text-gray-500">
-                  <p>Không tìm thấy sản phẩm nào</p>
+                <div className="flex flex-col items-center justify-center py-16 text-gray-500">
+                  <Package className="h-16 w-16 text-gray-300 mb-4" />
+                  <p className="text-lg font-medium text-gray-700 mb-1">Không có sản phẩm trong kho</p>
+                  <p className="text-sm text-gray-500">
+                    {searchQuery 
+                      ? "Không tìm thấy sản phẩm phù hợp với từ khóa tìm kiếm"
+                      : "Chi nhánh chưa có sản phẩm nào trong kho"}
+                  </p>
                 </div>
               )}
 
               {/* Warehouse Table */}
               {!inventoryLoading && !inventoryError && inventoryItems.length > 0 && (
-                <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                <div className="bg-white rounded-sm border border-gray-200 overflow-hidden">
                   <div className="overflow-x-auto">
                     <table className="w-full">
                       <thead className="bg-gray-50 border-b border-gray-200">
@@ -359,7 +379,7 @@ export default function WarehousePage() {
                               <td className="px-6 py-4">
                                 <span
                                   className={cn(
-                                    "inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium",
+                                    "inline-flex items-center px-4 py-1 rounded-sm text-xs font-medium",
                                     item.isAvailable
                                       ? "bg-green-100 text-green-700"
                                       : "bg-gray-100 text-gray-700"
@@ -376,7 +396,7 @@ export default function WarehousePage() {
                               <td className="px-6 py-4">
                                 <Button
                                   size="sm"
-                                  className="bg-orange-500 hover:bg-orange-600 text-white"
+                                  className="bg-orange-500 hover:bg-orange-600 !text-white"
                                   onClick={() => handleCreateRequest(item)}
                                 >
                                   <Plus className="h-4 w-4 mr-1" />
@@ -426,19 +446,25 @@ export default function WarehousePage() {
               )}
 
               {!requestsLoading && !requestsError && stockRequests.length === 0 && (
-                <div className="text-center py-12 text-gray-500">
-                  <p>Không có yêu cầu nào</p>
+                <div className="flex flex-col items-center justify-center py-16 text-gray-500">
+                  <Package className="h-16 w-16 text-gray-300 mb-4" />
+                  <p className="text-lg font-medium text-gray-700 mb-1">Không có yêu cầu nhập kho</p>
+                  <p className="text-sm text-gray-500">
+                    {searchQuery 
+                      ? "Không tìm thấy yêu cầu phù hợp với từ khóa tìm kiếm"
+                      : "Chưa có yêu cầu nhập kho nào được tạo"}
+                  </p>
                 </div>
               )}
 
               {/* Requests Table */}
               {!requestsLoading && !requestsError && stockRequests.length > 0 && (
-                <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                <div className="bg-white rounded-sm border border-gray-200 overflow-hidden">
                   <div className="overflow-x-auto">
                     <table className="w-full">
                       <thead className="bg-gray-50 border-b border-gray-200">
                         <tr>
-                          <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Mã YC</th>
+                          <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Mã yêu cầu</th>
                           <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Sản phẩm</th>
                           <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Loại</th>
                           <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">SL yêu cầu</th>
@@ -456,7 +482,7 @@ export default function WarehousePage() {
                           return (
                             <tr key={request.id} className="hover:bg-gray-50 transition-colors">
                               <td className="px-6 py-4 text-sm">
-                                <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
+                                <span className="inline-flex items-center px-2.5 py-1 rounded-sm text-xs font-medium bg-blue-100 text-blue-700">
                                   {request.requestNumber}
                                 </span>
                               </td>
@@ -474,7 +500,7 @@ export default function WarehousePage() {
                                 {request.approvedQuantity || '-'}
                               </td>
                               <td className="px-6 py-4 text-sm">
-                                <span className={cn("inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium", statusConfig.color)}>
+                                <span className={cn("inline-flex items-center px-3 py-1 rounded text-xs font-medium whitespace-nowrap", statusConfig.color)}>
                                   <StatusIcon className="h-3 w-3" />
                                   {statusConfig.text}
                                 </span>

@@ -130,6 +130,26 @@ class StaffOrderTrackingService {
     const response = await apiClient.post(`/staff/orders-tracking/${orderId}/cancel`, data);
     return response.data;
   }
+
+  /**
+   * Complete an order (mark as ready or completed)
+   */
+  async completeOrder(orderId: string, paymentMethod?: string): Promise<any> {
+    const response = await apiClient.post(`/staff/orders-tracking/${orderId}/complete`, {
+      paymentMethod
+    });
+    return response.data;
+  }
+
+  /**
+   * Update payment method for an order
+   */
+  async updatePaymentMethod(orderId: string, paymentMethod: string): Promise<any> {
+    const response = await apiClient.patch(`/staff/orders-tracking/${orderId}/payment-method`, {
+      paymentMethod
+    });
+    return response.data;
+  }
 }
 
 export default new StaffOrderTrackingService();

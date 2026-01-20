@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { prisma } from '../../db';
-import { OrderStatus } from '@prisma/client';
+import { OrderStatus, PaymentStatus, PaymentMethod } from '@prisma/client';
 
 /**
  * @desc    Get pending orders waiting for staff confirmation (from customer web orders)
@@ -769,6 +769,336 @@ export const cancelOrder = async (
         customer: result.customer,
         notes: result.notes,
         updatedAt: result.updatedAt,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @desc    Complete an order (mark as COMPLETED)
+ * @route   POST /api/v1/staff/orders-tracking/:orderId/complete
+ * @access  Staff only
+ */
+export const completeOrder = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const { orderId } = req.params;
+    const { paymentMethod } = req.body; // Get payment method from request body
+    const branchId = (req as any).user?.branchId;
+    const staffId = (req as any).user?.id;
+
+    if (!branchId) {
+      res.status(400).json({
+        success: false,
+        code: 400,
+        message: 'Không xác định được chi nhánh',
+        data: null,
+      });
+      return;
+    }
+
+    // Validate payment method if provided
+    if (paymentMethod && !Object.values(PaymentMethod).includes(paymentMethod)) {
+      res.status(400).json({
+        success: false,
+        code: 400,
+        message: 'Phương thức thanh toán không hợp lệ',
+        data: null,
+      });
+      return;
+    }
+
+    // Verify order exists and belongs to branch
+    const order = await prisma.order.findUnique({
+      where: { id: orderId },
+      include: {
+        customer: {
+          select: {
+            id: true,
+            name: true,
+            phone: true,
+            email: true,
+          },
+        },
+        items: {
+          include: {
+            product: {
+              select: {
+                id: true,
+                name: true,
+                price: true,
+                image: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!order) {
+      res.status(404).json({
+        success: false,
+        code: 404,
+        message: 'Không tìm thấy đơn hàng',
+        data: null,
+      });
+      return;
+    }
+
+    if (order.branchId !== branchId) {
+      res.status(403).json({
+        success: false,
+        code: 403,
+        message: 'Đơn hàng không thuộc chi nhánh của bạn',
+        data: null,
+      });
+      return;
+    }
+
+    if (order.status === OrderStatus.CANCELLED) {
+      res.status(400).json({
+        success: false,
+        code: 400,
+        message: 'Không thể hoàn thành đơn hàng đã bị hủy',
+        data: null,
+      });
+      return;
+    }
+
+    if (order.status === OrderStatus.COMPLETED) {
+      res.status(400).json({
+        success: false,
+        code: 400,
+        message: 'Đơn hàng đã được hoàn thành trước đó',
+        data: null,
+      });
+      return;
+    }
+
+    // Use transaction to update order and create bill
+    const result = await prisma.$transaction(async (tx) => {
+      // 1. Update order status to COMPLETED with payment info
+      const completedOrder = await tx.order.update({
+        where: { id: orderId },
+        data: {
+          status: OrderStatus.COMPLETED,
+          completedAt: new Date(),
+          updatedAt: new Date(),
+          paymentMethod: paymentMethod || order.paymentMethod || null,
+          paymentStatus: paymentMethod ? PaymentStatus.PAID : order.paymentStatus,
+        },
+        include: {
+          customer: {
+            select: {
+              id: true,
+              name: true,
+              phone: true,
+              email: true,
+            },
+          },
+        },
+      });
+
+      // 2. Generate bill number
+      const branch = await tx.branch.findUnique({
+        where: { id: branchId },
+        select: { code: true },
+      });
+
+      if (!branch) {
+        throw new Error('Branch not found');
+      }
+
+      const today = new Date();
+      const year = today.getFullYear().toString().slice(-2);
+      const month = (today.getMonth() + 1).toString().padStart(2, '0');
+      const day = today.getDate().toString().padStart(2, '0');
+
+      // Count bills today
+      const startOfDay = new Date(today.setHours(0, 0, 0, 0));
+      const endOfDay = new Date(today.setHours(23, 59, 59, 999));
+
+      const count = await tx.bill.count({
+        where: {
+          branchId,
+          createdAt: {
+            gte: startOfDay,
+            lte: endOfDay,
+          },
+        },
+      });
+
+      const sequence = (count + 1).toString().padStart(4, '0');
+      const billNumber = `BILL-${branch.code}-${year}${month}${day}-${sequence}`;
+
+      // 3. Calculate subtotal from order items
+      const subtotal = order.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+
+      // 4. Create bill from completed order
+      const bill = await tx.bill.create({
+        data: {
+          billNumber,
+          orderId: order.id,
+          branchId: order.branchId,
+          issuedById: staffId,
+          subtotal,
+          taxAmount: 0,
+          discountAmount: order.discountAmount,
+          total: order.total,
+          customerName: order.customer?.name || null,
+          customerPhone: order.customer?.phone || null,
+          customerEmail: order.customer?.email || null,
+          customerAddress: order.deliveryAddress || null,
+          paymentMethod: paymentMethod || order.paymentMethod || null,
+          paymentStatus: paymentMethod ? PaymentStatus.PAID : order.paymentStatus,
+          notes: order.notes,
+        },
+        include: {
+          order: {
+            include: {
+              items: {
+                include: {
+                  product: {
+                    select: {
+                      id: true,
+                      name: true,
+                      price: true,
+                      image: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      });
+
+      return { completedOrder, bill };
+    });
+
+    res.status(200).json({
+      success: true,
+      code: 200,
+      message: 'Đơn hàng đã hoàn thành và được lưu vào lịch sử',
+      data: {
+        id: result.completedOrder.id,
+        orderNumber: result.completedOrder.orderNumber,
+        status: result.completedOrder.status,
+        customer: result.completedOrder.customer,
+        completedAt: result.completedOrder.completedAt,
+        updatedAt: result.completedOrder.updatedAt,
+        bill: {
+          id: result.bill.id,
+          billNumber: result.bill.billNumber,
+          subtotal: result.bill.subtotal,
+          taxAmount: result.bill.taxAmount,
+          discountAmount: result.bill.discountAmount,
+          total: result.bill.total,
+          paymentMethod: result.bill.paymentMethod,
+          paymentStatus: result.bill.paymentStatus,
+          customerName: result.bill.customerName,
+          customerPhone: result.bill.customerPhone,
+          items: result.bill.order.items.map((item: any) => ({
+            id: item.id,
+            productId: item.productId,
+            productName: item.product.name,
+            productImage: item.product.image,
+            quantity: item.quantity,
+            price: item.price,
+            total: item.quantity * item.price,
+          })),
+        },
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @desc    Update payment method for an order
+ * @route   PATCH /api/v1/staff/orders-tracking/:orderId/payment-method
+ * @access  Staff only
+ */
+export const updatePaymentMethod = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const { orderId } = req.params;
+    const { paymentMethod } = req.body;
+    const branchId = (req as any).user?.branchId;
+
+    if (!branchId) {
+      res.status(400).json({
+        success: false,
+        code: 400,
+        message: 'Không xác định được chi nhánh',
+        data: null,
+      });
+      return;
+    }
+
+    // Validate payment method
+    if (!Object.values(PaymentMethod).includes(paymentMethod)) {
+      res.status(400).json({
+        success: false,
+        code: 400,
+        message: `Phương thức thanh toán không hợp lệ. Chỉ chấp nhận: ${Object.values(PaymentMethod).join(', ')}`,
+        data: null,
+      });
+      return;
+    }
+
+    // Find order
+    const order = await prisma.order.findUnique({
+      where: { id: orderId },
+    });
+
+    if (!order) {
+      res.status(404).json({
+        success: false,
+        code: 404,
+        message: 'Không tìm thấy đơn hàng',
+        data: null,
+      });
+      return;
+    }
+
+    if (order.branchId !== branchId) {
+      res.status(403).json({
+        success: false,
+        code: 403,
+        message: 'Bạn không có quyền cập nhật đơn hàng này',
+        data: null,
+      });
+      return;
+    }
+
+    // Update payment method
+    const updatedOrder = await prisma.order.update({
+      where: { id: orderId },
+      data: {
+        paymentMethod: paymentMethod as PaymentMethod,
+        updatedAt: new Date(),
+      },
+    });
+
+    res.status(200).json({
+      success: true,
+      code: 200,
+      message: 'Đã cập nhật phương thức thanh toán',
+      data: {
+        id: updatedOrder.id,
+        orderNumber: updatedOrder.orderNumber,
+        paymentMethod: updatedOrder.paymentMethod,
+        updatedAt: updatedOrder.updatedAt,
       },
     });
   } catch (error) {

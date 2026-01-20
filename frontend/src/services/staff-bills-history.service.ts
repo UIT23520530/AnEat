@@ -40,6 +40,7 @@ export interface BillDTO {
       id: string;
       quantity: number;
       price: number;
+      options?: string | null;
       product: {
         id: string;
         name: string;

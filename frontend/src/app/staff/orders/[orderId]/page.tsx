@@ -24,6 +24,7 @@ import {
 import staffOrderService from "@/services/staff-order.service"
 import { toast } from "sonner"
 import Image from "next/image"
+import { InvoicePrintModal } from "@/components/forms/admin/InvoicePrintModal"
 
 interface OrderItem {
   id: string
@@ -114,6 +115,18 @@ export default function StaffOrderDetailPage() {
   const [order, setOrder] = useState<OrderDetail | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [isPrintModalOpen, setIsPrintModalOpen] = useState(false)
+  const [invoice, setInvoice] = useState<any | null>(null)
+
+  const getPaymentMethodText = (method: string | null) => {
+    switch (method) {
+      case "CASH": return "Tiền mặt"
+      case "CARD": return "Thẻ"
+      case "BANK_TRANSFER": return "Chuyển khoản"
+      case "E_WALLET": return "Ví điện tử (MoMo)"
+      default: return method || "Không xác định"
+    }
+  }
 
   useEffect(() => {
     if (orderId) {
@@ -142,7 +155,37 @@ export default function StaffOrderDetailPage() {
   }
 
   const handlePrint = () => {
-    window.print()
+    if (!order) return
+
+    // Chuẩn bị dữ liệu hóa đơn nhiệt
+    const items = (order.items || []).map((it: any) => ({
+      name: it.name,
+      quantity: it.quantity || 0,
+      price: it.price || 0,
+      total: (it.price || 0) * (it.quantity || 0),
+    }))
+
+    setInvoice({
+      billNumber: order.orderNumber,
+      orderNumber: order.orderNumber,
+      date: new Date(order.createdAt).toLocaleDateString("vi-VN"),
+      time: new Date(order.createdAt).toLocaleTimeString("vi-VN"),
+      branchName: order.branch?.name || "AnEat",
+      branchAddress: order.branch?.address || "",
+      customerName: order.customer?.name || "Khách lẻ",
+      customerPhone: order.customer?.phone || "",
+      customerAddress: order.deliveryAddress || undefined,
+      items,
+      subtotal: order.subtotal || 0,
+      tax: Math.round(((order.subtotal || 0) - (order.discountAmount || 0)) * 0.08),
+      discount: order.discountAmount || 0,
+      total: order.total || 0,
+      paymentMethod: order.paymentMethod || "CASH",
+      staffName: order.staff?.name || "",
+      notes: order.notes || undefined,
+    })
+
+    setIsPrintModalOpen(true)
   }
 
   const handleBack = () => {
@@ -446,6 +489,17 @@ export default function StaffOrderDetailPage() {
           </div>
         </div>
       </div>
+
+      <InvoicePrintModal
+        open={isPrintModalOpen}
+        onClose={() => setIsPrintModalOpen(false)}
+        invoice={invoice}
+        onConfirmPrint={() => {
+          setIsPrintModalOpen(false)
+          window.print()
+        }}
+        getPaymentMethodText={getPaymentMethodText}
+      />
     </StaffLayout>
   )
 }

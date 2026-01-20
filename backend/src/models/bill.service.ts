@@ -860,6 +860,21 @@ export class BillService {
               orderNumber: true,
               status: true,
               total: true,
+              items: {
+                select: {
+                  id: true,
+                  quantity: true,
+                  price: true,
+                  product: {
+                    select: {
+                      id: true,
+                      name: true,
+                      image: true,
+                      price: true,
+                    },
+                  },
+                },
+              },
             },
           },
           branch: {

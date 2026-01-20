@@ -13,10 +13,10 @@ import { cn } from "@/lib/utils"
 import Image from "next/image"
 import staffOrderService, { OrderCategory, OrderProduct, ProductOption } from "@/services/staff-order.service"
 import { staffCustomerService, CustomerDTO } from "@/services/staff-customer.service"
+import staffCheckoutService from "@/services/staff-checkout.service"
 import { NoteModal } from "@/components/forms/staff/note-modal"
 import { CreateCustomerForm } from "@/components/forms/staff/create-customer-form"
 import { ProductOptionsModal } from "@/components/forms/staff/product-options-modal"
-import { createMoMoPayment, createMoMoPosPayment } from "@/services/payment.service"
 import { toast } from "sonner"
 
 interface CartItem {
@@ -27,6 +27,7 @@ interface CartItem {
   quantity: number
   options?: string
   image?: string | null
+  selectedOptions?: ProductOption[]  // Store selected options for editing
 }
 
 export default function StaffOrdersPage() {
@@ -55,6 +56,7 @@ export default function StaffOrdersPage() {
   // Product options
   const [selectedProduct, setSelectedProduct] = useState<OrderProduct | null>(null)
   const [isProductOptionsOpen, setIsProductOptionsOpen] = useState(false)
+  const [editingCartItem, setEditingCartItem] = useState<CartItem | null>(null)
   
   // Discount states
   const [discountCode, setDiscountCode] = useState("")
@@ -70,6 +72,7 @@ export default function StaffOrdersPage() {
   
   // UI states
   const [isNoteModalOpen, setIsNoteModalOpen] = useState(false)
+  const [isCancelDialogOpen, setIsCancelDialogOpen] = useState(false)
   const [loading, setLoading] = useState(true)
   const [loadingCustomers, setLoadingCustomers] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -87,7 +90,11 @@ export default function StaffOrdersPage() {
           staffOrderService.getProducts({ limit: 100 })
         ])
         setCategories(Array.isArray(categoriesRes.data) ? categoriesRes.data : [])
-        setProducts(Array.isArray(productsRes.data?.products) ? productsRes.data.products : [])
+        const products = Array.isArray(productsRes.data?.products) ? productsRes.data.products : []
+        console.log('📦 Loaded products:', products.length)
+        console.log('🎯 Products with options:', products.filter(p => p.options && p.options.length > 0).length)
+        console.log('📝 Sample product with options:', products.find(p => p.options && p.options.length > 0))
+        setProducts(products)
       } catch (error) {
         console.error('Load data error:', error)
         setError('Không thể tải dữ liệu. Vui lòng thử lại.')
@@ -140,11 +147,16 @@ export default function StaffOrdersPage() {
   })
 
   const handleProductClick = (product: OrderProduct) => {
+    console.log('🖱️ Product clicked:', product.name)
+    console.log('📋 Has options:', product.options?.length || 0)
+    
     // If product has options, show the modal
     if (product.options && product.options.length > 0) {
+      console.log('✅ Opening options modal...')
       setSelectedProduct(product)
       setIsProductOptionsOpen(true)
     } else {
+      console.log('⚡ Adding directly to cart (no options)')
       // Add directly to cart
       addToCart({
         id: `${product.id}-${Date.now()}`,
@@ -175,19 +187,59 @@ export default function StaffOrdersPage() {
       ? optionNames.join(", ") + (notes ? ` - ${notes}` : "")
       : notes || undefined
 
-    addToCart({
-      id: `${product.id}-${Date.now()}`,
-      productId: product.id,
-      name: product.name,
-      price: totalPrice,
-      quantity,
-      options: optionsStr,
-      image: product.image
-    })
+    // If editing, update the cart item
+    if (editingCartItem) {
+      console.log('✏️ Updating cart item:', editingCartItem.id)
+      setCart(prev => prev.map(item => 
+        item.id === editingCartItem.id
+          ? {
+              ...item,
+              price: totalPrice,
+              quantity,
+              options: optionsStr,
+              selectedOptions
+            }
+          : item
+      ))
+      setEditingCartItem(null)
+    } else {
+      // Otherwise add new item
+      console.log('➕ Adding new item to cart')
+      addToCart({
+        id: `${product.id}-${Date.now()}`,
+        productId: product.id,
+        name: product.name,
+        price: totalPrice,
+        quantity,
+        options: optionsStr,
+        image: product.image,
+        selectedOptions
+      })
+    }
   }
 
   const addToCart = (item: CartItem) => {
-    setCart((prev) => [...prev, item])
+    setCart((prev) => {
+      // Check if item already exists in cart (same productId and options)
+      const existingIndex = prev.findIndex(
+        (cartItem) => 
+          cartItem.productId === item.productId && 
+          cartItem.options === item.options
+      )
+
+      if (existingIndex !== -1) {
+        // Item exists, increase quantity
+        const updated = [...prev]
+        updated[existingIndex] = {
+          ...updated[existingIndex],
+          quantity: updated[existingIndex].quantity + item.quantity
+        }
+        return updated
+      } else {
+        // New item, add to cart
+        return [...prev, item]
+      }
+    })
     
     // Generate order number if this is the first item
     if (cart.length === 0 && !orderNumber) {
@@ -222,15 +274,20 @@ export default function StaffOrdersPage() {
   const displayTotal = total
 
   const handleCancelOrder = () => {
-    if (confirm("Bạn có chắc muốn hủy đơn hàng này?")) {
-      setCart([])
-      setSelectedCustomer(null)
-      setOrderNote("")
-      setDiscountCode("")
-      setAppliedDiscount(0)
-      setDiscountInfo(null)
-      setOrderNumber(null)
-    }
+    setIsCancelDialogOpen(true)
+  }
+
+  const confirmCancelOrder = () => {
+    setCart([])
+    setSelectedCustomer(null)
+    setOrderNote("")
+    setDiscountCode("")
+    setAppliedDiscount(0)
+    setDiscountInfo(null)
+    setOrderNumber(null)
+    setBarcode("")
+    setIsCancelDialogOpen(false)
+    toast.success("Đã hủy đơn hàng")
   }
 
   // Validate discount from database
@@ -297,76 +354,50 @@ export default function StaffOrdersPage() {
         orderType: orderType
       }
 
-      // Create order in database
-      const orderResponse = await staffOrderService.createOrder(orderData)
-
-      if (!orderResponse.success) {
-        throw new Error(orderResponse.message || "Không thể tạo đơn hàng")
+      // Handle CARD payment with barcode validation
+      if (paymentMethod === "CARD" && !barcode) {
+        toast.error("Vui lòng quét mã thanh toán (barcode)!")
+        setIsLoading(false)
+        return
       }
 
-      const createdOrder = orderResponse.data
+      // Use staff checkout service to create order and handle payment
+      const result = paymentMethod === "CARD"
+        ? await staffCheckoutService.handleMoMoPosPayment(
+            { id: 'temp', orderNumber: orderNumber },
+            total,
+            barcode
+          )
+        : await staffCheckoutService.createOrderAndPay(orderData, total)
 
-      // Handle payment based on method
-      if (paymentMethod === "E_WALLET") {
-        // MoMo payment
-        const data = await createMoMoPayment({
-          amount: total,
-          orderInfo: `Thanh toán đơn hàng ${createdOrder.orderNumber} tại AnEat`,
-        })
-
-        if (data?.data?.payUrl) {
-          // Update payment status will be handled by MoMo callback
-          window.location.href = data.data.payUrl
-          return
+      if (result.success && result.redirectUrl) {
+        // For payment redirects, go to MoMo
+        if (result.redirectUrl.includes('momo') || result.redirectUrl.includes('pay')) {
+          window.location.href = result.redirectUrl
         } else {
-          // Update payment status to FAILED
-          await staffOrderService.updatePaymentStatus(createdOrder.id, "FAILED")
-          throw new Error("Không lấy được link thanh toán MoMo!")
-        }
-      } else if (paymentMethod === "CARD") {
-        // MoMo POS payment
-        if (!barcode) {
-          toast.error("Vui lòng quét mã thanh toán (barcode)!")
-          setIsLoading(false)
-          return
-        }
-
-        const data = await createMoMoPosPayment({
-          amount: total,
-          orderInfo: `Thanh toán đơn hàng ${createdOrder.orderNumber} tại AnEat (POS)`,
-          paymentCode: barcode.trim(),
-        })
-
-        if (data?.data?.payUrl) {
-          window.location.href = data.data.payUrl
-          return
-        } else {
-          await staffOrderService.updatePaymentStatus(createdOrder.id, "FAILED")
-          throw new Error("Không lấy được link thanh toán MoMo POS!")
+          // For success redirects, use router
+          router.push(result.redirectUrl)
+          // Reset form
+          setCart([])
+          setSelectedCustomer(null)
+          setOrderNote("")
+          setDiscountCode("")
+          setAppliedDiscount(0)
+          setDiscountInfo(null)
+          setOrderNumber(null)
+          setBarcode("")
         }
       } else {
-        // Cash payment - already marked as PAID in createOrder
-        toast.success(`Tạo đơn hàng ${createdOrder.orderNumber} thành công!`)
-        
-        // Reset form
-        setCart([])
-        setSelectedCustomer(null)
-        setOrderNote("")
-        setDiscountCode("")
-        setAppliedDiscount(0)
-        setDiscountInfo(null)
-        setOrderNumber(null)
-        setBarcode("")
-
-        // Redirect to staff success page
-        router.push(`/staff/checkout/success?orderId=${createdOrder.id}&orderNumber=${createdOrder.orderNumber}&total=${total}`)
+        // Route to failure page
+        if (result.redirectUrl) {
+          router.push(result.redirectUrl)
+        } else {
+          toast.error(result.error || "Có lỗi khi tạo đơn hàng!")
+        }
       }
     } catch (error: any) {
       console.error("Payment error:", error)
       toast.error(error.message || "Có lỗi khi tạo đơn hàng!")
-      
-      // Redirect to failure page
-      router.push(`/staff/checkout/failure?orderNumber=${orderNumber}&total=${total}&message=${encodeURIComponent(error.message || "Có lỗi xảy ra")}`)
     } finally {
       setIsLoading(false)
     }
@@ -380,8 +411,7 @@ export default function StaffOrdersPage() {
           {/* Main Content */}
           <div className="flex-1 overflow-y-auto p-6 pr-[420px]">
             <div className="mb-6">
-              <h1 className="text-2xl font-bold text-gray-900">Thực Hiện Order</h1>
-              <p className="text-sm text-gray-500 mt-1">Chọn món ăn cho khách hàng</p>
+              <h1 className="text-2xl font-bold text-gray-900">Thực hiện Order</h1>
             </div>
 
             {/* Search */}
@@ -580,7 +610,19 @@ export default function StaffOrdersPage() {
                 <div className="space-y-3">
                   {cart.map((item) => (
                     <div key={item.id} className="flex items-start gap-3 pb-3 border-b border-gray-100">
-                      <div className="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden">
+                      <div 
+                        className="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden cursor-pointer hover:ring-2 hover:ring-orange-400 transition-all"
+                        onClick={() => {
+                          // Find the product to edit options
+                          const product = products.find(p => p.id === item.productId)
+                          if (product && product.options && product.options.length > 0) {
+                            console.log('✏️ Editing cart item options:', item.name)
+                            setSelectedProduct(product)
+                            setEditingCartItem(item)
+                            setIsProductOptionsOpen(true)
+                          }
+                        }}
+                      >
                         {item.image ? (
                           <Image 
                             src={item.image} 
@@ -682,7 +724,7 @@ export default function StaffOrdersPage() {
 
               {/* Payment Method */}
               <p className="text-xs font-medium text-gray-700 mb-2">Phương thức thanh toán</p>
-              <div className="grid grid-cols-3 gap-2 mb-3">
+              <div className="grid grid-cols-2 gap-2 mb-3">
                 <button 
                   onClick={() => setPaymentMethod("CASH")}
                   className={cn(
@@ -700,14 +742,14 @@ export default function StaffOrdersPage() {
                   className={cn(
                     "flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium transition-colors", 
                     paymentMethod === "E_WALLET" 
-                      ? "bg-orange-500 hover:bg-orange-600 text-white" 
+                      ? "bg-orange-500 hover:bg-orange-600 !text-white" 
                       : "bg-white hover:bg-gray-50 border border-gray-300 text-gray-700"
                   )}
                 >
-                  <CreditCard className="h-4 w-4" />
+                  <CreditCard className="h-4 w-4 !text-white" />
                   Momo
                 </button>
-                <button 
+                {/* <button 
                   onClick={() => setPaymentMethod("CARD")}
                   className={cn(
                     "flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium transition-colors", 
@@ -718,7 +760,7 @@ export default function StaffOrdersPage() {
                 >
                   <Wallet className="h-4 w-4" />
                   Momo QR
-                </button>
+                </button> */}
               </div>
 
               {/* Barcode Input for MoMo POS */}
@@ -737,7 +779,7 @@ export default function StaffOrdersPage() {
               <Button
                 onClick={handlePayment}
                 disabled={cart.length === 0 || isLoading}
-                className="w-full h-10 bg-orange-500 hover:bg-orange-600 text-white font-bold text-xs disabled:opacity-50"
+                className="w-full h-10 bg-orange-500 hover:bg-orange-600 !text-white font-bold text-xs disabled:opacity-50"
               >
                 {isLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                 THANH TOÁN NGAY →
@@ -893,10 +935,53 @@ export default function StaffOrdersPage() {
           {/* Product Options Modal */}
           <ProductOptionsModal
             isOpen={isProductOptionsOpen}
-            onOpenChange={setIsProductOptionsOpen}
+            onOpenChange={(open) => {
+              setIsProductOptionsOpen(open)
+              if (!open) {
+                setEditingCartItem(null)
+              }
+            }}
             product={selectedProduct}
             onAddToCart={handleAddToCartWithOptions}
+            editingItem={editingCartItem}
           />
+
+          {/* Cancel Order Confirmation Dialog */}
+          <Dialog open={isCancelDialogOpen} onOpenChange={setIsCancelDialogOpen}>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle className="text-xl font-bold flex items-center gap-2">
+                  <AlertCircle className="h-6 w-6 text-red-500" />
+                  Xác nhận hủy đơn
+                </DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <p className="text-gray-600">
+                  Bạn có chắc chắn muốn hủy đơn hàng này không?
+                  {cart.length > 0 && (
+                    <span className="block mt-2 text-sm">
+                      Đơn hàng hiện có <span className="font-semibold text-orange-600">{cart.length}</span> sản phẩm.
+                    </span>
+                  )}
+                </p>
+                <div className="flex gap-3">
+                  <Button
+                    variant="outline"
+                    onClick={() => setIsCancelDialogOpen(false)}
+                    className="flex-1"
+                  >
+                    Không, giữ đơn
+                  </Button>
+                  <Button
+                    onClick={confirmCancelOrder}
+                    className="flex-1 bg-red-500 hover:bg-red-600 text-white"
+                  >
+                    Có, hủy đơn
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
     </StaffLayout>

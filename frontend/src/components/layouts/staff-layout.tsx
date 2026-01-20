@@ -75,7 +75,11 @@ export function StaffLayout({ children }: { children: ReactNode }) {
                 {!collapsed && (
                   <div className="flex flex-col">
                     <span className="font-bold text-gray-800 text-lg">AnEat</span>
-                    <span className="text-xs text-gray-500">Cửa hàng chi nhánh Quận 1</span>
+                    {currentUser?.branchName && (
+                      <span className="text-xs text-gray-500">
+                        {currentUser.branchName}
+                      </span>
+                    )}
                   </div>
                 )}
               </div>

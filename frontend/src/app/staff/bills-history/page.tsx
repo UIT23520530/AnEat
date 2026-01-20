@@ -4,9 +4,11 @@ import { useState, useEffect } from "react"
 import { StaffLayout } from "@/components/layouts/staff-layout"
 import { StaffHeader } from "@/components/layouts/staff-header"
 import { Input } from "@/components/ui/input"
-import { Search, Filter, ChevronDown, X, Check, Eye, Loader2, ChevronLeft, ChevronRight } from "lucide-react"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Search, Filter, ChevronDown, X, Check, Eye, Loader2, ChevronLeft, ChevronRight, FileText, User, CreditCard, Calendar, Package } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { staffBillsHistoryService, BillDTO } from "@/services/staff-bills-history.service"
+import Image from "next/image"
 
 interface FilterOption {
   id: string
@@ -42,6 +44,8 @@ export default function StaffBillsHistoryPage() {
     status: "all",
     payment: "all",
   })
+  const [selectedBill, setSelectedBill] = useState<BillDTO | null>(null)
+  const [isBillDetailOpen, setIsBillDetailOpen] = useState(false)
 
   // Load bills from API
   useEffect(() => {
@@ -115,6 +119,7 @@ export default function StaffBillsHistoryPage() {
       'CASH': 'Tiền mặt',
       'CARD': 'Thẻ',
       'BANK_TRANSFER': 'Chuyển khoản',
+      'MOMO': 'MoMo',
       'E_WALLET': 'Ví điện tử'
     }
     return map[method] || method
@@ -141,6 +146,7 @@ export default function StaffBillsHistoryPage() {
       'CASH': 'bg-green-100 text-green-700',
       'CARD': 'bg-blue-100 text-blue-700',
       'BANK_TRANSFER': 'bg-red-100 text-red-700',
+      'MOMO': 'bg-purple-100 text-purple-700',
       'E_WALLET': 'bg-pink-100 text-pink-700'
     }
     return colors[status] || 'bg-gray-100 text-gray-700'
@@ -184,7 +190,7 @@ export default function StaffBillsHistoryPage() {
                     setIsFilterDropdownOpen(!isFilterDropdownOpen)
                   }
                 }}
-                className="h-12 px-4 flex items-center gap-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors bg-white min-w-[250px] relative"
+                className="h-12 px-4 flex items-center gap-3 border border-gray-300 rounded hover:bg-gray-50 transition-colors bg-white min-w-[250px] relative"
               >
                 <Filter className="h-5 w-5 text-gray-600" />
                 <span className="text-sm text-gray-600 truncate flex-1 text-left">{getActiveFilterLabel()}</span>
@@ -196,7 +202,7 @@ export default function StaffBillsHistoryPage() {
                   <ChevronDown className="h-4 w-4 text-gray-500 flex-shrink-0" />
                 )}
                 {activeFilterCount > 0 && (
-                  <span className="absolute -top-2 -right-2 w-5 h-5 bg-orange-500 text-white text-xs rounded-full flex items-center justify-center">
+                  <span className="absolute -top-2 -right-2 w-5 h-5 bg-orange-500 text-white text-xs rounded flex items-center justify-center">
                     {activeFilterCount}
                   </span>
                 )}
@@ -209,7 +215,7 @@ export default function StaffBillsHistoryPage() {
                     className="fixed inset-0 z-10"
                     onClick={() => setIsFilterDropdownOpen(false)}
                   />
-                  <div className="absolute top-full mt-2 right-0 w-80 bg-white rounded-lg shadow-xl border border-gray-200 z-20 max-h-[500px] overflow-y-auto">
+                  <div className="absolute top-full mt-2 right-0 w-80 bg-white rounded shadow-xl border border-gray-200 z-20 max-h-[500px] overflow-y-auto">
                     <div className="p-4 space-y-4">
                       {/* Status Filter */}
                       <div>
@@ -221,7 +227,7 @@ export default function StaffBillsHistoryPage() {
                               <button
                                 key={option.id}
                                 onClick={() => handleFilterChange("status", option.value)}
-                                className="w-full flex items-center justify-between px-3 py-2 rounded-lg hover:bg-gray-50 transition-colors text-left"
+                                className="w-full flex items-center justify-between px-3 py-2 rounded hover:bg-gray-50 transition-colors text-left"
                               >
                                 <span className="text-sm text-gray-700">{option.label}</span>
                                 {selectedFilters.status === option.value && (
@@ -319,14 +325,14 @@ export default function StaffBillsHistoryPage() {
                         <td className="px-6 py-4 text-sm text-gray-600">
                           {bill.order?.items && bill.order.items.length > 0 ? (
                             <>
-                              {bill.order.items.slice(0, 3).map((item, index) => (
+                              {bill.order.items.slice(0, 2).map((item, index) => (
                                 <div key={index}>
                                   {item.quantity}x {item.product.name}
                                 </div>
                               ))}
-                              {bill.order.items.length > 3 && (
+                              {bill.order.items.length > 2 && (
                                 <div className="text-xs text-gray-400 mt-1">
-                                  +{bill.order.items.length - 3} món khác
+                                  +{bill.order.items.length - 2} món khác
                                 </div>
                               )}
                             </>
@@ -348,7 +354,7 @@ export default function StaffBillsHistoryPage() {
                           {bill.paymentMethod ? (
                             <span
                               className={cn(
-                                "inline-flex items-center px-3 py-1 rounded-full text-xs font-medium",
+                                    "inline-flex items-center px-3 py-1 rounded text-xs font-medium whitespace-nowrap",
                                 getStatusColor(bill.paymentMethod)
                               )}
                             >
@@ -361,7 +367,7 @@ export default function StaffBillsHistoryPage() {
                         <td className="px-6 py-4">
                           <span
                             className={cn(
-                              "inline-flex items-center px-3 py-1 rounded-full text-xs font-medium",
+                              "inline-flex items-center px-3 py-1 rounded text-xs font-medium whitespace-nowrap",
                               getStatusColor(bill.status)
                             )}
                           >
@@ -369,7 +375,13 @@ export default function StaffBillsHistoryPage() {
                           </span>
                         </td>
                         <td className="px-6 py-4">
-                          <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+                          <button 
+                            onClick={() => {
+                              setSelectedBill(bill)
+                              setIsBillDetailOpen(true)
+                            }}
+                            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                          >
                             <Eye className="h-5 w-5 text-gray-600" />
                           </button>
                         </td>
@@ -456,6 +468,176 @@ export default function StaffBillsHistoryPage() {
           )}
         </div>
       </div>
+
+      {/* Bill Detail Modal */}
+      <Dialog open={isBillDetailOpen} onOpenChange={setIsBillDetailOpen}>
+        <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-bold flex items-center gap-2">
+              <FileText className="h-6 w-6 text-orange-500" />
+              Chi Tiết Hóa Đơn
+            </DialogTitle>
+          </DialogHeader>
+          
+          {selectedBill && (
+            <div className="space-y-6">
+              {/* Bill Info */}
+              <div className="bg-gray-50 rounded-lg p-4 space-y-2">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-600">Mã hóa đơn</p>
+                    <p className="text-lg font-bold text-gray-900">{selectedBill.billNumber}</p>
+                  </div>
+                  <span
+                    className={cn(
+                      "inline-flex items-center px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap",
+                      getStatusColor(selectedBill.status)
+                    )}
+                  >
+                    {formatStatus(selectedBill.status)}
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 gap-4 pt-2">
+                  <div>
+                    <p className="text-xs text-gray-600 flex items-center gap-1">
+                      <Calendar className="h-3 w-3" />
+                      Ngày tạo
+                    </p>
+                    <p className="text-sm font-medium text-gray-900">
+                      {formatTime(selectedBill.createdAt)} - {formatDate(selectedBill.createdAt)}
+                    </p>
+                  </div>
+                  {selectedBill.isEdited && (
+                    <div>
+                      <p className="text-xs text-orange-600">Đã chỉnh sửa</p>
+                      <p className="text-sm font-medium text-orange-700">{selectedBill.editCount} lần</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Customer Info */}
+              <div className="border rounded-lg p-4">
+                <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                  <User className="h-4 w-4" />
+                  Thông Tin Khách Hàng
+                </h3>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <p className="text-xs text-gray-600">Tên khách hàng</p>
+                    <p className="text-sm font-medium text-gray-900">{selectedBill.customerName || 'Khách vãng lai'}</p>
+                  </div>
+                  {selectedBill.customerPhone && (
+                    <div>
+                      <p className="text-xs text-gray-600">Số điện thoại</p>
+                      <p className="text-sm font-medium text-gray-900">{selectedBill.customerPhone}</p>
+                    </div>
+                  )}
+                  {selectedBill.customerEmail && (
+                    <div>
+                      <p className="text-xs text-gray-600">Email</p>
+                      <p className="text-sm font-medium text-gray-900">{selectedBill.customerEmail}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Order Items */}
+              <div className="border rounded-lg p-4">
+                <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                  <Package className="h-4 w-4" />
+                  Chi Tiết Đơn Hàng
+                </h3>
+                {selectedBill.order?.items && selectedBill.order.items.length > 0 ? (
+                  <div className="space-y-2">
+                    {selectedBill.order.items.map((item: any, index: number) => (
+                      <div key={index} className="flex items-center gap-3 py-2 border-b last:border-0">
+                        {item.product?.image && (
+                          <div className="w-12 h-12 bg-gray-100 rounded overflow-hidden flex-shrink-0">
+                            <Image
+                              src={item.product.image}
+                              alt={item.product.name}
+                              width={48}
+                              height={48}
+                              className="object-cover w-full h-full"
+                            />
+                          </div>
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-gray-900 truncate">{item.product?.name}</p>
+                          <p className="text-xs text-gray-500">
+                            {item.price.toLocaleString()}₫ x {item.quantity}
+                          </p>
+                        </div>
+                        <span className="text-sm font-semibold text-gray-900 whitespace-nowrap">
+                          {(item.price * item.quantity).toLocaleString()}₫
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-500">Không có sản phẩm</p>
+                )}
+              </div>
+
+              {/* Payment Summary */}
+              <div className="border rounded-lg p-4">
+                <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                  <CreditCard className="h-4 w-4" />
+                  Thông Tin Thanh Toán
+                </h3>
+                <div className="space-y-2">
+                  {/* Payment Method - Show first */}
+                  <div className="pb-2 flex justify-between items-center bg-gray-50 p-3 rounded-lg">
+                    <span className="text-sm font-medium text-gray-700">Phương thức thanh toán</span>
+                    {selectedBill.paymentMethod ? (
+                      <span
+                        className={cn(
+                          "inline-flex items-center px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap",
+                          getStatusColor(selectedBill.paymentMethod)
+                        )}
+                      >
+                        {formatPaymentMethod(selectedBill.paymentMethod)}
+                      </span>
+                    ) : (
+                      <span className="text-sm text-gray-400">Chưa thanh toán</span>
+                    )}
+                  </div>
+                  
+                  <div className="border-t pt-2" />
+                  
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">Tạm tính</span>
+                    <span className="font-medium text-gray-900">{selectedBill.subtotal.toLocaleString()}₫</span>
+                  </div>
+                  {selectedBill.discountAmount > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Giảm giá</span>
+                      <span className="font-medium text-orange-600">-{selectedBill.discountAmount.toLocaleString()}₫</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">VAT (8%)</span>
+                    <span className="font-medium text-gray-900">{selectedBill.taxAmount.toLocaleString()}₫</span>
+                  </div>
+                  <div className="border-t pt-2 flex justify-between">
+                    <span className="text-base font-bold text-gray-900">Tổng cộng</span>
+                    <span className="text-lg font-bold text-orange-600">{selectedBill.total.toLocaleString()}₫</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Notes */}
+              {selectedBill.notes && (
+                <div className="border rounded-lg p-4">
+                  <h3 className="text-sm font-semibold text-gray-900 mb-2">Ghi chú</h3>
+                  <p className="text-sm text-gray-600">{selectedBill.notes}</p>
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </StaffLayout>
   )
 }

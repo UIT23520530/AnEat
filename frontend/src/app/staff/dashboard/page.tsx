@@ -203,13 +203,13 @@ export default function DashboardPage() {
 
                 {/* Create New Order Card */}
                 <Card className="bg-gradient-to-br from-orange-500 to-orange-600 border-none hover:shadow-xl transition-shadow">
-                  <Link href="/staff/orders">
-                    <div className="p-6 h-full flex flex-col items-center justify-center text-center cursor-pointer">
+                  <Link href="/staff/orders" className="block h-full">
+                    <div className="p-6 h-full flex flex-col items-center justify-center cursor-pointer">
                       <div className="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center mb-4 backdrop-blur-sm">
                         <ShoppingCart className="h-10 w-10 text-white" />
                       </div>
-                      <h3 className="text-xl font-bold text-white mb-2">Tạo đơn mới</h3>
-                      <p className="text-orange-100 text-sm">Nhấn để bắt đầu đơn hàng mới</p>
+                      <h3 className="text-xl font-bold text-white mb-2 text-center">Tạo đơn mới</h3>
+                      <p className="text-orange-100 text-sm text-center">Nhấn để bắt đầu đơn hàng mới</p>
                     </div>
                   </Link>
                 </Card>

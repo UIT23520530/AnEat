@@ -64,7 +64,8 @@ export default function ProductDetails({ product }: ProductDetailsProps) {
       .join(", ");
 
     const cartItem: CartItem = {
-      id: cartItemId,
+      id: product.id,
+      cartItemId: cartItemId,
       name: selectedOptionsText
         ? `${product.name} (${selectedOptionsText})`
         : product.name,

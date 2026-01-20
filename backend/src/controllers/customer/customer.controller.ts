@@ -155,12 +155,12 @@ export const updatePaymentStatus = async (req: Request, res: Response): Promise<
 };
 
 /**
- * Initiate MoMo payment for customer checkout
+ * Initiate MoMo payment for customer or staff checkout
  */
 export const initiateMoMoPayment = async (req: Request, res: Response): Promise<void> => {
   try {
     // Get payment info from request body
-    const { amount, orderInfo, orderNumber } = req.body;
+    const { amount, orderInfo, orderNumber, returnUrl } = req.body;
     if (!amount || !orderInfo) {
       res.status(400).json({
         status: 'error',
@@ -173,14 +173,20 @@ export const initiateMoMoPayment = async (req: Request, res: Response): Promise<
     const accessKey = process.env.MOMO_ACCESS_KEY!;
     const secretKey = process.env.MOMO_SECRET_KEY!;
     const partnerCode = process.env.MOMO_PARTNER_CODE!;
-    const baseRedirectUrl = process.env.MOMO_REDIRECT_URL!;
+    const defaultRedirectUrl = process.env.MOMO_REDIRECT_URL!;
     const ipnUrl = process.env.MOMO_IPN_URL!;
     const requestType = process.env.MOMO_REQUEST_TYPE!;
     const orderId = partnerCode + new Date().getTime();
     const requestId = orderId;
     
-    // Add order details to redirect URL
-    const redirectUrl = `${baseRedirectUrl}?orderId=${orderNumber || orderId}&total=${amount}`;
+    // Use provided returnUrl or fallback to default (customer checkout)
+    // returnUrl should include all query parameters needed (orderId, total, etc.)
+    const baseUrl = returnUrl || `${defaultRedirectUrl}?orderId=${orderNumber || orderId}&total=${amount}`;
+    // Ensure base URL format is correct
+    const redirectUrl = baseUrl.includes('?') 
+      ? `${baseUrl}${!baseUrl.includes('orderId') ? `&orderId=${orderNumber || orderId}` : ''}${!baseUrl.includes('total') ? `&total=${amount}` : ''}`
+      : `${baseUrl}?orderId=${orderNumber || orderId}&total=${amount}`;
+    
     const extraData = '';
     const orderGroupId = '';
     const autoCapture = true;

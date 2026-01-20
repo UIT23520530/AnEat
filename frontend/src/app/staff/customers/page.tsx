@@ -6,9 +6,10 @@ import { StaffHeader } from "@/components/layouts/staff-header"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { CustomerFormModal } from "@/components/forms/staff/customer-form-modal"
-import { Search, Plus, Edit, Trash2, Loader2, ChevronLeft, ChevronRight } from "lucide-react"
+import { Search, Plus, Edit, EyeOff, Loader2, ChevronLeft, ChevronRight } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { staffCustomerService, CustomerDTO } from "@/services/staff-customer.service"
+import { toast } from "sonner"
 
 // Use DTO from service with _count field
 interface CustomerWithCount extends CustomerDTO {
@@ -66,16 +67,19 @@ export default function CustomersPage() {
     setIsModalOpen(true)
   }
 
-  const handleDeleteCustomer = async (customerId: string) => {
-    if (!confirm("Bạn có chắc chắn muốn xóa khách hàng này?")) return
+  const handleHideCustomer = async (customerId: string) => {
+    // Thông báo cảnh báo (không chặn thao tác)
+    toast.message("Ẩn khách hàng", {
+      description: "Khách hàng sẽ bị ẩn (xóa tạm) và có thể khôi phục sau. Họ sẽ không xuất hiện trong tìm kiếm và khi tạo đơn.",
+    })
 
     try {
       await staffCustomerService.delete(customerId)
-      alert('Xóa khách hàng thành công')
+      toast.success('Ẩn khách hàng thành công')
       loadCustomers()
     } catch (err: any) {
-      const errorMessage = err.response?.data?.message || 'Lỗi khi xóa khách hàng'
-      alert(errorMessage)
+      const errorMessage = err.response?.data?.message || 'Lỗi khi ẩn khách hàng'
+      toast.error(errorMessage)
     }
   }
 
@@ -205,10 +209,11 @@ export default function CustomersPage() {
                           <Edit className="h-4 w-4 text-blue-600" />
                         </button>
                         <button
-                          onClick={() => handleDeleteCustomer(customer.id)}
+                          onClick={() => handleHideCustomer(customer.id)}
                           className="p-1.5 hover:bg-red-50 rounded-lg transition-colors"
+                          title="Ẩn khách hàng (xóa tạm)"
                         >
-                          <Trash2 className="h-4 w-4 text-red-600" />
+                          <EyeOff className="h-4 w-4 text-red-600" />
                         </button>
                       </div>
                     </td>
