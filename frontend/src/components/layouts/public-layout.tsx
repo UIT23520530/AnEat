@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ShoppingCart, User, MenuIcon, MapPin, ShoppingBag, Store, LogOut, User as UserIcon } from "lucide-react";
@@ -107,7 +107,7 @@ export function PublicLayout({ children }: PublicLayoutProps) {
                 {cartItemCount}
               </Badge>
               )}
-              <ShoppingBag className="h-6 w-6" />
+              <ShoppingCart className="h-6 w-6" />
             </Button>
 
             {/* Button user */}
@@ -116,7 +116,7 @@ export function PublicLayout({ children }: PublicLayoutProps) {
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="relative h-10 w-10 rounded-full">
                     <Avatar className="h-10 w-10 border border-gray-200">
-                      <AvatarImage src={user.image || "/placeholder-user.jpg"} alt={user.name} />
+                      <AvatarImage src={"/avt/avt-profile.jpg"} alt={user.name} />
                       <AvatarFallback>{user.name ? user.name.charAt(0).toUpperCase() : "U"}</AvatarFallback>
                     </Avatar>
                   </Button>
