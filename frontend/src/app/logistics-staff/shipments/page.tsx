@@ -34,12 +34,12 @@ export default function ShipmentDashboardPage() {
   const [tab, setTab] = useState<string>("Tất cả");
   const [search, setSearch] = useState<string>("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  
+
   // State cho Modal Detail
   const [detailModal, setDetailModal] = useState(false);
   const [detail, setDetail] = useState<Shipment | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
-  
+
   const router = useRouter();
 
   // --- FETCH DATA ---
@@ -53,7 +53,7 @@ export default function ShipmentDashboardPage() {
         sort: "-createdAt",
       });
       setShipments(response.data);
-      
+
       // Tự động chọn đơn đầu tiên nếu chưa chọn
       if (response.data.length > 0) {
         setSelectedId((prev) => prev || response.data[0].id);
@@ -84,10 +84,10 @@ export default function ShipmentDashboardPage() {
     try {
       await ShipmentService.updateStatus(shipmentId, nextStatus);
       message.success("Cập nhật trạng thái thành công!");
-      
+
       // Reload list
       fetchShipments();
-      
+
       // Reload detail modal nếu đang mở đúng đơn đó
       if (detailModal && detail && detail.id === shipmentId) {
         loadDetail(shipmentId);
@@ -123,9 +123,13 @@ export default function ShipmentDashboardPage() {
 
   // --- FILTER ---
   const filteredShipments = shipments.filter((s) => {
-    if (tab === "Tất cả") return true;
-    if (tab === "Đang giao") return s.status === "READY" || s.status === "IN_TRANSIT";
-    if (tab === "Hoàn thành") return s.status === "COMPLETED" || s.status === "DELIVERED";
+    // Tất cả: Chỉ hiện các đơn đang xử lý (không bao gồm Lịch sử)
+    if (tab === "Tất cả") return ["READY", "IN_TRANSIT", "DELIVERED"].includes(s.status);
+    if (tab === "Chờ giao") return s.status === "READY";
+    if (tab === "Đang giao") return s.status === "IN_TRANSIT";
+    if (tab === "Đã giao") return s.status === "DELIVERED";
+    // Lịch sử: Hoàn thành hoặc Hủy
+    if (tab === "Hoàn thành") return ["COMPLETED", "CANCELLED"].includes(s.status);
     return true;
   });
 
@@ -145,6 +149,9 @@ export default function ShipmentDashboardPage() {
     if (shipment.status === "IN_TRANSIT") {
       items.push({ key: "finish", label: "Xác nhận giao", onClick: () => handleStatusAction(shipment.id, "DELIVERED") });
     }
+    if (shipment.status === "DELIVERED") {
+      items.push({ key: "complete", label: "Hoàn thành", onClick: () => handleStatusAction(shipment.id, "COMPLETED") });
+    }
     return { items };
   };
 
@@ -153,7 +160,7 @@ export default function ShipmentDashboardPage() {
     <div className="flex w-full h-full relative">
       {/* ================= CỘT TRÁI: SIDEBAR LIST ================= */}
       <div className="w-[400px] flex-none flex flex-col border-r border-gray-200 bg-white h-full shadow-[4px_0_24px_rgba(0,0,0,0.02)] z-10">
-        
+
         {/* 1. Filter Area */}
         <div className="p-4 border-b border-gray-100 bg-white">
           <Input
@@ -170,8 +177,9 @@ export default function ShipmentDashboardPage() {
             onChange={setTab}
             items={[
               { key: "Tất cả", label: "Tất cả" },
-              { key: "Đang giao", label: "Đang giao" },
               { key: "Chờ giao", label: "Chờ giao" },
+              { key: "Đang giao", label: "Đang giao" },
+              { key: "Đã giao", label: "Đã giao" },
               { key: "Hoàn thành", label: "Lịch sử" },
             ]}
             className="[&_.ant-tabs-nav]:mb-0"
@@ -196,8 +204,8 @@ export default function ShipmentDashboardPage() {
                   onDoubleClick={() => openDetailModal(shipment.id)}
                   className={`
                     group relative p-4 rounded-xl border transition-all duration-200 cursor-pointer hover:shadow-md
-                    ${selectedId === shipment.id 
-                      ? "bg-white border-[#ff6600] shadow-md ring-1 ring-[#ff6600]" 
+                    ${selectedId === shipment.id
+                      ? "bg-white border-[#ff6600] shadow-md ring-1 ring-[#ff6600]"
                       : "bg-white border-gray-200 hover:border-orange-200"
                     }
                   `}
@@ -225,7 +233,7 @@ export default function ShipmentDashboardPage() {
                   {/* Actions (Menu 3 chấm) */}
                   <div className="absolute top-3 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
                     <Dropdown menu={getMenu(shipment)} trigger={['click']}>
-                       <Button type="text" size="small" icon={<MoreOutlined />} onClick={(e) => e.stopPropagation()} />
+                      <Button type="text" size="small" icon={<MoreOutlined />} onClick={(e) => e.stopPropagation()} />
                     </Dropdown>
                   </div>
                 </div>
@@ -238,74 +246,74 @@ export default function ShipmentDashboardPage() {
       {/* ================= CỘT PHẢI: MAP ================= */}
       <div className="flex-1 flex flex-col relative bg-gray-100">
         {selectedShipment ? (
-            <div className="w-full h-full relative">
-               {/* Map Component */}
-               <ShipmentMap
-                 fromLocation={selectedShipment.fromLocation}
-                 toLocation={selectedShipment.toLocation}
-                 shipmentNumber={selectedShipment.shipmentNumber}
-                 status={selectedShipment.status}
-               />
-               
-               {/* Floating Action Buttons */}
-               <div className="absolute bottom-6 right-6 space-y-2 flex flex-col z-[1000]">
-                  <Button 
-                    type="primary" 
-                    size="large" 
-                    className="shadow-lg bg-[#ff6600] hover:bg-[#e55a00]"
-                    onClick={() => openDetailModal(selectedId!)}
-                  >
-                    Xem chi tiết
-                  </Button>
-                  {selectedShipment.status === "READY" && (
-                    <Button 
-                      type="primary" 
-                      size="large" 
-                      className="shadow-lg bg-blue-500 hover:bg-blue-600"
-                      onClick={() => handleStatusAction(selectedId!, "IN_TRANSIT")}
-                    >
-                      Bắt đầu giao
-                    </Button>
-                  )}
-                  {selectedShipment.status === "IN_TRANSIT" && (
-                    <Button 
-                      type="primary" 
-                      size="large" 
-                      className="shadow-lg bg-green-500 hover:bg-green-600"
-                      onClick={() => handleStatusAction(selectedId!, "DELIVERED")}
-                    >
-                      Xác nhận đã giao
-                    </Button>
-                  )}
-               </div>
+          <div className="w-full h-full relative">
+            {/* Map Component */}
+            <ShipmentMap
+              fromLocation={selectedShipment.fromLocation}
+              toLocation={selectedShipment.toLocation}
+              shipmentNumber={selectedShipment.shipmentNumber}
+              status={selectedShipment.status}
+            />
 
-               {/* Info Card */}
-               <div className="absolute top-4 right-4 bg-white rounded-lg shadow-lg p-4 z-[1000] max-w-xs">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="font-mono text-sm text-gray-500">#{selectedShipment.shipmentNumber}</span>
-                    <Tag color={STATUS_MAP[selectedShipment.status]?.color}>
-                      {STATUS_MAP[selectedShipment.status]?.label}
-                    </Tag>
-                  </div>
-                  <div className="font-semibold text-gray-800 mb-2 line-clamp-1">
-                    {selectedShipment.productName}
-                  </div>
-                  <div className="text-sm text-gray-600 space-y-1">
-                    <div className="flex items-start gap-2">
-                      <span className="text-blue-500 font-medium">A:</span>
-                      <span className="line-clamp-1">{selectedShipment.fromLocation}</span>
-                    </div>
-                    <div className="flex items-start gap-2">
-                      <span className="text-red-500 font-medium">B:</span>
-                      <span className="line-clamp-1">{selectedShipment.toLocation}</span>
-                    </div>
-                  </div>
-               </div>
+            {/* Floating Action Buttons */}
+            <div className="absolute bottom-6 right-6 space-y-2 flex flex-col z-[1000]">
+              <Button
+                type="primary"
+                size="large"
+                className="shadow-lg bg-[#ff6600] hover:bg-[#e55a00]"
+                onClick={() => openDetailModal(selectedId!)}
+              >
+                Xem chi tiết
+              </Button>
+              {selectedShipment.status === "READY" && (
+                <Button
+                  type="primary"
+                  size="large"
+                  className="shadow-lg bg-blue-500 hover:bg-blue-600"
+                  onClick={() => handleStatusAction(selectedId!, "IN_TRANSIT")}
+                >
+                  Bắt đầu giao
+                </Button>
+              )}
+              {selectedShipment.status === "IN_TRANSIT" && (
+                <Button
+                  type="primary"
+                  size="large"
+                  className="shadow-lg bg-green-500 hover:bg-green-600"
+                  onClick={() => handleStatusAction(selectedId!, "DELIVERED")}
+                >
+                  Xác nhận đã giao
+                </Button>
+              )}
             </div>
+
+            {/* Info Card */}
+            <div className="absolute top-4 right-4 bg-white rounded-lg shadow-lg p-4 z-[1000] max-w-xs">
+              <div className="flex items-center justify-between mb-2">
+                <span className="font-mono text-sm text-gray-500">#{selectedShipment.shipmentNumber}</span>
+                <Tag color={STATUS_MAP[selectedShipment.status]?.color}>
+                  {STATUS_MAP[selectedShipment.status]?.label}
+                </Tag>
+              </div>
+              <div className="font-semibold text-gray-800 mb-2 line-clamp-1">
+                {selectedShipment.productName}
+              </div>
+              <div className="text-sm text-gray-600 space-y-1">
+                <div className="flex items-start gap-2">
+                  <span className="text-blue-500 font-medium">A:</span>
+                  <span className="line-clamp-1">{selectedShipment.fromLocation}</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="text-red-500 font-medium">B:</span>
+                  <span className="line-clamp-1">{selectedShipment.toLocation}</span>
+                </div>
+              </div>
+            </div>
+          </div>
         ) : (
           <div className="w-full h-full flex flex-col items-center justify-center text-gray-400">
-             <EnvironmentOutlined style={{ fontSize: 48, marginBottom: 16 }} />
-             <p>Chọn một đơn hàng để xem lộ trình</p>
+            <EnvironmentOutlined style={{ fontSize: 48, marginBottom: 16 }} />
+            <p>Chọn một đơn hàng để xem lộ trình</p>
           </div>
         )}
       </div>
@@ -316,22 +324,22 @@ export default function ShipmentDashboardPage() {
         onCancel={closeDetailModal}
         title={detail ? `Chi tiết đơn hàng #${detail.shipmentNumber}` : 'Đang tải...'}
         footer={[
-           <Button key="back" onClick={closeDetailModal}>Đóng</Button>,
-           detail?.status === 'READY' && (
-             <Button key="start" type="primary" onClick={() => handleStatusAction(detail.id, 'IN_TRANSIT')}>
-               Bắt đầu giao
-             </Button>
-           ),
-           detail?.status === 'IN_TRANSIT' && (
-             <Button key="deliver" type="primary" onClick={() => handleStatusAction(detail.id, 'DELIVERED')}>
-               Xác nhận đã giao
-             </Button>
-           ),
-           detail?.status === 'DELIVERED' && (
-              <Button key="complete" type="primary" className="bg-green-600" onClick={() => handleStatusAction(detail.id, 'COMPLETED')}>
-                Hoàn thành
-              </Button>
-           )
+          <Button key="back" onClick={closeDetailModal}>Đóng</Button>,
+          detail?.status === 'READY' && (
+            <Button key="start" type="primary" onClick={() => handleStatusAction(detail.id, 'IN_TRANSIT')}>
+              Bắt đầu giao
+            </Button>
+          ),
+          detail?.status === 'IN_TRANSIT' && (
+            <Button key="deliver" type="primary" onClick={() => handleStatusAction(detail.id, 'DELIVERED')}>
+              Xác nhận đã giao
+            </Button>
+          ),
+          detail?.status === 'DELIVERED' && (
+            <Button key="complete" type="primary" className="bg-green-600" onClick={() => handleStatusAction(detail.id, 'COMPLETED')}>
+              Hoàn thành
+            </Button>
+          )
         ]}
         width={600}
         centered
@@ -340,13 +348,13 @@ export default function ShipmentDashboardPage() {
           <div className="flex justify-center items-center py-10"><Spin /></div>
         ) : (
           <div className="space-y-4">
-             {/* SỬA LỖI Ở DÒNG DƯỚI ĐÂY: Dùng styles={{ label: ... }} thay vì labelStyle */}
-             <Descriptions 
-                column={1} 
-                bordered 
-                size="small" 
-                styles={{ label: { width: '140px', fontWeight: '500' } }}
-             >
+            {/* SỬA LỖI Ở DÒNG DƯỚI ĐÂY: Dùng styles={{ label: ... }} thay vì labelStyle */}
+            <Descriptions
+              column={1}
+              bordered
+              size="small"
+              styles={{ label: { width: '140px', fontWeight: '500' } }}
+            >
               <Descriptions.Item label="Sản phẩm">{detail.productName}</Descriptions.Item>
               <Descriptions.Item label="Trạng thái">
                 <Tag color={STATUS_MAP[detail.status]?.color}>{STATUS_MAP[detail.status]?.label}</Tag>
@@ -361,15 +369,15 @@ export default function ShipmentDashboardPage() {
 
             {/* Thông tin địa điểm & thời gian */}
             <div className="bg-gray-50 p-3 rounded-lg border border-gray-100">
-                <Descriptions column={1} size="small" layout="horizontal">
-                    <Descriptions.Item label="Từ kho">{detail.fromLocation}</Descriptions.Item>
-                    <Descriptions.Item label="Đến địa chỉ">{detail.toLocation}</Descriptions.Item>
-                    <Descriptions.Item label="Chi nhánh">{detail.branch?.name}</Descriptions.Item>
-                    <Descriptions.Item label="Người nhận">{detail.assignedTo?.name || '---'}</Descriptions.Item>
-                    <Descriptions.Item label="Thời gian tạo">
-                        {detail.createdAt ? new Date(detail.createdAt).toLocaleString('vi-VN') : ''}
-                    </Descriptions.Item>
-                </Descriptions>
+              <Descriptions column={1} size="small" layout="horizontal">
+                <Descriptions.Item label="Từ kho">{detail.fromLocation}</Descriptions.Item>
+                <Descriptions.Item label="Đến địa chỉ">{detail.toLocation}</Descriptions.Item>
+                <Descriptions.Item label="Chi nhánh">{detail.branch?.name}</Descriptions.Item>
+                <Descriptions.Item label="Người nhận">{detail.assignedTo?.name || '---'}</Descriptions.Item>
+                <Descriptions.Item label="Thời gian tạo">
+                  {detail.createdAt ? new Date(detail.createdAt).toLocaleString('vi-VN') : ''}
+                </Descriptions.Item>
+              </Descriptions>
             </div>
           </div>
         )}
