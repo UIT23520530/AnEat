@@ -31,7 +31,7 @@ export function LogisticsStaffLayout({ children }: LogisticsStaffLayoutProps) {
               <div className="text-sm font-semibold">Nguyễn Văn A</div>
               <div className="text-xs text-gray-500">Shipper</div>
             </div>
-            <Avatar icon={<UserOutlined />} />
+            <Avatar src="/avt/avt-profile.jpg" alt="Nguyễn Văn A" />
           </div>
         </div>
       </header>

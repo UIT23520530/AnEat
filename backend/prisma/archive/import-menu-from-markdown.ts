@@ -37,7 +37,7 @@ async function importMenuFromMarkdown() {
 
   try {
     // Đọc file markdown
-    const markdownPath = path.join(process.cwd(), 'newdata.md');
+    const markdownPath = path.join(process.cwd(), '/archive/newdata.md');
     if (!fs.existsSync(markdownPath)) {
       console.error(`❌ File markdown not found at: ${markdownPath}`);
       return;

@@ -1,6 +1,15 @@
 import { prisma } from '../db';
 import { Banner } from '@prisma/client';
 
+/**
+ * Banner Service
+ * 
+ * IMPORTANT: Banners are GLOBAL (not branch-specific)
+ * - When admin uploads/updates a banner image, it affects ALL customers across ALL branches
+ * - Banners are shared system-wide
+ * - No branch filtering needed for banners
+ */
+
 interface BannerFilters {
   isActive?: boolean;
 }

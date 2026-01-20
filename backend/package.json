@@ -15,25 +15,14 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:migrate:deploy": "prisma migrate deploy",
     "prisma:studio": "prisma studio",
-    "prisma:seed": "node prisma/seed-nationwide.js",
-    "seed:banners": "ts-node prisma/seed-banner-settings.ts",
+    "prisma:seed": "ts-node prisma/seed.ts",
     "db:push": "prisma db push",
-    "db:reset": "prisma migrate reset",
+    "db:reset": "prisma migrate reset --skip-seed && npm run prisma:seed",
     "lint": "eslint . --ext .ts",
     "lint:fix": "eslint . --ext .ts --fix",
     "format": "prettier --write \"src/**/*.ts\"",
     "generate-tokens": "ts-node scripts/generate-tokens.ts",
-    "quick-login": "ts-node scripts/quick-login.ts",
-    "import:menu": "ts-node prisma/import-menu-from-excel.ts",
-    "import:menu:md": "ts-node prisma/import-menu-from-markdown.ts",
-    "cleanup:products": "ts-node prisma/cleanup-products.ts",
-    "check:products": "ts-node prisma/check-products.ts",
-    "copy:products": "ts-node prisma/copy-products-to-all-branches.ts",
-    "copy:images": "ts-node prisma/copy-product-images.ts",
-    "update:images": "ts-node prisma/update-product-images.ts",
-    "force:update-4mieng-ga": "ts-node prisma/force-update-4-mieng-ga.ts",
-    "cleanup:categories": "ts-node prisma/cleanup-categories.ts",
-    "fix:drink-options": "ts-node prisma/fix-drink-options.ts"
+    "quick-login": "ts-node scripts/quick-login.ts"
   },
   "keywords": [
     "api",
@@ -66,7 +55,7 @@
     "@types/jest": "^29.5.10",
     "@types/jsonwebtoken": "^9.0.5",
     "@types/morgan": "^1.9.9",
-    "@types/node": "^20.19.27",
+    "@types/node": "^20.19.30",
     "@typescript-eslint/eslint-plugin": "^6.13.0",
     "@typescript-eslint/parser": "^6.13.0",
     "eslint": "^8.55.0",
@@ -80,6 +69,6 @@
     "typescript": "^5.9.3"
   },
   "prisma": {
-    "seed": "node prisma/seed-nationwide.js"
+    "seed": "ts-node prisma/seed.ts"
   }
 }
