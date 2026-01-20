@@ -1,14 +1,42 @@
 "use client";
 
-import React from "react";
-import { UserOutlined, BellOutlined } from "@ant-design/icons";
-import { Button, Input, Avatar, Badge } from "antd";
+import React, { useEffect, useState } from "react";
+import { BellOutlined } from "@ant-design/icons";
+import { Button as AntButton, Badge } from "antd";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { User as UserIcon, LogOut } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { getCurrentUser, logout as authLogout } from "@/lib/auth";
+import type { User } from "@/types";
 
 interface LogisticsStaffLayoutProps {
   children: React.ReactNode;
 }
 
 export function LogisticsStaffLayout({ children }: LogisticsStaffLayoutProps) {
+  const router = useRouter();
+  const [user, setUser] = useState<User | null>(null);
+
+  useEffect(() => {
+    const currentUser = getCurrentUser();
+    setUser(currentUser);
+  }, []);
+
+  const handleLogout = () => {
+    authLogout();
+    router.push("/auth/system/login");
+  };
+
   return (
     <div className="flex flex-col h-screen bg-gray-50 overflow-hidden">
       {/* --- HEADER (Cố định) --- */}
@@ -24,15 +52,45 @@ export function LogisticsStaffLayout({ children }: LogisticsStaffLayoutProps) {
         {/* User Actions */}
         <div className="flex items-center gap-4">
           <Badge count={2} size="small">
-            <Button icon={<BellOutlined />} shape="circle" />
+            <AntButton icon={<BellOutlined />} shape="circle" />
           </Badge>
-          <div className="flex items-center gap-2 border-l pl-4">
-            <div className="text-right hidden sm:block">
-              <div className="text-sm font-semibold">Nguyễn Văn A</div>
-              <div className="text-xs text-gray-500">Shipper</div>
-            </div>
-            <Avatar src="/avt/avt-profile.jpg" alt="Nguyễn Văn A" />
-          </div>
+          
+          {/* Profile Dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="relative h-10 w-10 rounded-full">
+                <Avatar className="h-10 w-10 border border-gray-200">
+                  <AvatarImage src="/avt/avt-profile.jpg" alt={user?.name || "User"} />
+                  <AvatarFallback>{user?.name ? user.name.charAt(0).toUpperCase() : "U"}</AvatarFallback>
+                </Avatar>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="w-56 z-[1100]" align="end" forceMount>
+              <DropdownMenuLabel className="font-normal">
+                <div className="flex flex-col space-y-1">
+                  <p className="text-sm font-medium leading-none">{user?.name || "Nhân viên"}</p>
+                  <p className="text-xs leading-none text-muted-foreground">
+                    {user?.email || ""}
+                  </p>
+                  <p className="text-xs leading-none text-orange-500 font-medium mt-1">
+                    Nhân viên Kho vận
+                  </p>
+                </div>
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem asChild>
+                <Link href="/profile" className="cursor-pointer">
+                  <UserIcon className="mr-2 h-4 w-4" />
+                  <span>Hồ sơ</span>
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={handleLogout} className="cursor-pointer text-red-600 focus:text-red-600">
+                <LogOut className="mr-2 h-4 w-4" />
+                <span>Đăng xuất</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </header>
       {/* --- MAIN CONTENT --- */}

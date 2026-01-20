@@ -558,6 +558,13 @@ export const getPublicOrders = async (req: Request, res: Response, next: NextFun
                   price: true,
                 },
               },
+              options: {
+                select: {
+                  id: true,
+                  optionName: true,
+                  optionPrice: true,
+                },
+              },
             },
           },
           branch: {
@@ -777,6 +784,13 @@ export const trackOrder = async (req: Request, res: Response, next: NextFunction
                 id: true,
                 name: true,
                 image: true,
+              },
+            },
+            options: {
+              select: {
+                id: true,
+                optionName: true,
+                optionPrice: true,
               },
             },
           },

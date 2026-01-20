@@ -115,17 +115,18 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
     return acc;
   }, {} as Record<string, Record<string, typeof allOptions>>);
 
-  // Tự động chọn option đầu tiên (hoặc option miễn phí) trong mỗi subGroup
+  // Khởi tạo selectedAddons: chỉ tự động chọn option miễn phí (nếu có) trong các subGroup bắt buộc
   const [selectedAddons, setSelectedAddons] = useState<string[]>(() => {
     const defaults: string[] = [];
     
     Object.values(groupedByMain).forEach((subGroups) => {
       Object.values(subGroups).forEach((options) => {
-        if (options.length > 0) {
-          // Ưu tiên chọn option miễn phí, nếu không có thì chọn option đầu tiên
-          const freeOption = options.find((opt) => opt.price === 0);
-          defaults.push(freeOption ? freeOption.id : options[0].id);
+        // Chỉ tự động chọn option miễn phí nếu có
+        const freeOption = options.find((opt) => opt.price === 0);
+        if (freeOption) {
+          defaults.push(freeOption.id);
         }
+        // Nếu không có option miễn phí -> không chọn mặc định (người dùng tự chọn nếu muốn upgrade)
       });
     });
     
@@ -139,16 +140,24 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
       const otherIdsInSubGroup = optionsInSubGroup
         .filter((opt) => opt.id !== addonId)
         .map((opt) => opt.id);
-      
-      // Single choice trong mỗi subGroup: bỏ các options khác, chọn option mới
-      // Không cho bỏ chọn nếu là option duy nhất đang được chọn trong subGroup
       const isSelected = prev.includes(addonId);
+      
+      // Kiểm tra xem subGroup có option miễn phí không
+      const hasFreeOption = optionsInSubGroup.some((opt) => opt.price === 0);
+      
       if (isSelected) {
-        // Không cho bỏ chọn - phải luôn có 1 option được chọn trong mỗi subGroup
-        return prev;
+        // Nếu subGroup có option miễn phí và đang chọn option có phí -> cho phép bỏ chọn (quay về mặc định)
+        // Nếu subGroup không có option miễn phí -> cho phép bỏ chọn hoàn toàn
+        // Nếu đang chọn option miễn phí trong subGroup có nhiều options -> không cho bỏ chọn
+        const currentOption = optionsInSubGroup.find((opt) => opt.id === addonId);
+        if (hasFreeOption && currentOption?.price === 0 && optionsInSubGroup.length > 1) {
+          // Không cho bỏ chọn option miễn phí mặc định
+          return prev;
+        }
+        return prev.filter((id) => id !== addonId);
       }
       
-      // Chọn option mới, bỏ chọn các options khác trong cùng subGroup
+      // Chọn option mới, bỏ chọn các options khác trong cùng subGroup (single choice per subGroup)
       return [...prev.filter((id) => !otherIdsInSubGroup.includes(id)), addonId];
     });
   }
@@ -254,6 +263,9 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
                         <div className="space-y-1">
                           {options.map((addon) => {
                             const isSelected = selectedAddons.includes(addon.id);
+                            // Checkbox nếu chỉ có 1 option HOẶC tất cả options đều có phí (upgrade options)
+                            const hasFreeOption = options.some((opt) => opt.price === 0);
+                            const isCheckbox = options.length === 1 || !hasFreeOption;
                             
                             return (
                               <Card
@@ -266,15 +278,31 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
                                 <CardContent className="p-3 flex items-center justify-between">
                                   <div className="flex-1">
                                     <div className="flex items-center gap-2">
-                                      <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
-                                        isSelected 
-                                          ? "border-primary bg-primary" 
-                                          : "border-muted-foreground"
-                                      }`}>
-                                        {isSelected && (
-                                          <div className="w-2 h-2 rounded-full bg-white" />
-                                        )}
-                                      </div>
+                                      {isCheckbox ? (
+                                        // Checkbox style - for single option or all-paid options (upgrades)
+                                        <div className={`w-4 h-4 rounded border-2 flex items-center justify-center ${
+                                          isSelected 
+                                            ? "border-primary bg-primary" 
+                                            : "border-muted-foreground"
+                                        }`}>
+                                          {isSelected && (
+                                            <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                                            </svg>
+                                          )}
+                                        </div>
+                                      ) : (
+                                        // Radio style - for multiple options with free default
+                                        <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                                          isSelected 
+                                            ? "border-primary bg-primary" 
+                                            : "border-muted-foreground"
+                                        }`}>
+                                          {isSelected && (
+                                            <div className="w-2 h-2 rounded-full bg-white" />
+                                          )}
+                                        </div>
+                                      )}
                                       <span className="font-medium">{addon.displayName}</span>
                                     </div>
                                   </div>

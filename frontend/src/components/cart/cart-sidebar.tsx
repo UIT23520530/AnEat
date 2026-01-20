@@ -46,7 +46,7 @@ export function CartSidebar() {
             <ScrollArea className="flex-1 my-4 max-h-[calc(100vh-250px)]">
               <div className="space-y-4 pr-4">
                 {cartItems.map((item) => (
-                  <div key={item.id} className="flex items-center space-x-4">
+                  <div key={item.cartItemId} className="flex items-center space-x-4">
                     <Image
                       src={item.image}
                       alt={item.name}
@@ -56,6 +56,16 @@ export function CartSidebar() {
                     />
                     <div className="flex-1">
                       <p className="font-medium">{item.name}</p>
+                      {item.options && item.options.length > 0 && (
+                        <div className="text-xs text-gray-500 mt-0.5">
+                          {item.options.map((opt, idx) => (
+                            <span key={opt.id}>
+                              {opt.name}
+                              {idx < item.options!.length - 1 && ", "}
+                            </span>
+                          ))}
+                        </div>
+                      )}
                       <p className="text-sm text-muted-foreground">
                         {item.price.toLocaleString("vi-VN")}đ
                       </p>
@@ -65,7 +75,7 @@ export function CartSidebar() {
                           size="icon"
                           className="h-6 w-6"
                           onClick={() =>
-                            updateQuantity(item.id, item.quantity - 1)
+                            updateQuantity(item.cartItemId, item.quantity - 1)
                           }
                         >
                           <Minus className="h-3 w-3" />
@@ -76,7 +86,7 @@ export function CartSidebar() {
                           size="icon"
                           className="h-6 w-6"
                           onClick={() =>
-                            updateQuantity(item.id, item.quantity + 1)
+                            updateQuantity(item.cartItemId, item.quantity + 1)
                           }
                         >
                           <Plus className="h-3 w-3" />
@@ -86,7 +96,7 @@ export function CartSidebar() {
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={() => removeFromCart(item.id)}
+                      onClick={() => removeFromCart(item.cartItemId)}
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>

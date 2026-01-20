@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "build": "next build",
+    "predev": "yarn install --frozen-lockfile --silent",
     "dev": "yarn db:start && concurrently \"yarn:dev:next\" \"yarn:dev:backend\"",
     "dev:next": "next dev",
     "dev:backend": "cd ../backend && npm run dev",

@@ -151,7 +151,7 @@ export default function CheckoutInfoPage() {
               ) : (
                 items.map((item, index) => (
                   <div 
-                    key={item.id} 
+                    key={item.cartItemId} 
                     className={`flex gap-4 pb-4 ${index !== items.length - 1 ? 'border-b border-gray-100' : ''}`}
                   >
                     <div className="w-20 h-20 bg-gray-50 rounded-lg overflow-hidden flex-shrink-0">
@@ -190,7 +190,7 @@ export default function CheckoutInfoPage() {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => handleItemQuantityChange(item.id, Math.max(1, item.quantity - 1))}
+                          onClick={() => handleItemQuantityChange(item.cartItemId, Math.max(1, item.quantity - 1))}
                           className="w-8 h-8 p-0 rounded-md bg-orange-50 border-orange-200 hover:bg-orange-100 transition-colors"
                         >
                           <Minus className="w-4 h-4 text-orange-600" />
@@ -199,7 +199,7 @@ export default function CheckoutInfoPage() {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => handleItemQuantityChange(item.id, item.quantity + 1)}
+                          onClick={() => handleItemQuantityChange(item.cartItemId, item.quantity + 1)}
                           className="w-8 h-8 p-0 rounded-md bg-orange-500 border-orange-600 hover:bg-orange-600 transition-colors"
                         >
                           <Plus className="w-4 h-4 text-white" />
@@ -208,7 +208,7 @@ export default function CheckoutInfoPage() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => handleItemRemove(item.id)}
+                        onClick={() => handleItemRemove(item.cartItemId)}
                         className="text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors h-8 w-8 p-0"
                       >
                         <Trash2 className="w-5 h-5" />

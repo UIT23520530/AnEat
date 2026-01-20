@@ -365,7 +365,7 @@ export const createOrder = async (req: Request, res: Response): Promise<void> =>
       return;
     }
 
-    const { branchId, items, tableId, notes, deliveryAddress, deliveryPhone, orderType, paymentMethod } = req.body;
+    const { branchId, items, tableId, notes, deliveryAddress, deliveryPhone, orderType, paymentMethod, momoPaymentStatus } = req.body;
 
     // Validate branchId
     if (!branchId) {
@@ -476,7 +476,7 @@ export const createOrder = async (req: Request, res: Response): Promise<void> =>
         orderNumber,
         total: totalAmount,
         paymentMethod: paymentMethod ? (paymentMethod.toUpperCase().replace('-', '_') as any) : 'CASH',
-        paymentStatus: 'PENDING',
+        paymentStatus: momoPaymentStatus === 'PAID' ? 'PAID' : 'PENDING',
         orderType: orderType || 'DELIVERY',
         deliveryAddress: deliveryAddress || null,
         deliveryPhone: deliveryPhone || null,

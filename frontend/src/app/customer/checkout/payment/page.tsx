@@ -24,6 +24,7 @@ export default function CheckoutPaymentPage() {
   const router = useRouter();
   const {
     items,
+    setItems,
     store,
     notes,
     paymentMethod,
@@ -43,6 +44,13 @@ export default function CheckoutPaymentPage() {
 
   const [isLoading, setIsLoading] = useState(false);
   const [branchDetail, setBranchDetail] = useState<Branch | null>(null);
+
+  // Sync items từ cart khi trang load (đề phòng quay lại từ MoMo thất bại)
+  useEffect(() => {
+    if (items.length === 0 && cartItems.length > 0) {
+      setItems(cartItems as any[]);
+    }
+  }, [items.length, cartItems, setItems]);
 
   // Fetch branch details
   useEffect(() => {
@@ -106,12 +114,12 @@ export default function CheckoutPaymentPage() {
       const orderData = {
         branchId: store,
         items: items.map((item) => {
-          const cartItem = cartItems.find((ci) => ci.id === item.id);
+          // item đã có options từ checkout context (sync từ cart)
           return {
             productId: item.id,
             quantity: item.quantity,
             price: item.price, // Giá đã là VND
-            options: cartItem?.options?.map((opt) => ({
+            options: item.options?.map((opt) => ({
               optionId: opt.id,
               optionName: opt.name,
               optionPrice: opt.price,
@@ -125,35 +133,47 @@ export default function CheckoutPaymentPage() {
         notes: notes || undefined,
       };
 
-      const orderResponse = await apiClient.post("/customer/orders", orderData);
-
-      if (!orderResponse.data?.success || !orderResponse.data?.data?.order) {
-        throw new Error(orderResponse.data?.message || "Không thể tạo đơn hàng");
-      }
-
-      const createdOrder = orderResponse.data.data.order;
-      const orderNumber = createdOrder.orderNumber;
-
-      // Xóa giỏ hàng
-      items.forEach((item) => {
-        removeFromCart(item.id);
-      });
-
-      clearTempOrderCookie();
-
       if (paymentMethod === "e-wallet") {
+        // MoMo: Lưu thông tin đơn hàng vào sessionStorage, chưa tạo đơn
+        // Đơn hàng sẽ được tạo sau khi thanh toán MoMo thành công
+        sessionStorage.setItem("pendingOrderData", JSON.stringify(orderData));
+        sessionStorage.setItem("pendingCartItemIds", JSON.stringify(items.map(i => i.cartItemId)));
+        
+        // Tạo mã đơn tạm để tracking
+        const tempOrderId = `TEMP-${Date.now()}`;
+        
         const data = await createMoMoPayment({
           amount: total,
-          orderInfo: `Thanh toán đơn hàng tại AnEat - ${orderNumber}`,
-          orderNumber: orderNumber,
+          orderInfo: `Thanh toán đơn hàng tại AnEat`,
+          orderNumber: tempOrderId,
         });
+        
         if (data?.data?.payUrl) {
           window.location.href = data.data.payUrl;
           return;
         } else {
+          // Xóa dữ liệu tạm nếu không lấy được link
+          sessionStorage.removeItem("pendingOrderData");
+          sessionStorage.removeItem("pendingCartItemIds");
           alert("Không lấy được link thanh toán MoMo!");
         }
       } else {
+        // COD: Tạo đơn hàng ngay
+        const orderResponse = await apiClient.post("/customer/orders", orderData);
+
+        if (!orderResponse.data?.success || !orderResponse.data?.data?.order) {
+          throw new Error(orderResponse.data?.message || "Không thể tạo đơn hàng");
+        }
+
+        const createdOrder = orderResponse.data.data.order;
+        const orderNumber = createdOrder.orderNumber;
+
+        // Xóa giỏ hàng
+        items.forEach((item) => {
+          removeFromCart(item.cartItemId);
+        });
+
+        clearTempOrderCookie();
         router.push(`/customer/checkout/success?orderId=${orderNumber}&total=${total}`);
       }
     } catch (error: any) {
@@ -232,24 +252,38 @@ export default function CheckoutPaymentPage() {
                   Danh sách món ăn ({items.length} món)
                 </h3>
                 <div className="pl-8 space-y-3">
-                  {items.map((item) => (
-                    <div key={item.id} className="flex gap-3 pb-3 border-b last:border-0">
-                      <div className="w-12 h-12 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
-                        {item.image ? (
-                          <Image src={item.image} alt={item.name} width={48} height={48} className="w-full h-full object-cover" />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center">
-                            <ImageIcon className="w-5 h-5 text-gray-300" />
-                          </div>
-                        )}
+                  {items.map((item) => {
+                    // Lấy options từ item (đã được sync từ cartItems)
+                    const options = item.options || [];
+                    
+                    return (
+                      <div key={item.cartItemId} className="flex gap-3 pb-3 border-b last:border-0">
+                        <div className="w-12 h-12 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
+                          {item.image ? (
+                            <Image src={item.image} alt={item.name} width={48} height={48} className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center">
+                              <ImageIcon className="w-5 h-5 text-gray-300" />
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex-1">
+                          <p className="font-semibold text-sm">{item.name}</p>
+                          {options.length > 0 && (
+                            <div className="mt-1 space-y-0.5">
+                              {options.map((opt, idx) => (
+                                <p key={idx} className="text-xs text-gray-500">
+                                  + {opt.name} {opt.price > 0 && <span className="text-orange-500">(+{opt.price.toLocaleString("vi-VN")}đ)</span>}
+                                </p>
+                              ))}
+                            </div>
+                          )}
+                          <p className="text-xs text-gray-600 mt-1">Số lượng: {item.quantity}</p>
+                          <p className="text-orange-500 font-bold text-sm">{(item.price * item.quantity).toLocaleString("vi-VN")}đ</p>
+                        </div>
                       </div>
-                      <div className="flex-1">
-                        <p className="font-semibold text-sm">{item.name}</p>
-                        <p className="text-xs text-gray-600">Số lượng: {item.quantity}</p>
-                        <p className="text-orange-500 font-bold text-sm">{(item.price * item.quantity).toLocaleString("vi-VN")}đ</p>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </CardContent>
             </Card>

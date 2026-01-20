@@ -24,6 +24,12 @@ import { Calendar, Clock, Package, MapPin, Eye, Loader2 } from "lucide-react";
 import apiClient from "@/lib/api-client";
 import { getCurrentUser } from "@/lib/auth";
 
+interface OrderItemOptionResponse {
+  id: string;
+  optionName: string;
+  optionPrice: number;
+}
+
 interface OrderItemResponse {
   id: string;
   quantity: number;
@@ -34,6 +40,7 @@ interface OrderItemResponse {
     image: string | null;
     price: number;
   };
+  options?: OrderItemOptionResponse[];
 }
 
 interface OrderResponse {
@@ -72,6 +79,11 @@ interface OrdersResponse {
   };
 }
 
+interface OrderItemOption {
+  name: string;
+  price: number;
+}
+
 interface Order {
   id: string;
   date: string;
@@ -83,6 +95,7 @@ interface Order {
     name: string;
     quantity: number;
     price: number;
+    options?: OrderItemOption[];
   }>;
   address: string;
   phone: string;
@@ -151,11 +164,15 @@ const formatTime = (dateString: string): string => {
 const mapToOrder = (apiOrder: OrderResponse): Order => {
   const { status, statusText } = mapOrderStatus(apiOrder.status);
 
-  // Format items
+  // Format items với options
   const items = apiOrder.items.map((item) => ({
     name: item.product.name,
     quantity: item.quantity,
     price: item.price, // Giá đã là VND
+    options: item.options?.map((opt) => ({
+      name: opt.optionName,
+      price: opt.optionPrice,
+    })),
   }));
 
   // Lấy address từ deliveryAddress hoặc branch address
@@ -333,7 +350,18 @@ export default function OrdersPage() {
                           {order.items.map((item, index) => (
                             <TableRow key={index}>
                               <TableCell className="font-medium">
-                                {item.name}
+                                <div>
+                                  <p>{item.name}</p>
+                                  {item.options && item.options.length > 0 && (
+                                    <div className="mt-1 space-y-0.5">
+                                      {item.options.map((opt, idx) => (
+                                        <p key={idx} className="text-xs text-gray-500">
+                                          + {opt.name} {opt.price > 0 && <span className="text-orange-500">(+{opt.price.toLocaleString("vi-VN")}₫)</span>}
+                                        </p>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
                               </TableCell>
                               <TableCell className="text-center">
                                 {item.quantity}

@@ -9,7 +9,8 @@ export interface CartItemOption {
 }
 
 export interface CartItem {
-  id: string;
+  id: string; // productId
+  cartItemId: string; // Unique ID = productId + hash of options
   name: string;
   price: number; // Total price including options (VND)
   quantity: number;
@@ -19,9 +20,9 @@ export interface CartItem {
 
 interface CartContextType {
   cartItems: CartItem[];
-  addToCart: (item: CartItem) => void;
-  removeFromCart: (id: string) => void;
-  updateQuantity: (id: string, quantity: number) => void;
+  addToCart: (item: Omit<CartItem, "cartItemId">) => void;
+  removeFromCart: (cartItemId: string) => void;
+  updateQuantity: (cartItemId: string, quantity: number) => void;
   isCartOpen: boolean;
   openCart: () => void;
   closeCart: () => void;
@@ -41,6 +42,27 @@ export const useCart = () => {
 
 const CART_STORAGE_KEY = "shoppingCart";
 
+// Tạo cartItemId unique từ productId và options
+const generateCartItemId = (productId: string, options?: CartItemOption[]): string => {
+  if (!options || options.length === 0) {
+    return productId;
+  }
+  // Sort options by id để đảm bảo cùng options sẽ tạo ra cùng hash
+  const sortedOptionIds = options.map(o => o.id).sort().join("-");
+  return `${productId}_${sortedOptionIds}`;
+};
+
+// So sánh 2 mảng options có giống nhau không
+const areOptionsEqual = (opts1?: CartItemOption[], opts2?: CartItemOption[]): boolean => {
+  if (!opts1 && !opts2) return true;
+  if (!opts1 || !opts2) return false;
+  if (opts1.length !== opts2.length) return false;
+  
+  const ids1 = opts1.map(o => o.id).sort();
+  const ids2 = opts2.map(o => o.id).sort();
+  return ids1.every((id, index) => id === ids2[index]);
+};
+
 export const CartProvider = ({ children }: { children: ReactNode }) => {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
@@ -51,7 +73,12 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
       const storedCart = localStorage.getItem(CART_STORAGE_KEY);
       if (storedCart) {
         const parsedCart = JSON.parse(storedCart) as CartItem[];
-        setCartItems(parsedCart);
+        // Đảm bảo các item cũ có cartItemId
+        const migratedCart = parsedCart.map(item => ({
+          ...item,
+          cartItemId: item.cartItemId || generateCartItemId(item.id, item.options)
+        }));
+        setCartItems(migratedCart);
       }
     } catch (error) {
       console.error("Failed to load cart from localStorage:", error);
@@ -67,28 +94,39 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [cartItems]);
 
-  const addToCart = (item: CartItem) => {
+  const addToCart = (item: Omit<CartItem, "cartItemId">) => {
+    const cartItemId = generateCartItemId(item.id, item.options);
+    
     setCartItems((prevItems) => {
-      const existingItem = prevItems.find((i) => i.id === item.id);
+      // Tìm item có cùng productId VÀ cùng options
+      const existingItem = prevItems.find(
+        (i) => i.id === item.id && areOptionsEqual(i.options, item.options)
+      );
+      
       if (existingItem) {
+        // Cộng dồn quantity
         return prevItems.map((i) =>
-          i.id === item.id ? { ...i, quantity: i.quantity + item.quantity } : i
+          i.cartItemId === existingItem.cartItemId 
+            ? { ...i, quantity: i.quantity + item.quantity } 
+            : i
         );
       }
-      return [...prevItems, item];
+      
+      // Thêm mới với cartItemId unique
+      return [...prevItems, { ...item, cartItemId }];
     });
   };
 
-  const removeFromCart = (id: string) => {
-    setCartItems((prevItems) => prevItems.filter((item) => item.id !== id));
+  const removeFromCart = (cartItemId: string) => {
+    setCartItems((prevItems) => prevItems.filter((item) => item.cartItemId !== cartItemId));
   };
 
-  const updateQuantity = (id: string, quantity: number) => {
+  const updateQuantity = (cartItemId: string, quantity: number) => {
     if (quantity <= 0) {
-      removeFromCart(id);
+      removeFromCart(cartItemId);
     } else {
       setCartItems((prevItems) =>
-        prevItems.map((item) => (item.id === id ? { ...item, quantity } : item))
+        prevItems.map((item) => (item.cartItemId === cartItemId ? { ...item, quantity } : item))
       );
     }
   };

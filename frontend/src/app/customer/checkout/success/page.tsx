@@ -1,62 +1,136 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useEffect, useState, useRef } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import { PublicLayout } from "@/components/layouts/public-layout";
 import { CheckoutProgress } from "@/components/checkout/checkout-progress";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { CheckCircle, XCircle, ArrowRight } from "lucide-react";
+import { CheckCircle, XCircle, ArrowRight, Loader2 } from "lucide-react";
 import Link from "next/link";
 import apiClient from "@/lib/api-client";
+import { useCart } from "@/contexts/cart-context";
 
 export default function CheckoutSuccessPage() {
   const searchParams = useSearchParams();
+  const router = useRouter();
+  const { removeFromCart } = useCart();
   const [orderNumber, setOrderNumber] = useState("");
   const [total, setTotal] = useState(0);
-  const [paymentSuccess, setPaymentSuccess] = useState(true);
+  const [paymentSuccess, setPaymentSuccess] = useState<boolean | null>(null);
   const [paymentMessage, setPaymentMessage] = useState("");
+  const [isProcessing, setIsProcessing] = useState(false);
+  const processedRef = useRef(false);
 
   useEffect(() => {
-    const orderId = searchParams.get("orderId");
-    const totalAmount = searchParams.get("total");
-    
-    // Kiểm tra resultCode từ MoMo callback
-    // resultCode = 0: thành công
-    // resultCode != 0: thất bại (1006 = người dùng huỷ, 49 = timeout, etc.)
-    const resultCode = searchParams.get("resultCode");
-    const message = searchParams.get("message");
+    // Tránh xử lý nhiều lần
+    if (processedRef.current) return;
 
-    if (orderId) setOrderNumber(orderId);
-    if (totalAmount) setTotal(Number(totalAmount));
-    
-    // Nếu có resultCode từ MoMo, kiểm tra kết quả và cập nhật payment status
-    if (resultCode !== null) {
-      if (resultCode === "0") {
+    const handleMoMoCallback = async () => {
+      const orderId = searchParams.get("orderId");
+      const totalAmount = searchParams.get("total");
+      const resultCode = searchParams.get("resultCode");
+      const message = searchParams.get("message");
+      const momoAmount = searchParams.get("amount");
+
+      // Trường hợp COD (không có resultCode)
+      if (resultCode === null) {
+        if (orderId) setOrderNumber(orderId);
+        if (totalAmount) setTotal(Number(totalAmount));
         setPaymentSuccess(true);
-        setPaymentMessage("Thanh toán MoMo thành công!");
-        
-        // Gọi API cập nhật trạng thái thanh toán (backup cho IPN)
-        if (orderId) {
-          apiClient.post("/customer/payment/update-status", {
-            orderNumber: orderId,
-            paymentStatus: "PAID",
-          }).catch(err => console.error("Failed to update payment status:", err));
+        return;
+      }
+
+      processedRef.current = true;
+
+      // Trường hợp MoMo callback
+      if (resultCode === "0") {
+        // MoMo thanh toán thành công - tạo đơn hàng
+        setIsProcessing(true);
+        try {
+          const pendingOrderData = sessionStorage.getItem("pendingOrderData");
+          const pendingCartItemIds = sessionStorage.getItem("pendingCartItemIds");
+
+          if (!pendingOrderData) {
+            setPaymentSuccess(false);
+            setPaymentMessage("Không tìm thấy thông tin đơn hàng");
+            return;
+          }
+
+          const orderData = JSON.parse(pendingOrderData);
+          // Đánh dấu đã thanh toán MoMo
+          orderData.momoPaymentStatus = "PAID";
+
+          // Tạo đơn hàng
+          const orderResponse = await apiClient.post("/customer/orders", orderData);
+
+          if (!orderResponse.data?.success || !orderResponse.data?.data?.order) {
+            throw new Error(orderResponse.data?.message || "Không thể tạo đơn hàng");
+          }
+
+          const createdOrder = orderResponse.data.data.order;
+          setOrderNumber(createdOrder.orderNumber);
+          setTotal(momoAmount ? Number(momoAmount) : Number(totalAmount) || 0);
+          setPaymentSuccess(true);
+          setPaymentMessage("Thanh toán MoMo thành công!");
+
+          // Xóa giỏ hàng
+          if (pendingCartItemIds) {
+            const itemIds = JSON.parse(pendingCartItemIds);
+            itemIds.forEach((id: string) => removeFromCart(id));
+          }
+
+          // Xóa dữ liệu tạm
+          sessionStorage.removeItem("pendingOrderData");
+          sessionStorage.removeItem("pendingCartItemIds");
+        } catch (error: any) {
+          console.error("Error creating order after MoMo payment:", error);
+          setPaymentSuccess(false);
+          setPaymentMessage(error.message || "Có lỗi khi tạo đơn hàng");
+        } finally {
+          setIsProcessing(false);
         }
       } else {
+        // MoMo thanh toán thất bại - không tạo đơn, giữ giỏ hàng
         setPaymentSuccess(false);
-        setPaymentMessage(message || "Thanh toán MoMo không thành công");
-        
-        // Cập nhật trạng thái thất bại
-        if (orderId) {
-          apiClient.post("/customer/payment/update-status", {
-            orderNumber: orderId,
-            paymentStatus: "FAILED",
-          }).catch(err => console.error("Failed to update payment status:", err));
-        }
+        setPaymentMessage(message || "Thanh toán MoMo không thành công. Đơn hàng chưa được tạo.");
+        // Không xóa pendingOrderData để user có thể thử lại
       }
-    }
-  }, [searchParams]);
+    };
+
+    handleMoMoCallback();
+  }, [searchParams, removeFromCart]);
+
+  const handleRetryPayment = () => {
+    // Quay lại trang thanh toán để thử lại
+    router.push("/customer/checkout/payment");
+  };
+
+  // Đang xử lý
+  if (isProcessing || paymentSuccess === null) {
+    return (
+      <PublicLayout>
+        <CheckoutProgress currentStep={3} />
+        <div className="container mx-auto px-4 py-8">
+          <div className="flex items-center justify-center min-h-[500px]">
+            <Card className="max-w-md w-full">
+              <CardContent className="p-8 text-center">
+                <div className="mb-6 flex justify-center">
+                  <Loader2 className="w-20 h-20 text-orange-500 animate-spin" />
+                </div>
+                <h2 className="text-2xl font-bold text-gray-800 mb-2">
+                  Đang xử lý đơn hàng...
+                </h2>
+                <p className="text-gray-600">
+                  Vui lòng chờ trong giây lát
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </PublicLayout>
+    );
+  }
 
   return (
     <PublicLayout>
@@ -125,22 +199,20 @@ export default function CheckoutSuccessPage() {
                   </p>
 
                   <div className="bg-red-50 p-4 rounded-lg mb-6 border border-red-200">
-                    <p className="text-sm text-gray-600 mb-2">Mã đơn hàng</p>
-                    <p className="text-2xl font-bold text-gray-800 mb-4">
-                      {orderNumber || "ORD-XXXXX"}
-                    </p>
+                    <p className="text-sm text-gray-600 mb-2">Thông báo</p>
                     <p className="text-sm text-red-600">
-                      Đơn hàng đã được tạo nhưng chưa thanh toán. Vui lòng thanh toán khi nhận hàng hoặc liên hệ hỗ trợ.
+                      Đơn hàng chưa được tạo. Các món trong giỏ hàng vẫn được giữ nguyên.
                     </p>
                   </div>
 
                   <div className="flex justify-center gap-4"> 
-                    <Link href="/customer/orders" className="block">
-                      <Button className="w-full bg-orange-500 hover:bg-orange-600 text-white py-6 rounded-lg text-lg font-bold">
-                        Xem đơn hàng
-                        <ArrowRight className="w-4 h-4 ml-2" />
-                      </Button>
-                    </Link>
+                    <Button 
+                      onClick={handleRetryPayment}
+                      className="bg-orange-500 hover:bg-orange-600 text-white py-6 rounded-lg text-lg font-bold"
+                    >
+                      Thử lại thanh toán
+                      <ArrowRight className="w-4 h-4 ml-2" />
+                    </Button>
                     <Link href="/customer/menu" className="block">
                       <Button
                         variant="outline"

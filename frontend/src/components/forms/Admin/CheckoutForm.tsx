@@ -129,7 +129,7 @@ export default function CheckoutForm() {
             <CardContent className="space-y-4 max-h-96 overflow-y-auto pr-2">
               {cartItems.length > 0 ? (
                 cartItems.map((item) => (
-                  <div key={item.id} className="flex items-start gap-4">
+                  <div key={item.cartItemId} className="flex items-start gap-4">
                     <Image
                       src={item.image || "/placeholder.svg"}
                       alt={item.name}
@@ -139,13 +139,18 @@ export default function CheckoutForm() {
                     />
                     <div className="flex-grow">
                       <p className="font-medium leading-tight">{item.name}</p>
+                      {item.options && item.options.length > 0 && (
+                        <p className="text-xs text-gray-500">
+                          {item.options.map(opt => opt.name).join(", ")}
+                        </p>
+                      )}
                       <div className="flex items-center gap-1 text-sm mt-1">
                         <Button
                           variant="ghost"
                           size="icon"
                           className="h-7 w-7"
                           onClick={() =>
-                            updateQuantity(item.id, item.quantity - 1)
+                            updateQuantity(item.cartItemId, item.quantity - 1)
                           }
                         >
                           -
@@ -156,7 +161,7 @@ export default function CheckoutForm() {
                           size="icon"
                           className="h-7 w-7"
                           onClick={() =>
-                            updateQuantity(item.id, item.quantity + 1)
+                            updateQuantity(item.cartItemId, item.quantity + 1)
                           }
                         >
                           +
@@ -170,7 +175,7 @@ export default function CheckoutForm() {
                       <Button
                         variant="link"
                         className="p-0 h-auto text-xs text-red-500 mt-1"
-                        onClick={() => removeFromCart(item.id)}
+                        onClick={() => removeFromCart(item.cartItemId)}
                       >
                         Xóa
                       </Button>

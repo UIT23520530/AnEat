@@ -13,6 +13,7 @@ interface CartItemOption {
 
 interface CartItem {
   id: string;
+  cartItemId: string;
   name: string;
   price: number;
   quantity: number;
@@ -56,8 +57,8 @@ interface CheckoutContextType {
   total: number;
   
   // Actions
-  handleItemQuantityChange: (id: string, quantity: number) => void;
-  handleItemRemove: (id: string) => void;
+  handleItemQuantityChange: (cartItemId: string, quantity: number) => void;
+  handleItemRemove: (cartItemId: string) => void;
   handleApplyDiscount: () => void;
 }
 
@@ -134,19 +135,19 @@ export const CheckoutProvider = ({ children }: { children: ReactNode }) => {
 
   const { updateQuantity, removeFromCart } = useCart();
 
-  const handleItemQuantityChange = (id: string, quantity: number) => {
+  const handleItemQuantityChange = (cartItemId: string, quantity: number) => {
     const newQuantity = Math.max(1, quantity);
     setItems(items.map(item =>
-      item.id === id ? { ...item, quantity: newQuantity } : item
+      item.cartItemId === cartItemId ? { ...item, quantity: newQuantity } : item
     ));
     // Sync to main cart
-    updateQuantity(id, newQuantity);
+    updateQuantity(cartItemId, newQuantity);
   };
 
-  const handleItemRemove = (id: string) => {
-    setItems(items.filter(item => item.id !== id));
+  const handleItemRemove = (cartItemId: string) => {
+    setItems(items.filter(item => item.cartItemId !== cartItemId));
     // Sync to main cart
-    removeFromCart(id);
+    removeFromCart(cartItemId);
   };
 
   const handleApplyDiscount = () => {
