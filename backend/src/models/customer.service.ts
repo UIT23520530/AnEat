@@ -26,6 +26,7 @@ interface CustomerCreateData {
   email?: string;
   avatar?: string;
   tier?: CustomerTier;
+  points?: number;
 }
 
 interface PointsAdjustment {
@@ -109,7 +110,7 @@ export class CustomerService {
    */
   static async findById(id: string) {
     return prisma.customer.findFirst({
-      where: { 
+      where: {
         id,
         deletedAt: null, // Level 3: Filter soft-deleted records
       },
@@ -157,7 +158,7 @@ export class CustomerService {
    */
   static async findByPhone(phone: string) {
     return prisma.customer.findFirst({
-      where: { 
+      where: {
         phone,
         deletedAt: null, // Level 3: Filter soft-deleted records
       },
@@ -312,12 +313,12 @@ export class CustomerService {
     // Build where clause for branch filtering
     const where: Prisma.CustomerWhereInput = branchId
       ? {
-          orders: {
-            some: {
-              branchId: branchId,
-            },
+        orders: {
+          some: {
+            branchId: branchId,
           },
-        }
+        },
+      }
       : {};
 
     // Build where clause for orders

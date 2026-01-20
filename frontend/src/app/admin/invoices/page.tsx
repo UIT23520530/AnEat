@@ -11,7 +11,7 @@ import { adminBillService, BillDTO, UpdateBillDto } from "@/services/admin-bill.
 import { adminBranchService } from "@/services/admin-branch.service";
 import ThermalPrintReceipt from "@/components/invoice/ThermalPrintReceipt";
 import { InvoiceEditForm } from "@/components/forms/admin/InvoiceEditForm";
-import { InvoiceHistoryModal } from "@/components/forms/admin/InvoiceHistoryModal";import { InvoiceDetailModal } from "@/components/forms/admin/InvoiceDetailModal";
+import { InvoiceHistoryModal } from "@/components/forms/admin/InvoiceHistoryModal"; import { InvoiceDetailModal } from "@/components/forms/admin/InvoiceDetailModal";
 import { InvoicePrintModal } from "@/components/forms/admin/InvoicePrintModal";
 const { Option } = Select;
 
@@ -74,7 +74,7 @@ interface Invoice {
 // Helper function to map backend data to frontend format
 const mapBillToInvoice = (bill: BillDTO): Invoice => {
   const dateTime = dayjs(bill.createdAt);
-  
+
   // Map payment method
   let paymentMethod: "cash" | "card" | "transfer" | "momo" | null = null;
   if (bill.paymentMethod === "CASH") paymentMethod = "cash";
@@ -225,7 +225,7 @@ function InvoicesContent() {
             const normalizedCustomerName = normalizeSearchString(i.customerName);
             const normalizedOrderNumber = normalizeSearchString(i.orderNumber);
             const normalizedPhone = i.customerPhone ? normalizeSearchString(i.customerPhone) : "";
-            
+
             return (
               normalizedBillNumber.includes(normalizedQuery) ||
               normalizedCustomerName.includes(normalizedQuery) ||
@@ -282,7 +282,7 @@ function InvoicesContent() {
     try {
       const billId = record.key;
       const response = await adminBillService.getBillById(billId);
-      
+
       if (response.success) {
         const detailedInvoice = mapBillToInvoice(response.data);
         setSelectedInvoice(detailedInvoice);
@@ -299,7 +299,7 @@ function InvoicesContent() {
   const handlePrint = async (invoice: Invoice) => {
     try {
       const billId = invoice.key;
-      
+
       // Fetch full bill details if not already loaded
       if (!invoice.items || invoice.items.length === 0) {
         const response = await adminBillService.getBillById(billId);
@@ -310,7 +310,7 @@ function InvoicesContent() {
       } else {
         setSelectedInvoice(invoice);
       }
-      
+
       // Open print modal
       setIsPrintModalOpen(true);
     } catch (error: any) {
@@ -321,20 +321,19 @@ function InvoicesContent() {
 
   const handleConfirmPrint = async () => {
     if (!selectedInvoice) return;
-    
+
     try {
       const billId = selectedInvoice.key;
-      
+
       // Mark as printed in backend
       await adminBillService.printBill(billId);
-      
+
       // Trigger browser print
       window.print();
-      
+
       message.success(`Đã in hóa đơn ${selectedInvoice.id}`);
-      
-      // Close modal and refresh
-      setIsPrintModalOpen(false);
+
+      // Refresh list
       fetchBills(pagination.current, pagination.pageSize);
     } catch (error: any) {
       message.error("Không thể in hóa đơn");
@@ -382,11 +381,11 @@ function InvoicesContent() {
       if (!Array.isArray(currentItems)) {
         currentItems = [];
       }
-      
+
       if (!selectedInvoice) return;
 
       setLoading(true);
-      
+
       const updateData: UpdateBillDto = {
         editReason: values.editReason,
       };
@@ -399,7 +398,7 @@ function InvoicesContent() {
       updateData.notes = values.notes;
       updateData.internalNotes = values.internalNotes;
       updateData.paidAmount = values.paidAmount;
-      
+
       if (values.paymentMethod) {
         const methodMap: Record<string, any> = {
           cash: "CASH",
@@ -440,19 +439,19 @@ function InvoicesContent() {
       updateData.totalAmount = totalValue;
 
       const response = await adminBillService.updateBill(selectedInvoice.key, updateData);
-      
+
       if (response.success) {
         message.success("Cập nhật hóa đơn thành công");
         setIsEditModalOpen(false);
         editForm.resetFields();
-        
+
         // Fetch updated bill details to refresh selectedInvoice
         const updatedResponse = await adminBillService.getBillById(selectedInvoice.key);
         if (updatedResponse.success) {
           const updatedInvoice = mapBillToInvoice(updatedResponse.data);
           setSelectedInvoice(updatedInvoice);
         }
-        
+
         fetchBills(pagination.current, pagination.pageSize);
         fetchStats();
       }
@@ -469,7 +468,7 @@ function InvoicesContent() {
     try {
       const billId = invoice.key;
       const response = await adminBillService.getBillHistory(billId);
-      
+
       if (response.success) {
         setBillHistory(response.data);
         setSelectedInvoice(invoice);
@@ -778,87 +777,87 @@ function InvoicesContent() {
               {/* Filters */}
               <div className="flex justify-between items-center">
                 <Space size="middle">
-              {/* Search */}
-              <Input
-                placeholder="Tìm số hóa đơn, khách hàng..."
-                prefix={<SearchOutlined />}
-                style={{ width: 280 }}
-                value={searchText}
-                onChange={(e) => setSearchText(e.target.value)}
-                allowClear
-              />
+                  {/* Search */}
+                  <Input
+                    placeholder="Tìm số hóa đơn, khách hàng..."
+                    prefix={<SearchOutlined />}
+                    style={{ width: 280 }}
+                    value={searchText}
+                    onChange={(e) => setSearchText(e.target.value)}
+                    allowClear
+                  />
 
-              {/* Status Filter */}
-              <Select
-                value={statusFilter}
-                onChange={setStatusFilter}
-                style={{ width: 200 }}
-                className={statusFilter !== "all" ? "[&>.ant-select-selector]:!bg-blue-50 [&>.ant-select-selector]:!border-blue-500" : ""}
-              >
-                <Select.Option value="all">Tất cả trạng thái</Select.Option>
-                <Select.Option value="PAID">Đã thanh toán</Select.Option>
-                <Select.Option value="PENDING">Chờ thanh toán</Select.Option>
-                <Select.Option value="CANCELLED">Đã hủy</Select.Option>
-                <Select.Option value="REFUNDED">Đã hoàn tiền</Select.Option>
-                <Select.Option value="DRAFT">Nháp</Select.Option>
-                <Select.Option value="ISSUED">Đã xuất</Select.Option>
-              </Select>
+                  {/* Status Filter */}
+                  <Select
+                    value={statusFilter}
+                    onChange={setStatusFilter}
+                    style={{ width: 200 }}
+                    className={statusFilter !== "all" ? "[&>.ant-select-selector]:!bg-blue-50 [&>.ant-select-selector]:!border-blue-500" : ""}
+                  >
+                    <Select.Option value="all">Tất cả trạng thái</Select.Option>
+                    <Select.Option value="PAID">Đã thanh toán</Select.Option>
+                    <Select.Option value="PENDING">Chờ thanh toán</Select.Option>
+                    <Select.Option value="CANCELLED">Đã hủy</Select.Option>
+                    <Select.Option value="REFUNDED">Đã hoàn tiền</Select.Option>
+                    <Select.Option value="DRAFT">Nháp</Select.Option>
+                    <Select.Option value="ISSUED">Đã xuất</Select.Option>
+                  </Select>
 
-              {/* Payment Method Filter */}
-              <Select
-                value={paymentMethodFilter}
-                onChange={setPaymentMethodFilter}
-                style={{ width: 180 }}
-                className={paymentMethodFilter !== "all" ? "[&>.ant-select-selector]:!bg-blue-50 [&>.ant-select-selector]:!border-blue-500" : ""}
-              >
-                <Select.Option value="all">Tất cả phương thức</Select.Option>
-                <Select.Option value="CASH">Tiền mặt</Select.Option>
-                <Select.Option value="CARD">Thẻ</Select.Option>
-                <Select.Option value="BANK_TRANSFER">Chuyển khoản</Select.Option>
-                <Select.Option value="E_WALLET">Ví điện tử</Select.Option>
-              </Select>
+                  {/* Payment Method Filter */}
+                  <Select
+                    value={paymentMethodFilter}
+                    onChange={setPaymentMethodFilter}
+                    style={{ width: 180 }}
+                    className={paymentMethodFilter !== "all" ? "[&>.ant-select-selector]:!bg-blue-50 [&>.ant-select-selector]:!border-blue-500" : ""}
+                  >
+                    <Select.Option value="all">Tất cả phương thức</Select.Option>
+                    <Select.Option value="CASH">Tiền mặt</Select.Option>
+                    <Select.Option value="CARD">Thẻ</Select.Option>
+                    <Select.Option value="BANK_TRANSFER">Chuyển khoản</Select.Option>
+                    <Select.Option value="E_WALLET">Ví điện tử</Select.Option>
+                  </Select>
 
-              {/* Branch Filter */}
-              <Select
-                placeholder="Lọc theo chi nhánh"
-                allowClear
-                style={{ width: 240 }}
-                value={branchFilter}
-                onChange={setBranchFilter}
-                className={branchFilter ? "[&>.ant-select-selector]:!bg-blue-50 [&>.ant-select-selector]:!border-blue-500" : ""}
-              >
-                {branches.map((branch) => (
-                  <Option key={branch.id} value={branch.id}>
-                    {branch.code} # {branch.name}
-                  </Option>
-                ))}
-              </Select>
+                  {/* Branch Filter */}
+                  <Select
+                    placeholder="Lọc theo chi nhánh"
+                    allowClear
+                    style={{ width: 240 }}
+                    value={branchFilter}
+                    onChange={setBranchFilter}
+                    className={branchFilter ? "[&>.ant-select-selector]:!bg-blue-50 [&>.ant-select-selector]:!border-blue-500" : ""}
+                  >
+                    {branches.map((branch) => (
+                      <Option key={branch.id} value={branch.id}>
+                        {branch.code} # {branch.name}
+                      </Option>
+                    ))}
+                  </Select>
                 </Space>
               </div>
             </div>
           </CardHeader>
 
-        <CardContent>
-          {/* Table */}
-          <Table
-            columns={columns}
-            dataSource={invoices}
-            loading={loading}
-            pagination={{
-              current: pagination.current,
-              pageSize: pagination.pageSize,
-              total: pagination.total,
-              showSizeChanger: true,
-              showTotal: (total) => `Hiển thị ${total} hóa đơn`,
-              pageSizeOptions: ['10', '20', '50', '100'],
-            }}
-            onChange={handleTableChange}
-            scroll={{ x: 1800 }}
-            bordered={false}
-            className="ant-table-custom"
-          />
-        </CardContent>
-      </Card>
+          <CardContent>
+            {/* Table */}
+            <Table
+              columns={columns}
+              dataSource={invoices}
+              loading={loading}
+              pagination={{
+                current: pagination.current,
+                pageSize: pagination.pageSize,
+                total: pagination.total,
+                showSizeChanger: true,
+                showTotal: (total) => `Hiển thị ${total} hóa đơn`,
+                pageSizeOptions: ['10', '20', '50', '100'],
+              }}
+              onChange={handleTableChange}
+              scroll={{ x: 1800 }}
+              bordered={false}
+              className="ant-table-custom"
+            />
+          </CardContent>
+        </Card>
       </Spin>
 
       {/* Detail Modal - ENHANCED VERSION */}

@@ -14,6 +14,11 @@ export interface Product {
     name: string
   }
   branchId: string | null
+  branches?: {
+    id: string
+    name: string
+    code: string
+  }[]
   quantity: number
   costPrice: number
   prepTime: number // Default 15 minutes
@@ -42,7 +47,7 @@ export interface CreateProductData {
   price: number // Price in dollars (will be converted to cents)
   image?: string | null
   categoryId: string
-  branchId?: string | null
+  branchIds?: string[]
   quantity?: number
   costPrice?: number
   prepTime?: number // Minutes, default 15
@@ -56,7 +61,7 @@ export interface UpdateProductData {
   price?: number // Price in dollars (will be converted to cents)
   image?: string | null
   categoryId?: string
-  branchId?: string | null
+  branchIds?: string[]
   quantity?: number
   costPrice?: number
   prepTime?: number // Minutes, default 15

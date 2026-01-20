@@ -111,6 +111,8 @@ export const updateCustomer = async (req: Request, res: Response): Promise<void>
     const { id } = req.params;
     const { name, email, phone, avatar, tier, points } = req.body;
 
+    console.log('[DEBUG] updateCustomer body:', JSON.stringify(req.body));
+
     // Check if customer exists
     const existingCustomer = await CustomerService.findById(id);
     if (!existingCustomer) {
@@ -122,8 +124,11 @@ export const updateCustomer = async (req: Request, res: Response): Promise<void>
       return;
     }
 
-    // Validation
-    if (!name && !email && !phone && !avatar && !tier && points === undefined) {
+    // Validation: Ensure at least one field is provided
+    // Note: checks against undefined to allow 0 or empty strings if valid
+    if (name === undefined && email === undefined && phone === undefined &&
+      avatar === undefined && tier === undefined && points === undefined) {
+      console.log('[DEBUG] Validation failed: No fields to update');
       res.status(400).json({
         success: false,
         code: 400,
@@ -133,42 +138,67 @@ export const updateCustomer = async (req: Request, res: Response): Promise<void>
     }
 
     // Phone validation
-    if (phone && !/^[0-9]{10}$/.test(phone)) {
-      res.status(400).json({
-        success: false,
-        code: 400,
-        message: 'Invalid phone number format (must be 10 digits)',
-      });
-      return;
+    if (phone !== undefined) {
+      if (typeof phone !== 'string' || !/^[0-9]{10}$/.test(phone)) {
+        console.log('[DEBUG] Validation failed: Invalid phone', phone);
+        res.status(400).json({
+          success: false,
+          code: 400,
+          message: 'Invalid phone number format (must be 10 digits)',
+        });
+        return;
+      }
     }
 
     // Email validation
-    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      res.status(400).json({
-        success: false,
-        code: 400,
-        message: 'Invalid email format',
-      });
-      return;
+    if (email !== undefined && email !== null && email !== '') {
+      if (typeof email !== 'string' || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        console.log('[DEBUG] Validation failed: Invalid email', email);
+        res.status(400).json({
+          success: false,
+          code: 400,
+          message: 'Invalid email format',
+        });
+        return;
+      }
     }
 
     // Tier validation
-    if (tier && !['BRONZE', 'SILVER', 'GOLD', 'VIP'].includes(tier)) {
-      res.status(400).json({
-        success: false,
-        code: 400,
-        message: 'Invalid tier value',
-      });
-      return;
+    if (tier !== undefined) {
+      if (typeof tier !== 'string' || !['BRONZE', 'SILVER', 'GOLD', 'VIP'].includes(tier)) {
+        console.log('[DEBUG] Validation failed: Invalid tier', tier);
+        res.status(400).json({
+          success: false,
+          code: 400,
+          message: 'Invalid tier value',
+        });
+        return;
+      }
     }
 
     const updateData: any = {};
-    if (name) updateData.name = name;
-    if (email !== undefined) updateData.email = email;
-    if (phone) updateData.phone = phone;
+    if (name !== undefined) updateData.name = name;
+
+    // Treat empty string email as null to avoid unique constraint violations on empty strings
+    if (email !== undefined) {
+      updateData.email = email === '' ? null : email;
+    }
+
+    if (phone !== undefined) updateData.phone = phone;
     if (avatar !== undefined) updateData.avatar = avatar;
-    if (tier) updateData.tier = tier;
-    if (points !== undefined) updateData.points = points;
+    if (tier !== undefined) updateData.tier = tier;
+
+    // Handle points explicitly
+    if (points !== undefined && points !== null) {
+      const parsedPoints = typeof points === 'string' ? parseInt(points, 10) : points;
+      if (!isNaN(parsedPoints)) {
+        updateData.points = parsedPoints;
+      } else {
+        console.log('[DEBUG] points is NaN', points);
+      }
+    }
+
+    console.log('[DEBUG] Final updateData:', JSON.stringify(updateData));
 
     const updatedCustomer = await CustomerService.update(id, updateData);
 
@@ -442,7 +472,7 @@ export const deleteCustomer = async (req: Request, res: Response): Promise<void>
  */
 export const createCustomer = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { phone, name, email, avatar, tier } = req.body;
+    const { phone, name, email, avatar, tier, points } = req.body;
 
     // Validation
     if (!phone || !name) {
@@ -464,6 +494,16 @@ export const createCustomer = async (req: Request, res: Response): Promise<void>
       return;
     }
 
+    // Email validation
+    if (email && email !== '' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      res.status(400).json({
+        success: false,
+        code: 400,
+        message: 'Invalid email format',
+      });
+      return;
+    }
+
     // Check if phone already exists
     const existingCustomer = await CustomerService.findByPhone(phone);
     if (existingCustomer) {
@@ -475,12 +515,32 @@ export const createCustomer = async (req: Request, res: Response): Promise<void>
       return;
     }
 
-    const newCustomer = await CustomerService.create({
+    // Prepare create data with sanitized email
+    const createData: any = {
       phone,
       name,
-      email,
       avatar,
       tier: tier || 'BRONZE',
+      points: points || 0,
+    };
+
+    // Only add email if it's a valid string (convert empty string to null/undefined behavior by omission or explicit null)
+    // Prisma create usually takes optional fields. If we pass "", it saves "". We want null.
+    if (email && email !== '') {
+      createData.email = email;
+    } else {
+      // If email is explicitly passed as "", or null, or undefined, we might want to ensure it's null in DB?
+      // If schema is String?, passing null is fine. omitting it is fine.
+      // But passing "" is NOT fine for @unique.
+      // So we just don't add it to createData, or set it to null if needed?
+      // Let's set it to undefined to be safe, or null.
+      // createData.email = null; // if we want explicit null
+    }
+
+    const newCustomer = await CustomerService.create({
+      ...createData,
+      // Force email to be undefined if empty string, so Prisma uses default (null)
+      email: (email && email !== '') ? email : undefined
     });
 
     res.status(201).json({
@@ -494,6 +554,16 @@ export const createCustomer = async (req: Request, res: Response): Promise<void>
 
     if (error instanceof Prisma.PrismaClientKnownRequestError) {
       if (error.code === 'P2002') {
+        const target = (error.meta as any)?.target;
+        if (Array.isArray(target) && target.includes('email')) {
+          res.status(409).json({
+            success: false,
+            code: 409,
+            message: 'Email already exists',
+          });
+          return;
+        }
+
         res.status(409).json({
           success: false,
           code: 409,

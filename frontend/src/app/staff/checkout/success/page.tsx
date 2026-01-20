@@ -9,6 +9,80 @@ import { Button } from "@/components/ui/button"
 import { CheckCircle, ArrowRight, Printer, FileText } from "lucide-react"
 import { InvoicePrintModal } from "@/components/forms/admin/InvoicePrintModal"
 import staffOrderService from "@/services/staff-order.service"
+import { staffTemplateService, TemplateCategory } from "@/services/staff-template.service"
+
+// Helper to fill template with real data
+const generateInvoiceHtml = (templateContent: string, invoice: any) => {
+  let content = templateContent;
+
+  if (!invoice) return content;
+
+  // Handle {{#items}}...{{/items}} block (Handlebars style)
+  const itemsBlockRegex = /{{#items}}([\s\S]*?){{\/items}}/g;
+  content = content.replace(itemsBlockRegex, (match, innerContent) => {
+    return (invoice.items || []).map((item: any) => {
+      let itemRow = innerContent;
+      itemRow = itemRow.replace(/{{name}}/g, item.name);
+      itemRow = itemRow.replace(/{{quantity}}/g, String(item.quantity));
+      itemRow = itemRow.replace(/{{price}}/g, item.price.toLocaleString('vi-VN') + 'đ');
+      itemRow = itemRow.replace(/{{total}}/g, item.total.toLocaleString('vi-VN') + 'đ');
+      // Additional item fields if needed
+      return itemRow;
+    }).join('');
+  });
+
+  // Replaces standard placeholders
+  const replacements: Record<string, string> = {
+    '{{billNumber}}': invoice.billNumber || '',
+    '{{orderNumber}}': invoice.orderNumber || '',
+    '{{receiptNumber}}': invoice.billNumber || '', // Alias
+    '{{date}}': invoice.date || '',
+    '{{time}}': invoice.time || '',
+    '{{branchName}}': invoice.branchName || '',
+    '{{branchAddress}}': invoice.branchAddress || '',
+    '{{customerName}}': invoice.customerName || 'Khách lẻ',
+    '{{customerPhone}}': invoice.customerPhone || '',
+    '{{customerAddress}}': invoice.customerAddress || '',
+    '{{staffName}}': invoice.staffName || '',
+    '{{paymentMethod}}': invoice.getPaymentMethodText ? invoice.getPaymentMethodText(invoice.paymentMethod) : invoice.paymentMethod,
+    '{{notes}}': invoice.notes || '',
+
+    // Financials
+    '{{subtotal}}': (invoice.subtotal || 0).toLocaleString('vi-VN') + 'đ',
+    '{{tax}}': (invoice.tax || 0).toLocaleString('vi-VN') + 'đ',
+    '{{discount}}': (invoice.discount || 0).toLocaleString('vi-VN') + 'đ',
+    '{{total}}': (invoice.total || 0).toLocaleString('vi-VN') + 'đ',
+    '{{finalTotal}}': (invoice.total || 0).toLocaleString('vi-VN') + 'đ',
+    '{{grandTotal}}': (invoice.total || 0).toLocaleString('vi-VN') + 'đ',
+  };
+
+  Object.keys(replacements).forEach(key => {
+    // Escape special chars for regex if necessary (simple replaceAll is better if supported, but regex with global flag works)
+    const regex = new RegExp(key, 'g');
+    content = content.replace(regex, replacements[key]);
+  });
+
+  // Fallback lists if loop syntax wasn't used
+  if (content.includes('{{itemsList}}')) {
+    const itemsList = (invoice.items || []).map((i: any) => `${i.quantity} x ${i.name} = ${i.total.toLocaleString('vi-VN')}đ`).join('<br/>');
+    content = content.replace(/{{itemsList}}/g, itemsList);
+  }
+
+  // Minimal table fallback
+  if (content.includes('{{items}}') && !itemsBlockRegex.test(templateContent)) {
+    const itemsRows = (invoice.items || []).map((item: any) => `
+      <tr>
+        <td>${item.name}</td>
+        <td align="center">${item.quantity}</td>
+        <td align="right">${item.price.toLocaleString('vi-VN')}</td>
+        <td align="right">${item.total.toLocaleString('vi-VN')}</td>
+      </tr>
+    `).join('');
+    content = content.replace(/{{items}}/g, itemsRows);
+  }
+
+  return content;
+};
 
 export default function StaffCheckoutSuccessPage() {
   const router = useRouter()
@@ -21,6 +95,7 @@ export default function StaffCheckoutSuccessPage() {
 
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false)
   const [invoice, setInvoice] = useState<any | null>(null)
+  const [templateHtml, setTemplateHtml] = useState<string | undefined>(undefined)
 
   const getPaymentMethodText = (method: string | null) => {
     switch (method) {
@@ -49,7 +124,7 @@ export default function StaffCheckoutSuccessPage() {
         if (response.success && response.data) {
           const order = response.data
           const items = (order.items || []).map((it: any) => ({
-            name: it.name,
+            name: it.product?.name || it.name, // Handle populated product or direct name
             quantity: it.quantity || 0,
             price: it.price || 0,
             total: (it.price || 0) * (it.quantity || 0),
@@ -62,7 +137,7 @@ export default function StaffCheckoutSuccessPage() {
             orderNumber: order.orderNumber || prev.orderNumber,
           }))
 
-          setInvoice({
+          const invoiceData = {
             billNumber: order.billNumber || order.orderNumber,
             orderNumber: order.orderNumber,
             date: new Date(order.createdAt).toLocaleDateString("vi-VN"),
@@ -74,13 +149,28 @@ export default function StaffCheckoutSuccessPage() {
             customerAddress: order.deliveryAddress || undefined,
             items,
             subtotal: order.subtotal || 0,
-            tax: Math.round(((order.subtotal || 0) - (order.discountAmount || 0)) * 0.08),
+            tax: Math.round(((order.subtotal || 0) - (order.discountAmount || 0)) * 0.08), // Example tax calc
             discount: order.discountAmount || 0,
             total: order.total || 0,
             paymentMethod: order.paymentMethod || "CASH",
             staffName: order.staff?.name || "",
             notes: order.notes || undefined,
-          })
+            getPaymentMethodText, // Pass helper function for template usage
+          }
+
+          setInvoice(invoiceData)
+
+          // Fetch Invoice Template
+          staffTemplateService.getDefaultTemplate(TemplateCategory.INVOICE)
+            .then(res => {
+              if (res.success && res.data && res.data.content) {
+                const generatedHtml = generateInvoiceHtml(res.data.content, invoiceData);
+                setTemplateHtml(generatedHtml);
+              }
+            })
+            .catch(err => {
+              console.log("No default template or error fetching, using default thermal receipt", err);
+            });
         }
       }).catch(() => {
         // ignore
@@ -193,8 +283,8 @@ export default function StaffCheckoutSuccessPage() {
         open={isPrintModalOpen}
         onClose={() => setIsPrintModalOpen(false)}
         invoice={invoice}
+        customHtmlContent={templateHtml}
         onConfirmPrint={() => {
-          setIsPrintModalOpen(false)
           window.print()
         }}
         getPaymentMethodText={getPaymentMethodText}
@@ -202,3 +292,4 @@ export default function StaffCheckoutSuccessPage() {
     </StaffLayout>
   )
 }
+

@@ -38,9 +38,10 @@ interface Invoice {
 interface InvoicePrintModalProps {
   open: boolean;
   onClose: () => void;
-  invoice: Invoice | null;
+  invoice?: Invoice | null;
   onConfirmPrint: () => void;
-  getPaymentMethodText: (method: string | null) => string;
+  getPaymentMethodText?: (method: string | null) => string;
+  customHtmlContent?: string;
 }
 
 export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
@@ -49,6 +50,7 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
   invoice,
   onConfirmPrint,
   getPaymentMethodText,
+  customHtmlContent,
 }) => {
   return (
     <>
@@ -77,7 +79,25 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
           </Button>,
         ]}
       >
-        {invoice && (
+        {customHtmlContent ? (
+          <div
+            id="thermal-receipt"
+            style={{
+              maxHeight: '70vh',
+              overflow: 'auto',
+              width: '80mm',
+              margin: '0 auto',
+              padding: '4mm',
+              background: 'white',
+              fontFamily: 'monospace',
+              fontSize: '12px',
+              lineHeight: '1.5',
+              color: 'black',
+              boxShadow: '0 0 5px rgba(0,0,0,0.1)'
+            }}
+            dangerouslySetInnerHTML={{ __html: customHtmlContent }}
+          />
+        ) : invoice && getPaymentMethodText ? (
           <div style={{ maxHeight: '70vh', overflow: 'auto' }}>
             <ThermalPrintReceipt
               billNumber={invoice.billNumber}
@@ -99,7 +119,7 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
               notes={invoice.notes}
             />
           </div>
-        )}
+        ) : null}
       </Modal>
 
       {/* Print Styles */}
@@ -116,6 +136,10 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
           #thermal-receipt * {
             visibility: visible;
           }
+          /* Ensure external images (if any) are visible */
+          #thermal-receipt img {
+             visibility: visible !important;
+          }
           #thermal-receipt {
             position: fixed;
             left: 50%;
@@ -123,6 +147,7 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
             transform: translate(-50%, -50%);
             margin: 0;
             box-shadow: none;
+            width: 80mm; /* Force specific width for receipt look if not set by content */
           }
         }
       `}</style>

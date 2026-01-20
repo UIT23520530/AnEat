@@ -91,7 +91,7 @@ export default function StockRequestFormModal({
             onCancel={onCancel}
             footer={null}
             width={600}
-            destroyOnClose
+            destroyOnHidden
         >
             {productInfo && (
                 <div className="mb-4 p-3 bg-gray-50 rounded border border-gray-100">

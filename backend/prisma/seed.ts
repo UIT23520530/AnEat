@@ -1,4 +1,4 @@
-import { PrismaClient, UserRole, OrderStatus, PaymentMethod, PaymentStatus } from '@prisma/client';
+import { PrismaClient, UserRole, OrderStatus, PaymentMethod, PaymentStatus, TemplateCategory, TemplateStatus } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -29,14 +29,14 @@ function findImageByName(productName: string, assetsDir: string): string | null 
   const files = fs.readdirSync(assetsDir);
   const stopWords = ['1', '2', '3', '4', '5', '6', 'mot', 'hai', 'ba', 'bon', 'nam', 'sau'];
   const nameWords = normalizedName.split('-').filter(w => w.length > 2 && !stopWords.includes(w));
-  
+
   let bestMatch: { file: string; score: number } | null = null;
 
   for (const file of files) {
     const fileBaseName = path.basename(file, path.extname(file));
     const normalizedFile = normalizeName(fileBaseName);
     const ext = path.extname(file).toLowerCase();
-    
+
     if (!possibleExtensions.includes(ext)) continue;
 
     let score = 0;
@@ -72,12 +72,12 @@ const manualImageMapping: Record<string, string> = {
 
 function getProductImage(productName: string): string {
   const lowerName = productName.toLowerCase();
-  
+
   // Kiểm tra mapping thủ công trước
   if (manualImageMapping[lowerName]) {
     return manualImageMapping[lowerName];
   }
-  
+
   const assetsDir = path.join(process.cwd(), '..', 'frontend', 'public', 'assets');
   const foundImage = findImageByName(productName, assetsDir);
   if (foundImage) {
@@ -403,7 +403,7 @@ const baseProducts = [
     prepTime: 25,
     categoryCode: 'MON_NGON_PHAI_THU',
   },
-  
+
   // Gà giòn vui vẻ
   {
     code: 'CHICKEN-001',
@@ -445,7 +445,7 @@ const baseProducts = [
     prepTime: 12,
     categoryCode: 'GA_GION_VUI_VE',
   },
-  
+
   // Mỳ Ý
   {
     code: 'PASTA-001',
@@ -477,7 +477,7 @@ const baseProducts = [
     prepTime: 15,
     categoryCode: 'MY_Y',
   },
-  
+
   // Burger
   {
     code: 'BURGER-001',
@@ -509,7 +509,7 @@ const baseProducts = [
     prepTime: 8,
     categoryCode: 'BURGER',
   },
-  
+
   // Phần ăn phụ
   {
     code: 'SIDE-001',
@@ -551,7 +551,7 @@ const baseProducts = [
     prepTime: 7,
     categoryCode: 'PHAN_AN_PHU',
   },
-  
+
   // Tráng miệng
   {
     code: 'DESSERT-001',
@@ -583,7 +583,7 @@ const baseProducts = [
     prepTime: 3,
     categoryCode: 'TRANG_MIENG',
   },
-  
+
   // Thức uống
   {
     code: 'DRINK-001',
@@ -701,61 +701,64 @@ const promotionsData = [
 
 async function cleanupDatabase() {
   console.log('🧹 Cleaning up existing data...\n');
-  
+
   await prisma.billHistory.deleteMany();
   console.log('  ✅ Cleared bill histories');
-  
+
   await prisma.bill.deleteMany();
   console.log('  ✅ Cleared bills');
-  
+
   await prisma.orderItemOption.deleteMany();
   console.log('  ✅ Cleared order item options');
-  
+
   await prisma.orderItem.deleteMany();
   console.log('  ✅ Cleared order items');
-  
+
   await prisma.order.deleteMany();
   console.log('  ✅ Cleared orders');
-  
+
   await prisma.stockTransaction.deleteMany();
   console.log('  ✅ Cleared stock transactions');
-  
+
   await prisma.stockRequest.deleteMany();
   console.log('  ✅ Cleared stock requests');
-  
+
   await prisma.productOption.deleteMany();
   console.log('  ✅ Cleared product options');
-  
+
   await prisma.inventory.deleteMany();
   console.log('  ✅ Cleared inventories');
-  
+
   await prisma.product.deleteMany();
   console.log('  ✅ Cleared products');
-  
+
   await prisma.productCategory.deleteMany();
   console.log('  ✅ Cleared product categories');
-  
+
   await prisma.review.deleteMany();
   console.log('  ✅ Cleared reviews');
-  
+
   await prisma.customer.deleteMany();
   console.log('  ✅ Cleared customers');
-  
+
   await prisma.promotion.deleteMany();
   console.log('  ✅ Cleared promotions');
-  
+
   await prisma.banner.deleteMany();
   console.log('  ✅ Cleared banners');
-  
+
   await prisma.user.deleteMany();
   console.log('  ✅ Cleared users');
-  
+
   await prisma.branch.deleteMany();
   console.log('  ✅ Cleared branches');
-  
+
   await prisma.systemSetting.deleteMany();
   console.log('  ✅ Cleared system settings');
-  
+
+  await prisma.template.deleteMany();
+  console.log('  ✅ Cleared templates');
+
   console.log('\n✨ Database cleaned successfully!\n');
 }
 
@@ -763,7 +766,7 @@ async function cleanupDatabase() {
 
 async function seedBranches() {
   console.log('\n📍 Seeding branches...');
-  
+
   const branches = [];
   for (const branchData of branchesData) {
     const branch = await prisma.branch.create({
@@ -772,21 +775,21 @@ async function seedBranches() {
     branches.push(branch);
     console.log(`  ✅ ${branch.name} (${branch.code})`);
   }
-  
+
   return branches;
 }
 
 async function seedAdminsAndManagers(branches: any[]) {
   console.log('\n👤 Seeding admin & managers...');
-  
+
   const users = [];
   for (const adminData of adminsData) {
     const hashedPassword = await bcrypt.hash(adminData.password, 10);
-    
-    const branch = adminData.branchCode 
+
+    const branch = adminData.branchCode
       ? branches.find(b => b.code === adminData.branchCode)
       : null;
-    
+
     const user = await prisma.user.create({
       data: {
         email: adminData.email,
@@ -798,10 +801,10 @@ async function seedAdminsAndManagers(branches: any[]) {
         isActive: true,
       },
     });
-    
+
     users.push(user);
     console.log(`  ✅ ${user.name} - ${user.role} (${user.email})`);
-    
+
     if (branch && adminData.role === UserRole.ADMIN_BRAND) {
       await prisma.branch.update({
         where: { id: branch.id },
@@ -810,24 +813,24 @@ async function seedAdminsAndManagers(branches: any[]) {
       console.log(`     🔗 Linked to ${branch.name}`);
     }
   }
-  
+
   return users;
 }
 
 async function seedStaff(branches: any[]) {
   console.log('\n👥 Seeding staff...');
-  
+
   const hashedPassword = await bcrypt.hash('staff123', 10);
   const staff = [];
-  
+
   for (const staffMember of staffData) {
     const branch = branches.find(b => b.code === staffMember.branchCode);
-    
+
     if (!branch) {
       console.log(`  ⚠️  Branch ${staffMember.branchCode} not found for ${staffMember.email}`);
       continue;
     }
-    
+
     const user = await prisma.user.create({
       data: {
         email: staffMember.email,
@@ -839,20 +842,20 @@ async function seedStaff(branches: any[]) {
         isActive: true,
       },
     });
-    
+
     staff.push(user);
     console.log(`  ✅ ${user.name} at ${branch.name} (${user.email})`);
   }
-  
+
   return staff;
 }
 
 async function seedLogistics() {
   console.log('\n🚚 Seeding logistics staff...');
-  
+
   const hashedPassword = await bcrypt.hash('logistics123', 10);
   const logistics = [];
-  
+
   for (const logisticsMember of logisticsData) {
     const user = await prisma.user.create({
       data: {
@@ -865,19 +868,19 @@ async function seedLogistics() {
         isActive: true,
       },
     });
-    
+
     logistics.push(user);
     console.log(`  ✅ ${user.name} (${user.email})`);
   }
-  
+
   return logistics;
 }
 
 async function seedCustomers() {
   console.log('\n🛍️  Seeding customers...');
-  
+
   const customers = [];
-  
+
   for (const customerData of customersData) {
     const customer = await prisma.customer.create({
       data: {
@@ -889,11 +892,11 @@ async function seedCustomers() {
         points: 0,
       },
     });
-    
+
     customers.push(customer);
     console.log(`  ✅ ${customer.name} (${customer.email})`);
   }
-  
+
   return customers;
 }
 
@@ -908,7 +911,7 @@ async function seedCategories() {
     createdCategories.push(created);
     console.log(`  ✅ ${category.name} (${category.code})`);
   }
-  
+
   return createdCategories;
 }
 
@@ -917,10 +920,10 @@ async function seedProducts(branches: any[]) {
 
   const allProducts = [];
   let totalOptionsCreated = 0;
-  
+
   for (const branch of branches) {
     console.log(`\n   Creating products for ${branch.name}...`);
-    
+
     for (const product of baseProducts) {
       const { categoryCode, ...productData } = product;
 
@@ -935,7 +938,7 @@ async function seedProducts(branches: any[]) {
 
       const productCode = `${product.code}-${branch.code}`;
       const imageUrl = getProductImage(product.name);
-      
+
       const created = await prisma.product.create({
         data: {
           ...productData,
@@ -946,9 +949,9 @@ async function seedProducts(branches: any[]) {
           isAvailable: true,
         },
       });
-      
+
       allProducts.push(created);
-      
+
       // Thêm product options nếu có
       const optionsData = productOptionsMap[product.code];
       if (optionsData && optionsData.length > 0) {
@@ -971,7 +974,7 @@ async function seedProducts(branches: any[]) {
     }
     console.log(`   ✅ Created ${baseProducts.length} products for ${branch.name}`);
   }
-  
+
   console.log(`\n   📸 All products mapped with images from /assets`);
   console.log(`   🎛️  Created ${totalOptionsCreated} product options`);
   return allProducts;
@@ -999,41 +1002,41 @@ async function seedPromotions() {
     createdPromotions.push(created);
     console.log(`  ✅ ${promo.code} - ${promo.type} (value: ${promo.value})`);
   }
-  
+
   return createdPromotions;
 }
 
 async function seedOrders(branches: any[], customers: any[], staff: any[], allProducts: any[], promotions: any[]) {
   console.log('\n📦 Seeding sample orders...');
-  
+
   const orderStatuses: OrderStatus[] = ['PENDING', 'PREPARING', 'READY', 'COMPLETED', 'CANCELLED'];
-  
+
   let orderCount = 0;
-  
+
   for (const branch of branches) {
     console.log(`\n   Creating orders for ${branch.name}...`);
-    
+
     const branchProducts = allProducts.filter(p => p.branchId === branch.id);
     const branchStaff = staff.filter(s => s.branchId === branch.id);
-    
+
     if (branchProducts.length === 0 || branchStaff.length === 0) {
       console.log(`   ⚠️  No products or staff for ${branch.name}, skipping orders`);
       continue;
     }
-    
+
     const numOrders = 10 + Math.floor(Math.random() * 6);
-    
+
     for (let i = 0; i < numOrders; i++) {
       const customer = customers[Math.floor(Math.random() * customers.length)];
       const assignedStaff = branchStaff[Math.floor(Math.random() * branchStaff.length)];
       const status = orderStatuses[Math.floor(Math.random() * orderStatuses.length)];
-      
+
       const numItems = 1 + Math.floor(Math.random() * 4);
       const selectedProducts = [];
       for (let j = 0; j < numItems; j++) {
         selectedProducts.push(branchProducts[Math.floor(Math.random() * branchProducts.length)]);
       }
-      
+
       let totalAmount = 0;
       const orderItems = selectedProducts.map(p => {
         const quantity = 1 + Math.floor(Math.random() * 3);
@@ -1044,11 +1047,11 @@ async function seedOrders(branches: any[], customers: any[], staff: any[], allPr
           price: p.price,
         };
       });
-      
+
       const usePromotion = Math.random() < 0.3 && promotions.length > 0;
       const promotion = usePromotion ? promotions[Math.floor(Math.random() * promotions.length)] : null;
       let discountAmount = 0;
-      
+
       if (promotion && totalAmount >= (promotion.minOrderAmount || 0)) {
         if (promotion.type === 'FIXED') {
           discountAmount = promotion.value;
@@ -1056,10 +1059,10 @@ async function seedOrders(branches: any[], customers: any[], staff: any[], allPr
           discountAmount = Math.floor(totalAmount * promotion.value / 100);
         }
       }
-      
+
       const createdAt = new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000);
       const orderNumber = `ORD-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-      
+
       const order = await prisma.order.create({
         data: {
           orderNumber,
@@ -1078,7 +1081,7 @@ async function seedOrders(branches: any[], customers: any[], staff: any[], allPr
           },
         },
       });
-      
+
       if (status === 'COMPLETED') {
         const billNumber = `BILL-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
         await prisma.bill.create({
@@ -1097,20 +1100,20 @@ async function seedOrders(branches: any[], customers: any[], staff: any[], allPr
           },
         });
       }
-      
+
       orderCount++;
     }
-    
+
     console.log(`   ✅ Created ${numOrders} orders for ${branch.name}`);
   }
-  
+
   console.log(`\n  📊 Total orders created: ${orderCount}`);
   return orderCount;
 }
 
 async function seedReviews(customers: any[], allProducts: any[]) {
   console.log('\n⭐ Seeding product reviews...');
-  
+
   const reviewTexts = [
     { rating: 5, comment: 'Rất ngon! Sẽ quay lại lần sau!' },
     { rating: 5, comment: 'Chất lượng tuyệt vời, phục vụ nhanh chóng!' },
@@ -1120,16 +1123,16 @@ async function seedReviews(customers: any[], allProducts: any[]) {
     { rating: 5, comment: 'Combo rất đáng giá, gia đình mình rất thích!' },
     { rating: 4, comment: 'Gà giòn ngon, khoai tây chiên tuyệt!' },
   ];
-  
+
   let reviewCount = 0;
-  
+
   for (const customer of customers) {
     const numReviews = 2 + Math.floor(Math.random() * 2);
-    
+
     for (let i = 0; i < numReviews; i++) {
       const product = allProducts[Math.floor(Math.random() * allProducts.length)];
       const reviewData = reviewTexts[Math.floor(Math.random() * reviewTexts.length)];
-      
+
       await prisma.review.create({
         data: {
           customerId: customer.id,
@@ -1139,43 +1142,43 @@ async function seedReviews(customers: any[], allProducts: any[]) {
           createdAt: new Date(Date.now() - Math.random() * 60 * 24 * 60 * 60 * 1000),
         },
       });
-      
+
       reviewCount++;
     }
   }
-  
+
   console.log(`  ✅ Created ${reviewCount} reviews`);
   return reviewCount;
 }
 
 async function seedStockRequests(branches: any[], allProducts: any[], staff: any[]) {
   console.log('\n📋 Seeding stock requests...');
-  
+
   const requestTypes: ('RESTOCK' | 'ADJUSTMENT' | 'RETURN')[] = ['RESTOCK', 'ADJUSTMENT', 'RETURN'];
   const statuses: ('PENDING' | 'APPROVED' | 'REJECTED' | 'COMPLETED' | 'CANCELLED')[] = [
     'PENDING', 'APPROVED', 'COMPLETED', 'REJECTED'
   ];
-  
+
   let requestCount = 0;
-  
+
   for (const branch of branches) {
     const branchProducts = allProducts.filter((p: any) => p.branchId === branch.id);
     const branchStaff = staff.filter((s: any) => s.branchId === branch.id);
-    
+
     if (branchProducts.length === 0 || branchStaff.length === 0) continue;
-    
+
     const numRequests = 3 + Math.floor(Math.random() * 4);
-    
+
     for (let i = 0; i < numRequests; i++) {
       const product = branchProducts[Math.floor(Math.random() * branchProducts.length)];
       const requestedBy = branchStaff[Math.floor(Math.random() * branchStaff.length)];
       const status = statuses[Math.floor(Math.random() * statuses.length)];
       const type = requestTypes[Math.floor(Math.random() * requestTypes.length)];
       const requestedQuantity = 10 + Math.floor(Math.random() * 90);
-      
+
       const requestNumber = `SR-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
       const createdAt = new Date(Date.now() - Math.random() * 15 * 24 * 60 * 60 * 1000);
-      
+
       const stockRequestData: any = {
         requestNumber,
         type,
@@ -1187,40 +1190,40 @@ async function seedStockRequests(branches: any[], allProducts: any[], staff: any
         requestedDate: createdAt,
         createdAt,
       };
-      
+
       if (status === 'APPROVED' || status === 'COMPLETED') {
         stockRequestData.approvedQuantity = requestedQuantity;
         stockRequestData.approvedById = requestedBy.id;
         stockRequestData.expectedDate = new Date(createdAt.getTime() + 3 * 24 * 60 * 60 * 1000);
       }
-      
+
       if (status === 'COMPLETED') {
         stockRequestData.completedDate = new Date(createdAt.getTime() + 5 * 24 * 60 * 60 * 1000);
       }
-      
+
       if (status === 'REJECTED') {
         stockRequestData.rejectedReason = 'Không đủ ngân sách';
       }
-      
+
       await prisma.stockRequest.create({
         data: stockRequestData,
       });
-      
+
       requestCount++;
     }
   }
-  
+
   console.log(`  ✅ Created ${requestCount} stock requests`);
   return requestCount;
 }
 
 async function seedShipments(branches: any[], logistics: any[]) {
   console.log('\n🚚 Seeding shipments...');
-  
+
   const statuses: ('READY' | 'IN_TRANSIT' | 'DELIVERED' | 'COMPLETED' | 'CANCELLED')[] = [
     'READY', 'IN_TRANSIT', 'DELIVERED', 'COMPLETED'
   ];
-  
+
   const productNames = [
     'Gà Rán Giòn',
     'Burger Bò',
@@ -1229,21 +1232,21 @@ async function seedShipments(branches: any[], logistics: any[]) {
     'Nước Ngọt',
     'Kem Sundae',
   ];
-  
+
   let shipmentCount = 0;
-  
+
   for (const branch of branches) {
     const numShipments = 2 + Math.floor(Math.random() * 4);
-    
+
     for (let i = 0; i < numShipments; i++) {
       const assignedTo = logistics[Math.floor(Math.random() * logistics.length)];
       const status = statuses[Math.floor(Math.random() * statuses.length)];
       const productName = productNames[Math.floor(Math.random() * productNames.length)];
       const quantity = 10 + Math.floor(Math.random() * 90);
-      
+
       const shipmentNumber = `SHIP-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
       const createdAt = new Date(Date.now() - Math.random() * 10 * 24 * 60 * 60 * 1000);
-      
+
       const shipmentData: any = {
         shipmentNumber,
         status,
@@ -1258,35 +1261,35 @@ async function seedShipments(branches: any[], logistics: any[]) {
         createdAt,
         priority: Math.random() > 0.7,
       };
-      
+
       if (status === 'IN_TRANSIT') {
         shipmentData.startedAt = new Date(createdAt.getTime() + 1 * 60 * 60 * 1000);
       }
-      
+
       if (status === 'DELIVERED' || status === 'COMPLETED') {
         shipmentData.startedAt = new Date(createdAt.getTime() + 1 * 60 * 60 * 1000);
         shipmentData.deliveredAt = new Date(createdAt.getTime() + 3 * 60 * 60 * 1000);
       }
-      
+
       if (status === 'COMPLETED') {
         shipmentData.completedAt = new Date(createdAt.getTime() + 4 * 60 * 60 * 1000);
       }
-      
+
       await prisma.shipment.create({
         data: shipmentData,
       });
-      
+
       shipmentCount++;
     }
   }
-  
+
   console.log(`  ✅ Created ${shipmentCount} shipments`);
   return shipmentCount;
 }
 
 async function seedBillHistories() {
   console.log('\n📜 Seeding bill histories...');
-  
+
   // Lấy một số bills đã tạo và tạo history cho chúng
   const bills = await prisma.bill.findMany({
     take: 10,
@@ -1294,13 +1297,13 @@ async function seedBillHistories() {
       issuedBy: true,
     },
   });
-  
+
   let historyCount = 0;
-  
+
   for (const bill of bills) {
     // Tạo 1-2 history entries cho mỗi bill
     const numHistories = 1 + Math.floor(Math.random() * 2);
-    
+
     for (let i = 0; i < numHistories; i++) {
       await prisma.billHistory.create({
         data: {
@@ -1328,18 +1331,18 @@ async function seedBillHistories() {
           createdAt: new Date(bill.createdAt.getTime() + i * 5 * 60 * 1000),
         },
       });
-      
+
       historyCount++;
     }
   }
-  
+
   console.log(`  ✅ Created ${historyCount} bill histories`);
   return historyCount;
 }
 
 async function seedSystemSettings() {
   console.log('\n⚙️  Seeding system settings...');
-  
+
   const settings = [
     // General Settings
     {
@@ -1466,13 +1469,13 @@ async function seedSystemSettings() {
       isPublic: false,
     },
   ];
-  
+
   for (const setting of settings) {
     await prisma.systemSetting.create({
       data: setting,
     });
   }
-  
+
   console.log(`  ✅ Created ${settings.length} system settings`);
   return settings.length;
 }
@@ -1481,7 +1484,7 @@ async function seedSystemSettings() {
 
 async function seedAboutUs() {
   console.log('\n📖 Seeding About Us...');
-  
+
   await prisma.aboutUs.create({
     data: {
       title: 'Về AnEat',
@@ -1518,9 +1521,101 @@ async function seedAboutUs() {
       isActive: true,
     },
   });
-  
+
   console.log('  ✅ Created About Us content');
   return 1;
+}
+
+// ============ SEED TEMPLATES ============
+
+async function seedTemplates() {
+  console.log('\n📝 Seeding templates...');
+
+  const templates = [
+    {
+      name: 'Email Chào Mừng',
+      type: 'email',
+      description: 'Email gửi khi khách hàng đăng ký thành công',
+      content: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h1 style="color: #d32f2f;">Chào mừng đến với AnEat!</h1>
+          <p>Xin chào <strong>{{name}}</strong>,</p>
+          <p>Cảm ơn bạn đã đăng ký thành viên tại AnEat. Chúng tôi rất vui mừng được phục vụ bạn.</p>
+          <p>Hãy khám phá ngay các món ngon tại cửa hàng của chúng tôi!</p>
+          <a href="{{loginUrl}}" style="background-color: #d32f2f; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Đặt Món Ngay</a>
+        </div>
+      `,
+      category: TemplateCategory.EMAIL,
+      status: TemplateStatus.ACTIVE,
+      isDefault: true,
+    },
+    {
+      name: 'SMS Xác Nhận Đơn Hàng',
+      type: 'sms',
+      description: 'SMS gửi khi đơn hàng được xác nhận',
+      content: 'AnEat: Cam on ban da dat hang. Ma don {{orderId}}. Tong tien {{total}}. Don hang dang duoc chuan bi. Hotline: 1900xxxx',
+      category: TemplateCategory.SMS,
+      status: TemplateStatus.ACTIVE,
+      isDefault: true,
+    },
+    {
+      name: 'Thông Báo Giao Hàng',
+      type: 'notification',
+      description: 'Thông báo app khi đơn hàng đang giao',
+      content: 'Đơn hàng {{orderId}} của bạn đang được giao. Tài xế: {{driverName}} - {{driverPhone}}.',
+      category: TemplateCategory.NOTIFICATION,
+      status: TemplateStatus.ACTIVE,
+      isDefault: true,
+    },
+    {
+      name: 'Hóa Đơn Bán Hàng',
+      type: 'print',
+      description: 'Mẫu in hóa đơn tại quầy',
+      content: `
+        <div style="width: 300px; font-family: 'Courier New', monospace; font-size: 14px;">
+          <div style="text-align: center; margin-bottom: 10px;">
+            <h2 style="margin: 0;">AnEat - Fast Food</h2>
+            <p style="margin: 5px 0;">Chi nhánh: {{branchName}}</p>
+            <p style="margin: 0;">ĐC: {{branchAddress}}</p>
+            <p style="margin: 0;">SĐT: {{branchPhone}}</p>
+          </div>
+          <hr style="border-top: 1px dashed #000;"/>
+          <p>Số HĐ: {{billId}}</p>
+          <p>Ngày: {{date}}</p>
+          <p>Thu ngân: {{staffName}}</p>
+          <hr style="border-top: 1px dashed #000;"/>
+          <table style="width: 100%;">
+            {{#items}}
+            <tr>
+              <td>{{name}}</td>
+              <td style="text-align: right;">x{{quantity}}</td>
+              <td style="text-align: right;">{{total}}</td>
+            </tr>
+            {{/items}}
+          </table>
+          <hr style="border-top: 1px dashed #000;"/>
+          <div style="display: flex; justify-content: space-between;">
+            <strong>Tổng cộng:</strong>
+            <strong>{{grandTotal}}</strong>
+          </div>
+          <hr style="border-top: 1px dashed #000;"/>
+          <p style="text-align: center; margin-top: 10px;">Hẹn gặp lại quý khách!</p>
+        </div>
+      `,
+      category: TemplateCategory.INVOICE,
+      status: TemplateStatus.ACTIVE,
+      isDefault: true,
+    }
+  ];
+
+  for (const t of templates) {
+    await prisma.template.create({
+      data: t,
+    });
+  }
+
+  console.log(`  ✅ Created ${templates.length} templates`);
+  return templates.length;
 }
 
 // ============ MAIN FUNCTION ============
@@ -1531,7 +1626,7 @@ async function main() {
 
   try {
     await cleanupDatabase();
-    
+
     const branches = await seedBranches();
     const managers = await seedAdminsAndManagers(branches);
     const staff = await seedStaff(branches);
@@ -1545,13 +1640,14 @@ async function main() {
     const orderCount = await seedOrders(branches, customers, staff, allProducts, promotions);
     const reviewCount = await seedReviews(customers, allProducts);
     const stockRequestCount = await seedStockRequests(branches, allProducts, staff);
+    const templateCount = await seedTemplates();
     const shipmentCount = await seedShipments(branches, logistics);
     const billHistoryCount = await seedBillHistories();
     const systemSettingsCount = await seedSystemSettings();
 
     console.log('\n' + '═'.repeat(60));
     console.log('✅ All seeds completed successfully!\n');
-    
+
     console.log('📊 Summary:');
     console.log(`   Branches:        ${branches.length}`);
     console.log(`   Managers:        ${managers.filter(m => m.role === UserRole.ADMIN_BRAND).length}`);
@@ -1567,7 +1663,8 @@ async function main() {
     console.log(`   Shipments:       ${shipmentCount}`);
     console.log(`   Bill Histories:  ${billHistoryCount}`);
     console.log(`   System Settings: ${systemSettingsCount}`);
-    
+    console.log(`   Templates:       ${templateCount}`);
+
     console.log('\n📝 Test Credentials:');
     console.log('   Admin:          admin@aneat.com / admin123');
     console.log('   Manager Q1:     manager.q1@aneat.com / manager123');

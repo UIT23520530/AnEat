@@ -60,7 +60,7 @@ router.post(
       .matches(/^[0-9]{10}$/)
       .withMessage('Phone must be 10 digits'),
     body('name').notEmpty().withMessage('Name is required').trim(),
-    body('email').optional().isEmail().withMessage('Invalid email format'),
+    body('email').optional({ checkFalsy: true }).isEmail().withMessage('Invalid email format'),
     body('tier')
       .optional()
       .isIn(['BRONZE', 'SILVER', 'GOLD', 'VIP'])
@@ -90,7 +90,7 @@ router.patch(
       .optional()
       .matches(/^[0-9]{10}$/)
       .withMessage('Phone must be 10 digits'),
-    body('email').optional().isEmail().withMessage('Invalid email format'),
+    body('email').optional({ checkFalsy: true }).isEmail().withMessage('Invalid email format'),
     body('tier')
       .optional()
       .isIn(['BRONZE', 'SILVER', 'GOLD', 'VIP'])

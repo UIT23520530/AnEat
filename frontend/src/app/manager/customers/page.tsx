@@ -176,16 +176,9 @@ function CustomersContent() {
         phone: values.phone,
         email: values.email,
         tier: values.tier,
+        points: values.currentPoints
       }
       await managerCustomerService.updateCustomer(selectedCustomer.id, updateData)
-
-      // Points adjustment if any
-      if (values.pointsAdjustment !== 0) {
-        await managerCustomerService.adjustPoints(selectedCustomer.id, {
-          points: values.pointsAdjustment,
-          reason: "Điều chỉnh từ quản trị viên",
-        })
-      }
 
       message.success("Đã cập nhật thông tin khách hàng")
       setIsEditModalOpen(false)

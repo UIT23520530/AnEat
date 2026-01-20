@@ -9,7 +9,7 @@ import { UserRole } from '@prisma/client';
 export const getAllUsers = async (req: Request, res: Response): Promise<void> => {
   try {
     const { page = 1, limit = 10, role, search, isActive } = req.query;
-    
+
     console.log('📋 Get all users request:', {
       page,
       limit,
@@ -25,6 +25,9 @@ export const getAllUsers = async (req: Request, res: Response): Promise<void> =>
 
     if (role) {
       where.role = role;
+    } else {
+      // Exclude CUSTOMER role from admin user list by default
+      where.role = { not: UserRole.CUSTOMER };
     }
 
     if (isActive !== undefined) {
@@ -238,7 +241,7 @@ export const updateUser = async (req: Request, res: Response): Promise<void> => 
     // 🔄 AUTO-SYNC LOGIC FOR ADMIN_BRAND (Manager):
     const finalRole = role !== undefined ? role : user.role;
     const finalBranchId = branchId !== undefined ? branchId : user.branchId;
-    
+
     // 1. If ADMIN_BRAND user is being assigned to a branch, update branch.managerId
     if (finalRole === UserRole.ADMIN_BRAND && branchId !== undefined) {
       // Check if branch already has a different manager
@@ -275,7 +278,7 @@ export const updateUser = async (req: Request, res: Response): Promise<void> => 
           console.log('✅ Cleared old branch assignment:', oldBranch.name);
         }
       }
-      
+
       // Set new branch assignment
       if (branchId) {
         await prisma.branch.update({
@@ -285,29 +288,29 @@ export const updateUser = async (req: Request, res: Response): Promise<void> => 
         console.log('✅ Synced branch.managerId:', branchId);
       }
     }
-    
+
     // 2. If ADMIN_BRAND user is being deactivated, clear their branch assignment
     if (isActive === false && finalRole === UserRole.ADMIN_BRAND) {
       console.log('⚠️ Manager deactivated → Clearing branch assignment');
-      
+
       const managedBranch = await prisma.branch.findFirst({
         where: { managerId: id },
       });
-      
+
       if (managedBranch) {
         await prisma.branch.update({
           where: { id: managedBranch.id },
-          data: { 
+          data: {
             managerId: null,
             isActive: false,
           },
         });
         console.log('✅ Cleared manager from branch:', managedBranch.name);
       }
-      
+
       updateData.branchId = null;
     }
-    
+
     // 3. If branchId is being cleared, also clear branch.managerId
     if (branchId === null && finalRole === UserRole.ADMIN_BRAND) {
       const oldBranch = await prisma.branch.findFirst({
@@ -423,7 +426,7 @@ export const deleteUser = async (req: Request, res: Response): Promise<void> => 
 
       if (managedBranch) {
         console.log('⚠️ User is managing branch:', { branchId: managedBranch.id, branchName: managedBranch.name });
-        
+
         // Remove manager from branch and deactivate the branch
         await prisma.branch.update({
           where: { id: managedBranch.id },
@@ -432,7 +435,7 @@ export const deleteUser = async (req: Request, res: Response): Promise<void> => 
             isActive: false, // Deactivate branch when manager is removed
           },
         });
-        
+
         console.log('✅ Removed manager from branch and deactivated it:', { branchId: managedBranch.id });
       }
     }
@@ -581,12 +584,15 @@ export const createUser = async (req: Request, res: Response): Promise<void> => 
 export const getUsersStats = async (req: Request, res: Response): Promise<void> => {
   try {
     const { branchId } = req.query;
-    
+
     console.log('📊 Get users stats request', branchId ? `for branch: ${branchId}` : '(all branches)');
 
     // Build where clause for branch filtering
-    const where: any = { deletedAt: null };
-    
+    const where: any = {
+      deletedAt: null,
+      role: { not: UserRole.CUSTOMER } // Exclude customers from stats
+    };
+
     if (branchId) {
       where.OR = [
         { branchId: branchId as string },

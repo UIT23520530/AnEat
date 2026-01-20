@@ -25,7 +25,7 @@ import { adminTemplateService, TemplateDTO, TemplateCategory, TemplateStatus, Cr
 import { adminBranchService } from "@/services/admin-branch.service";
 import { TemplateForm } from "@/components/forms/admin/TemplateForm";
 import { TemplateDetailModal } from "@/components/forms/admin/TemplateDetailModal";
-import { TemplatePreviewModal } from "@/components/forms/admin/TemplatePreviewModal";
+import { InvoicePrintModal } from "@/components/forms/admin/InvoicePrintModal";
 import dayjs from "dayjs";
 
 const { Option } = Select;
@@ -40,6 +40,85 @@ const normalizeSearchString = (str: string) => {
     .replace(/\s+/g, "-")
     .trim()
 }
+
+// Helper to generate sample content for preview
+const generateSampleContent = (template: TemplateDTO) => {
+  let content = template.content;
+
+  // Sample data for iteration
+  const sampleItems = [
+    { name: 'Gà Rán Giòn (2 miếng)', quantity: 2, price: '35,000đ', total: '70,000đ' },
+    { name: 'Khoai Tây Chiên (Lớn)', quantity: 1, price: '25,000đ', total: '25,000đ' },
+    { name: 'Pepsi Tươi (Lớn)', quantity: 2, price: '15,000đ', total: '30,000đ' }
+  ];
+
+  // Handle {{#items}}...{{/items}} block (Handlebars style)
+  const itemsBlockRegex = /{{#items}}([\s\S]*?){{\/items}}/g;
+  content = content.replace(itemsBlockRegex, (match, innerContent) => {
+    return sampleItems.map(item => {
+      let itemRow = innerContent;
+      itemRow = itemRow.replace(/{{name}}/g, item.name);
+      itemRow = itemRow.replace(/{{quantity}}/g, String(item.quantity));
+      itemRow = itemRow.replace(/{{price}}/g, item.price);
+      itemRow = itemRow.replace(/{{total}}/g, item.total);
+      return itemRow;
+    }).join('');
+  });
+
+  // Common placeholders
+  content = content.replace(/{{billNumber}}/g, 'BILL-2026-0001');
+  content = content.replace(/{{billId}}/g, 'BILL-2026-0001');
+  content = content.replace(/{{orderNumber}}/g, 'ORD-2026-0001');
+  content = content.replace(/{{orderId}}/g, 'ORD-2026-0001');
+  content = content.replace(/{{receiptNumber}}/g, 'REC-2026-0001');
+  content = content.replace(/{{customerName}}/g, 'Nguyễn Văn A');
+  content = content.replace(/{{customerPhone}}/g, '0901234567');
+  content = content.replace(/{{customerAddress}}/g, '123 Nguyễn Huệ, Quận 1, TP.HCM');
+  content = content.replace(/{{address}}/g, '123 Nguyễn Huệ, Quận 1, TP.HCM');
+
+  // Financial
+  content = content.replace(/{{total}}/g, '125,000đ');
+  content = content.replace(/{{grandTotal}}/g, '125,000đ');
+  content = content.replace(/{{subtotal}}/g, '113,636đ');
+  content = content.replace(/{{tax}}/g, '11,364đ');
+  content = content.replace(/{{discount}}/g, '0đ');
+  content = content.replace(/{{finalTotal}}/g, '125,000đ');
+
+  content = content.replace(/{{date}}/g, new Date().toLocaleDateString('vi-VN'));
+  content = content.replace(/{{time}}/g, new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }));
+  content = content.replace(/{{tableNumber}}/g, 'Bàn 5');
+  content = content.replace(/{{branchName}}/g, 'AnEat - Chi nhánh Quận 1');
+  content = content.replace(/{{branchAddress}}/g, '456 Lê Lợi, Quận 1, TP.HCM');
+  content = content.replace(/{{branchPhone}}/g, '028 3822 1111');
+  content = content.replace(/{{staffName}}/g, 'Trần Thị Thu Ngân');
+  content = content.replace(/{{paymentMethod}}/g, 'Tiền mặt');
+
+  // Fallback for simple {{itemsList}} placeholder
+  const sampleItemsList = sampleItems.map(i => `${i.quantity} x ${i.name} = ${i.total}`).join('<br/>');
+  content = content.replace(/{{itemsList}}/g, sampleItemsList);
+
+  // Fallback for simple {{items}} placeholder if block syntax not used
+  // Note: Only replace specifically if loop wasn't processed, though regex above consumes loop blocks.
+  // This is for simple templates like: <table> {{items}} </table>
+  const sampleItemsRows = sampleItems.map(item => `
+    <tr>
+      <td>${item.name}</td>
+      <td align="center">${item.quantity}</td>
+      <td align="right">${item.price}</td>
+      <td align="right">${item.total}</td>
+    </tr>
+  `).join('');
+  content = content.replace(/{{items}}/g, sampleItemsRows);
+
+  // Report specific
+  content = content.replace(/{{reportDate}}/g, new Date().toLocaleDateString('vi-VN'));
+  content = content.replace(/{{totalSales}}/g, '15,000,000đ');
+  content = content.replace(/{{revenue}}/g, '13,500,000đ');
+  content = content.replace(/{{profit}}/g, '3,200,000đ');
+  content = content.replace(/{{orderCount}}/g, '45');
+
+  return content;
+};
 
 function TemplatesContent() {
   const { message, modal } = App.useApp();
@@ -81,11 +160,11 @@ function TemplatesContent() {
     setLoading(true);
     try {
       const filters: any = {};
-      
+
       if (searchTerm) filters.search = searchTerm;
       if (categoryFilter && categoryFilter !== "all") filters.category = categoryFilter as TemplateCategory;
       if (statusFilter && statusFilter !== "all") filters.status = statusFilter as TemplateStatus;
-      
+
       if (branchFilter === "system") {
         filters.branchId = null;
       } else if (branchFilter && branchFilter !== "all") {
@@ -114,7 +193,7 @@ function TemplatesContent() {
       let bId: string | undefined = undefined;
       if (branchFilter === "system") bId = "null";
       else if (branchFilter !== "all") bId = branchFilter;
-      
+
       const data = await adminTemplateService.getStats(bId);
       setStats(data);
     } catch (error) {
@@ -238,30 +317,6 @@ function TemplatesContent() {
 
   const handleConfirmPrint = () => {
     if (!selectedTemplate) return;
-    
-    const templateName = selectedTemplate.name;
-    
-    // Setup after print handler (fires when print dialog closes)
-    const afterPrintHandler = () => {
-      // Close modal
-      setIsPreviewModalOpen(false);
-      
-      // Show success message
-      message.success(`Đã in mẫu "${templateName}" thành công`);
-      
-      // Reload page to ensure layout is preserved
-      setTimeout(() => {
-        window.location.reload();
-      }, 500);
-      
-      // Remove event listener
-      window.removeEventListener('afterprint', afterPrintHandler);
-    };
-    
-    // Add event listener for after print
-    window.addEventListener('afterprint', afterPrintHandler);
-    
-    // Trigger print (modal stays open so content is visible)
     window.print();
   };
 
@@ -533,7 +588,7 @@ function TemplatesContent() {
                         <span>Tất cả chi nhánh</span>
                       </div>
                     </Select.Option>
-                  
+
                     {branches.map((b) => (
                       <Select.Option key={b.id} value={b.id} label={b.name}>
                         <div className="flex items-center gap-2 py-1">
@@ -591,14 +646,14 @@ function TemplatesContent() {
         centered
         destroyOnHidden
       >
-        <TemplateForm 
-          form={form} 
-          onSubmit={handleCreate} 
+        <TemplateForm
+          form={form}
+          onSubmit={handleCreate}
           onCancel={() => {
             setIsAddModalOpen(false);
             form.resetFields();
           }}
-          loading={submitting} 
+          loading={submitting}
         />
       </Modal>
 
@@ -661,52 +716,19 @@ function TemplatesContent() {
         />
       )}
 
-      {/* Preview Modal */}
+      {/* Preview Modal using InvoicePrintModal */}
       {selectedTemplate && (
-        <TemplatePreviewModal
+        <InvoicePrintModal
           open={isPreviewModalOpen}
-          template={selectedTemplate}
+          invoice={null}
+          customHtmlContent={generateSampleContent(selectedTemplate)}
           onClose={() => {
             setIsPreviewModalOpen(false);
             setSelectedTemplate(null);
           }}
-          onPrint={handleConfirmPrint}
+          onConfirmPrint={handleConfirmPrint}
         />
       )}
-
-      {/* Print Styles */}
-      <style jsx global>{`
-        @media print {
-          @page {
-            size: A4;
-            margin: 15mm;
-          }
-          
-          /* Hide everything */
-          body * {
-            visibility: hidden;
-          }
-          
-          /* Show only template preview content */
-          #template-preview-content,
-          #template-preview-content * {
-            visibility: visible;
-          }
-          
-          /* Position template content for print */
-          #template-preview-content {
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 100%;
-            max-width: 100% !important;
-            margin: 0 !important;
-            padding: 20px !important;
-            box-shadow: none !important;
-            background: white !important;
-          }
-        }
-      `}</style>
     </div>
   );
 }
@@ -715,7 +737,7 @@ export default function TemplatesPage() {
   return (
     <AdminLayout title="Quản lý Mẫu">
       <App>
-      <TemplatesContent />
+        <TemplatesContent />
       </App>
     </AdminLayout>
   );

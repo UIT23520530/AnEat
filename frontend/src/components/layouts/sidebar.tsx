@@ -69,14 +69,18 @@ export function Sidebar({
     }
 
     window.addEventListener('storage', handleStorageChange)
-    
+
     // Also check periodically in case currentUser was set after component mount
     const intervalId = setInterval(() => {
       const updatedUser = getCurrentUser()
-      if (updatedUser && JSON.stringify(updatedUser) !== JSON.stringify(currentUser)) {
-        console.log("Sidebar - User found/changed on interval check:", updatedUser)
-        setCurrentUser(updatedUser)
-      }
+      // Use functional state update to access the most recent currentUser value
+      setCurrentUser((prevUser) => {
+        if (updatedUser && JSON.stringify(updatedUser) !== JSON.stringify(prevUser)) {
+          // console.log("Sidebar - User found/changed on interval check:", updatedUser)
+          return updatedUser
+        }
+        return prevUser
+      })
     }, 1000)
 
     return () => {
@@ -119,30 +123,30 @@ export function Sidebar({
         <div className="flex-1 overflow-hidden">
           <ScrollArea className="h-full">
             <nav className="grid items-start gap-1 px-3 py-2 text-sm pb-4">
-            {navItems.map((item) => {
-              const isActive = pathname === item.href || (pathname.startsWith(item.href) && pathname.charAt(item.href.length) === '/')
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={cn(
-                    "flex items-center gap-3 rounded-lg px-3 py-3 text-gray-600 transition-all hover:bg-green-50 hover:text-green-600",
-                    isActive && "bg-green-100/60 text-green-700 font-medium",
-                    isCollapsed && "justify-center px-2"
-                  )}
-                  title={isCollapsed ? item.label : undefined}
-                >
-                  <item.icon className="h-5 w-5 flex-shrink-0" />
-                  {!isCollapsed && <span>{item.label}</span>}
-                </Link>
-              )
-            })}
+              {navItems.map((item) => {
+                const isActive = pathname === item.href || (pathname.startsWith(item.href) && pathname.charAt(item.href.length) === '/')
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={cn(
+                      "flex items-center gap-3 rounded-lg px-3 py-3 text-gray-600 transition-all hover:bg-green-50 hover:text-green-600",
+                      isActive && "bg-green-100/60 text-green-700 font-medium",
+                      isCollapsed && "justify-center px-2"
+                    )}
+                    title={isCollapsed ? item.label : undefined}
+                  >
+                    <item.icon className="h-5 w-5 flex-shrink-0" />
+                    {!isCollapsed && <span>{item.label}</span>}
+                  </Link>
+                )
+              })}
             </nav>
           </ScrollArea>
         </div>
         <div className="flex-shrink-0 border-t border-gray-100">
           {currentUser && (
-            <Link 
+            <Link
               href={currentUser.role === "CUSTOMER" ? "/customer/profile-user" : "/profile"}
               className={cn(
                 "block p-4 mx-3 my-3 bg-gradient-to-br from-orange-50 to-green-50 rounded-xl border border-orange-100 hover:shadow-md transition-all cursor-pointer",
@@ -152,21 +156,27 @@ export function Sidebar({
               {!isCollapsed ? (
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-orange-500 to-green-500 flex items-center justify-center text-white font-bold shadow-md flex-shrink-0">
-                      {currentUser.name.charAt(0).toUpperCase()}
+                    <div className="w-8 h-8 rounded-full overflow-hidden shadow-md flex-shrink-0 border border-gray-200">
+                      <Image
+                        src="/avt/avt-profile.jpg"
+                        alt={currentUser.name}
+                        width={32}
+                        height={32}
+                        className="w-full h-full object-cover"
+                      />
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold text-gray-900 truncate">
                         {currentUser.name}
                       </p>
                       <p className="text-xs text-gray-600">
-                        {currentUser.role === "ADMIN_SYSTEM" 
+                        {currentUser.role === "ADMIN_SYSTEM"
                           ? "Quản trị hệ thống"
                           : currentUser.role === "ADMIN_BRAND"
-                          ? "Quản lý chi nhánh"
-                          : currentUser.role === "STAFF"
-                          ? "Nhân viên"
-                          : "Khách hàng"}
+                            ? "Quản lý chi nhánh"
+                            : currentUser.role === "STAFF"
+                              ? "Nhân viên"
+                              : "Khách hàng"}
                       </p>
                     </div>
                   </div>
@@ -180,14 +190,20 @@ export function Sidebar({
                   )}
                 </div>
               ) : (
-                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-orange-500 to-green-500 flex items-center justify-center text-white font-bold shadow-md mx-auto">
-                  {currentUser.name.charAt(0).toUpperCase()}
+                <div className="w-8 h-8 rounded-full overflow-hidden shadow-md mx-auto border border-gray-200">
+                  <Image
+                    src="/avt/avt-profile.jpg"
+                    alt={currentUser.name}
+                    width={32}
+                    height={32}
+                    className="w-full h-full object-cover"
+                  />
                 </div>
               )}
             </Link>
           )}
           <div className="px-3 pb-3 space-y-1">
-          
+
             <Button
               variant="ghost"
               className={cn(

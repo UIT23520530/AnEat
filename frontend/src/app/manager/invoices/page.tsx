@@ -334,8 +334,7 @@ function InvoicesContent() {
 
       message.success(`Đã in hóa đơn ${selectedInvoice.id}`);
 
-      // Close modal and refresh
-      setIsPrintModalOpen(false);
+      // Refresh list
       fetchBills(pagination.current, pagination.pageSize);
     } catch (error: any) {
       message.error("Không thể in hóa đơn");

@@ -23,6 +23,7 @@ import {
   Image,
   InputNumber,
   Switch,
+  Descriptions,
 } from "antd"
 import {
   SearchOutlined,
@@ -98,7 +99,9 @@ function ProductsContent() {
   // Modals
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
+  const [isViewModalOpen, setIsViewModalOpen] = useState(false)
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
+  const [viewProduct, setViewProduct] = useState<Product | null>(null)
 
   // Forms
   const [editForm] = Form.useForm()
@@ -139,7 +142,7 @@ function ProductsContent() {
 
       // Client-side filter
       let filteredData = response.data
-      
+
       if (searchQuery) {
         const normalizedQuery = normalizeSearchString(searchQuery)
         filteredData = filteredData.filter((p: Product) => {
@@ -216,10 +219,15 @@ function ProductsContent() {
     }
   }
 
-  // Handle edit click
   const handleEditClick = (record: Product) => {
     setSelectedProduct(record)
     setIsEditModalOpen(true)
+  }
+
+  // Handle view click
+  const handleViewClick = (record: Product) => {
+    setViewProduct(record)
+    setIsViewModalOpen(true)
   }
 
   // Handle delete
@@ -315,29 +323,6 @@ function ProductsContent() {
       width: 100,
       render: (_, record: Product) => (
         <div style={{ display: "flex", alignItems: "center", gap: "12px", opacity: record.isAvailable ? 1 : 0.5 }}>
-          {record.image ? (
-            <Image
-              src={record.image}
-              alt={record.name}
-              width={60}
-              height={60}
-              style={{ borderRadius: "8px", objectFit: "cover" }}
-            />
-          ) : (
-            <div
-              style={{
-                width: 60,
-                height: 60,
-                borderRadius: "8px",
-                background: "#f0f0f0",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontSize: "24px",
-              }}
-            >
-            </div>
-          )}
           <div style={{ flex: 1 }}>
             <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
               <span style={{ fontWeight: 600, fontSize: "14px" }}>
@@ -418,9 +403,9 @@ function ProductsContent() {
           <Tag
             icon={
               status.text === "Sắp hết" ? <WarningOutlined /> :
-              status.text === "Hết hàng" ? <StopOutlined /> :
-              status.text === "Đã ẩn" ? <EyeInvisibleOutlined /> :
-              <CheckCircleOutlined />
+                status.text === "Hết hàng" ? <StopOutlined /> :
+                  status.text === "Đã ẩn" ? <EyeInvisibleOutlined /> :
+                    <CheckCircleOutlined />
             }
             color={status.color}
           >
@@ -437,6 +422,13 @@ function ProductsContent() {
       fixed: "right",
       render: (_, record: Product) => (
         <Space size="small">
+          <Tooltip title="Xem chi tiết">
+            <Button
+              type="text"
+              icon={<EyeOutlined />}
+              onClick={() => handleViewClick(record)}
+            />
+          </Tooltip>
           <Tooltip title="Sửa">
             <Button
               type="text"
@@ -447,20 +439,12 @@ function ProductsContent() {
           <Tooltip title={record.isAvailable ? "Ẩn sản phẩm" : "Hiện sản phẩm"}>
             <Button
               type="text"
-              icon={record.isAvailable ? <EyeInvisibleOutlined /> : <EyeOutlined />}
+              icon={record.isAvailable ? <StopOutlined /> : <CheckCircleOutlined />}
               onClick={() => handleToggleActive(record)}
+              danger={record.isAvailable}
+              className={!record.isAvailable ? "text-green-600 hover:text-green-700" : ""}
             />
           </Tooltip>
-          {record.branchId && (
-            <Tooltip title="Xem chi tiết chi nhánh">
-              <Button
-                type="text"
-                icon={<ArrowRightOutlined />}
-                className="text-blue-600 hover:text-blue-700"
-                onClick={() => router.push(`/admin/branches?branchId=${record.branchId}`)}
-              />
-            </Tooltip>
-          )}
           <Tooltip title="Xóa">
             <Button
               type="text"
@@ -540,18 +524,18 @@ function ProductsContent() {
                       </Select.Option>
                     ))}
                   </Select>
-                    <Select
-                      value={statusFilter}
-                      onChange={setStatusFilter}
-                      style={{ width: 180 }}
-                      className={statusFilter !== "all" ? "[&>.ant-select-selector]:!bg-blue-50 [&>.ant-select-selector]:!border-blue-500" : ""}
-                    >
-                      <Select.Option value="all">Tất cả trạng thái</Select.Option>
-                      <Select.Option value="available">Đang bán</Select.Option>
-                      <Select.Option value="low-stock">Sắp hết</Select.Option>
-                      <Select.Option value="out-of-stock">Hết hàng</Select.Option>
-                      <Select.Option value="hidden">Đã ẩn</Select.Option>
-                    </Select>
+                  <Select
+                    value={statusFilter}
+                    onChange={setStatusFilter}
+                    style={{ width: 180 }}
+                    className={statusFilter !== "all" ? "[&>.ant-select-selector]:!bg-blue-50 [&>.ant-select-selector]:!border-blue-500" : ""}
+                  >
+                    <Select.Option value="all">Tất cả trạng thái</Select.Option>
+                    <Select.Option value="available">Đang bán</Select.Option>
+                    <Select.Option value="low-stock">Sắp hết</Select.Option>
+                    <Select.Option value="out-of-stock">Hết hàng</Select.Option>
+                    <Select.Option value="hidden">Đã ẩn</Select.Option>
+                  </Select>
                   <Select
                     showSearch
                     allowClear
@@ -648,6 +632,89 @@ function ProductsContent() {
           categories={categories}
           branches={branches}
         />
+      </Modal>
+
+      {/* View Detail Modal */}
+      <Modal
+        title="Chi tiết sản phẩm"
+        open={isViewModalOpen}
+        onCancel={() => setIsViewModalOpen(false)}
+        footer={[
+          <Button key="close" onClick={() => setIsViewModalOpen(false)}>
+            Đóng
+          </Button>
+        ]}
+        width={800}
+      >
+        {viewProduct && (
+          <div className="flex flex-col gap-6">
+            <div className="flex gap-6">
+              <div className="w-1/3">
+                {viewProduct.image ? (
+                  <Image
+                    src={viewProduct.image}
+                    alt={viewProduct.name}
+                    width="100%"
+                    className="rounded-lg object-cover"
+                    fallback="/images/placeholder-food.jpg"
+                  />
+                ) : (
+                  <div className="w-full aspect-square bg-gray-100 rounded-lg flex items-center justify-center text-gray-400">
+                    <ShoppingOutlined style={{ fontSize: 48 }} />
+                  </div>
+                )}
+              </div>
+              <div className="w-2/3">
+                <Descriptions column={1} bordered>
+                  <Descriptions.Item label="Mã sản phẩm">
+                    <Tag color="blue">{viewProduct.code}</Tag>
+                  </Descriptions.Item>
+                  <Descriptions.Item label="Tên sản phẩm">
+                    <strong>{viewProduct.name}</strong>
+                  </Descriptions.Item>
+                  <Descriptions.Item label="Danh mục">
+                    <Tag>{viewProduct.category?.name}</Tag>
+                  </Descriptions.Item>
+                  <Descriptions.Item label="Giá bán">
+                    <span className="text-lg font-semibold text-orange-600">
+                      {viewProduct.price.toLocaleString("vi-VN")}đ
+                    </span>
+                  </Descriptions.Item>
+                  <Descriptions.Item label="Trạng thái">
+                    {(() => {
+                      const status = getStockStatus(viewProduct.quantity, viewProduct.isAvailable)
+                      return (
+                        <Tag color={status.color}>
+                          {status.text}
+                        </Tag>
+                      )
+                    })()}
+                  </Descriptions.Item>
+                </Descriptions>
+              </div>
+            </div>
+
+            <Descriptions title="Thông tin chi tiết" column={2} bordered>
+              <Descriptions.Item label="Tồn kho">{viewProduct.quantity}</Descriptions.Item>
+              <Descriptions.Item label="Thời gian chuẩn bị">{viewProduct.prepTime} phút</Descriptions.Item>
+              <Descriptions.Item label="Giá vốn">{viewProduct.costPrice?.toLocaleString("vi-VN")}đ</Descriptions.Item>
+              <Descriptions.Item label="Chi nhánh">
+                {viewProduct.branches && viewProduct.branches.length > 0 ? (
+                  <div className="flex flex-wrap gap-1">
+                    {viewProduct.branches.map(b => (
+                      <Tag color="blue" key={b.id}>{b.name}</Tag>
+                    ))}
+                  </div>
+                ) : (
+                  <Tag color="green">Toàn hệ thống</Tag>
+                )}
+              </Descriptions.Item>
+              <Descriptions.Item label="Mô tả" span={2}>
+                {viewProduct.description || "Chưa có mô tả"}
+              </Descriptions.Item>
+            </Descriptions>
+          </div>
+        )}
       </Modal>
     </div>
   )

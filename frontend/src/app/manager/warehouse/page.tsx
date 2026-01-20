@@ -205,13 +205,7 @@ function WarehouseContent() {
       width: 200,
       render: (_, record) => (
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-gray-50 rounded border border-gray-100 flex items-center justify-center overflow-hidden">
-            {record.image ? (
-              <img src={record.image} alt={record.name} className="w-full h-full object-cover" />
-            ) : (
-              <InboxOutlined className="text-gray-300" />
-            )}
-          </div>
+          {/* Image removed for performance */}
           <div>
             <div className="font-medium">{record.name}</div>
             <div className="text-xs text-gray-500">SKU: {record.code}</div>

@@ -24,8 +24,29 @@ export const TemplatePreviewModal: React.FC<TemplatePreviewModalProps> = ({
   const getSampleContent = () => {
     let content = template.content;
 
+    // Sample data for iteration
+    const sampleItems = [
+      { name: 'Gà Rán Giòn (2 miếng)', quantity: 2, price: '35,000đ', total: '70,000đ' },
+      { name: 'Khoai Tây Chiên (Lớn)', quantity: 1, price: '25,000đ', total: '25,000đ' },
+      { name: 'Pepsi Tươi (Lớn)', quantity: 2, price: '15,000đ', total: '30,000đ' }
+    ];
+
+    // Handle {{#items}}...{{/items}} block
+    const itemsBlockRegex = /{{#items}}([\s\S]*?){{\/items}}/g;
+    content = content.replace(itemsBlockRegex, (match, innerContent) => {
+      return sampleItems.map(item => {
+        let itemRow = innerContent;
+        itemRow = itemRow.replace(/{{name}}/g, item.name);
+        itemRow = itemRow.replace(/{{quantity}}/g, item.quantity);
+        itemRow = itemRow.replace(/{{price}}/g, item.price);
+        itemRow = itemRow.replace(/{{total}}/g, item.total);
+        return itemRow;
+      }).join('');
+    });
+
     // Common placeholders - clean, no extra bold
     content = content.replace(/{{billNumber}}/g, 'BILL-2026-0001');
+    content = content.replace(/{{billId}}/g, 'BILL-2026-0001');
     content = content.replace(/{{orderNumber}}/g, 'ORD-2026-0001');
     content = content.replace(/{{orderId}}/g, 'ORD-2026-0001');
     content = content.replace(/{{receiptNumber}}/g, 'REC-2026-0001');
@@ -33,23 +54,25 @@ export const TemplatePreviewModal: React.FC<TemplatePreviewModalProps> = ({
     content = content.replace(/{{customerPhone}}/g, '0901234567');
     content = content.replace(/{{customerAddress}}/g, '123 Nguyễn Huệ, Quận 1, TP.HCM');
     content = content.replace(/{{address}}/g, '123 Nguyễn Huệ, Quận 1, TP.HCM');
-    
+
     // Financial - keep consistent formatting
-    content = content.replace(/{{total}}/g, '500,000đ');
-    content = content.replace(/{{subtotal}}/g, '450,000đ');
-    content = content.replace(/{{tax}}/g, '50,000đ');
-    content = content.replace(/{{discount}}/g, '50,000đ');
-    content = content.replace(/{{finalTotal}}/g, '450,000đ');
-    
+    content = content.replace(/{{total}}/g, '125,000đ');
+    content = content.replace(/{{grandTotal}}/g, '125,000đ'); // Matched with sample items
+    content = content.replace(/{{subtotal}}/g, '113,636đ');
+    content = content.replace(/{{tax}}/g, '11,364đ');
+    content = content.replace(/{{discount}}/g, '0đ');
+    content = content.replace(/{{finalTotal}}/g, '125,000đ');
+
     content = content.replace(/{{date}}/g, new Date().toLocaleDateString('vi-VN'));
     content = content.replace(/{{time}}/g, new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }));
     content = content.replace(/{{tableNumber}}/g, 'Bàn 5');
     content = content.replace(/{{branchName}}/g, 'AnEat - Chi nhánh Quận 1');
     content = content.replace(/{{branchAddress}}/g, '456 Lê Lợi, Quận 1, TP.HCM');
+    content = content.replace(/{{branchPhone}}/g, '028 3822 1111');
     content = content.replace(/{{staffName}}/g, 'Trần Thị B');
     content = content.replace(/{{paymentMethod}}/g, 'Tiền mặt');
 
-    // Items - format as nice list or table depending on template
+    // Fallback for simple {{items}} placeholder if block syntax wasn't used
     const sampleItemsTable = `
       <table style="width: 100%; border-collapse: collapse; margin: 10px 0;">
         <thead>
@@ -61,39 +84,29 @@ export const TemplatePreviewModal: React.FC<TemplatePreviewModalProps> = ({
           </tr>
         </thead>
         <tbody>
-          <tr>
-            <td style="padding: 6px 8px;">Phở Bò Đặc Biệt</td>
-            <td style="text-align: center; padding: 6px 8px;">2</td>
-            <td style="text-align: right; padding: 6px 8px;">85,000đ</td>
-            <td style="text-align: right; padding: 6px 8px;">170,000đ</td>
-          </tr>
-          <tr>
-            <td style="padding: 6px 8px;">Cà Phê Sữa Đá</td>
-            <td style="text-align: center; padding: 6px 8px;">1</td>
-            <td style="text-align: right; padding: 6px 8px;">25,000đ</td>
-            <td style="text-align: right; padding: 6px 8px;">25,000đ</td>
-          </tr>
-          <tr>
-            <td style="padding: 6px 8px;">Bánh Mì Pate</td>
-            <td style="text-align: center; padding: 6px 8px;">3</td>
-            <td style="text-align: right; padding: 6px 8px;">20,000đ</td>
-            <td style="text-align: right; padding: 6px 8px;">60,000đ</td>
-          </tr>
+          ${sampleItems.map(item => `
+            <tr>
+              <td style="padding: 6px 8px;">${item.name}</td>
+              <td style="text-align: center; padding: 6px 8px;">${item.quantity}</td>
+              <td style="text-align: right; padding: 6px 8px;">${item.price}</td>
+              <td style="text-align: right; padding: 6px 8px;">${item.total}</td>
+            </tr>
+          `).join('')}
         </tbody>
       </table>
     `;
-    
-    const sampleItemsList = `1 Phở Bò Đặc Biệt 2 85,000đ 170,000đ 2 Cà Phê Sữa Đá 1 25,000đ 25,000đ 3 Bánh Mì Pate 3 20,000đ 60,000đ`;
-    
+
+    const sampleItemsList = sampleItems.map(i => `${i.quantity} ${i.name} ${i.total}`).join('<br/>');
+
     content = content.replace(/{{items}}/g, sampleItemsTable);
     content = content.replace(/{{itemsList}}/g, sampleItemsList);
 
     // Report specific
     content = content.replace(/{{reportDate}}/g, new Date().toLocaleDateString('vi-VN'));
-    content = content.replace(/{{totalSales}}/g, '5,000,000đ');
-    content = content.replace(/{{revenue}}/g, '4,500,000đ');
-    content = content.replace(/{{profit}}/g, '1,200,000đ');
-    content = content.replace(/{{orderCount}}/g, '127');
+    content = content.replace(/{{totalSales}}/g, '15,000,000đ');
+    content = content.replace(/{{revenue}}/g, '13,500,000đ');
+    content = content.replace(/{{profit}}/g, '3,200,000đ');
+    content = content.replace(/{{orderCount}}/g, '45');
 
     return content;
   };
@@ -134,9 +147,9 @@ export const TemplatePreviewModal: React.FC<TemplatePreviewModalProps> = ({
         </div>
 
         {/* Preview with better styling */}
-        <div 
-          style={{ 
-            maxHeight: '70vh', 
+        <div
+          style={{
+            maxHeight: '70vh',
             overflow: 'auto',
             backgroundColor: '#f8f9fa',
             padding: '24px',

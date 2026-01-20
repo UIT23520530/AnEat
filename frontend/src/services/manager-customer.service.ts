@@ -105,6 +105,7 @@ export interface CreateCustomerDto {
   email?: string;
   avatar?: string;
   tier?: CustomerTier;
+  points?: number;
 }
 
 export interface UpdateCustomerDto {

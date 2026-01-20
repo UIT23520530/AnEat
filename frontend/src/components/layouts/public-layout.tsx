@@ -33,7 +33,35 @@ export function PublicLayout({ children }: PublicLayoutProps) {
   const [user, setUser] = useState<UserType | null>(null);
 
   useEffect(() => {
+    // Initial load
     setUser(getCurrentUser());
+
+    // Listen for storage changes
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'currentUser') {
+        setUser(getCurrentUser());
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
+
+    // Polling with functional update to avoid stale closure and infinite loop
+    const intervalId = setInterval(() => {
+      const updatedUser = getCurrentUser();
+      setUser((prevUser) => {
+        if (updatedUser && JSON.stringify(updatedUser) !== JSON.stringify(prevUser)) {
+          return updatedUser;
+        }
+        if (!updatedUser && prevUser) {
+          return null;
+        }
+        return prevUser;
+      });
+    }, 1000);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      clearInterval(intervalId);
+    };
   }, []);
 
   const navItems = [
@@ -74,11 +102,10 @@ export function PublicLayout({ children }: PublicLayoutProps) {
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`text-base uppercase transition-colors ${
-                  isActive(item.href)
-                    ? "text-orange-500 font-bold border-b-2 border-orange-500 pb-1"
-                    : "text-muted-foreground font-medium hover:text-orange-500"
-                  }`}
+                  className={`text-base uppercase transition-colors ${isActive(item.href)
+                      ? "text-orange-500 font-bold border-b-2 border-orange-500 pb-1"
+                      : "text-muted-foreground font-medium hover:text-orange-500"
+                    }`}
                 >
                   {item.label}
                 </Link>
@@ -88,9 +115,9 @@ export function PublicLayout({ children }: PublicLayoutProps) {
 
           <div className="flex items-center gap-2">
             {/* Button chọn cửa hàng */}
-            <Button 
-              variant="ghost" 
-              size="icon" 
+            <Button
+              variant="ghost"
+              size="icon"
               onClick={openBranchSelector}
               title={selectedBranch ? selectedBranch.name : "Chọn cửa hàng"}
               className="relative"
@@ -103,9 +130,9 @@ export function PublicLayout({ children }: PublicLayoutProps) {
             {/* Button cart */}
             <Button variant="ghost" size="icon" onClick={openCart} className="relative">
               {cartItemCount > 0 && (
-              <Badge className="absolute -top-2 -right-2 h-5 w-5 justify-center p-0 text-xs rounded-full bg-red-500 text-white">
-                {cartItemCount}
-              </Badge>
+                <Badge className="absolute -top-2 -right-2 h-5 w-5 justify-center p-0 text-xs rounded-full bg-red-500 text-white">
+                  {cartItemCount}
+                </Badge>
               )}
               <ShoppingCart className="h-6 w-6" />
             </Button>

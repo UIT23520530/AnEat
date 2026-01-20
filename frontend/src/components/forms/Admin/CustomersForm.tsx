@@ -25,7 +25,6 @@ export default function CustomersForm({
         email: selectedCustomer.email,
         tier: selectedCustomer.tier,
         currentPoints: selectedCustomer.points,
-        pointsAdjustment: 0,
       })
     } else if (!isEdit) {
       form.resetFields()
@@ -55,36 +54,27 @@ export default function CustomersForm({
         </Col>
       </Row>
       <Form.Item label="Email" name="email" rules={[{ type: "email", message: "Email không hợp lệ" }]}>
-        <Input placeholder="email@example.com" />
+        <Input placeholder="email@example.com" allowClear />
       </Form.Item>
-      
+
       {isEdit ? (
-        <>
-          <Row gutter={16}>
-            <Col span={12}>
-              <Form.Item label="Hạng thành viên" name="tier" rules={[{ required: true }]}>
-                <Select placeholder="Chọn hạng thành viên">
-                  <Select.Option value="BRONZE">Hạng Đồng</Select.Option>
-                  <Select.Option value="SILVER">Hạng Bạc</Select.Option>
-                  <Select.Option value="GOLD">Hạng Vàng</Select.Option>
-                  <Select.Option value="VIP">Hạng VIP</Select.Option>
-                </Select>
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item label="Điểm hiện tại" name="currentPoints">
-                <InputNumber disabled style={{ width: "100%" }} />
-              </Form.Item>
-            </Col>
-          </Row>
-          <Form.Item 
-            label="Điều chỉnh điểm" 
-            name="pointsAdjustment"
-            extra="Nhập số dương để cộng điểm, số âm để trừ điểm"
-          >
-            <InputNumber placeholder="0" style={{ width: "100%" }} />
-          </Form.Item>
-        </>
+        <Row gutter={16}>
+          <Col span={12}>
+            <Form.Item label="Hạng thành viên" name="tier" rules={[{ required: true }]}>
+              <Select placeholder="Chọn hạng thành viên">
+                <Select.Option value="BRONZE">Hạng Đồng</Select.Option>
+                <Select.Option value="SILVER">Hạng Bạc</Select.Option>
+                <Select.Option value="GOLD">Hạng Vàng</Select.Option>
+                <Select.Option value="VIP">Hạng VIP</Select.Option>
+              </Select>
+            </Form.Item>
+          </Col>
+          <Col span={12}>
+            <Form.Item label="Điểm tích lũy" name="currentPoints">
+              <InputNumber style={{ width: "100%" }} min={0} />
+            </Form.Item>
+          </Col>
+        </Row>
       ) : (
         <Row gutter={16}>
           <Col span={12}>

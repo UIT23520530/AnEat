@@ -115,7 +115,7 @@ export const CreateShipmentModal = ({ open, onCancel, onSuccess }: CreateShipmen
             onCancel={onCancel}
             footer={null}
             width={700}
-            destroyOnClose
+            destroyOnHidden
         >
             <Form
                 form={form}

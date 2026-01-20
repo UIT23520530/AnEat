@@ -8,7 +8,7 @@ import { Prisma } from '@prisma/client';
 export const getAllProducts = async (req: Request, res: Response): Promise<void> => {
   try {
     const { page = 1, limit = 10, search, categoryId, isAvailable } = req.query;
-    
+
     console.log('📋 Get all products request:', {
       page,
       limit,
@@ -343,8 +343,8 @@ export const createProduct = async (req: Request, res: Response): Promise<void> 
         code: code.trim().toUpperCase(),
         name: name.trim(),
         description: description?.trim() || null,
-        price: Math.round(Number(price) * 100), // Convert to cents
-        costPrice: costPrice ? Math.round(Number(costPrice) * 100) : 0,
+        price: Number(price), // Fixed: Use direct value, no *100
+        costPrice: costPrice ? Number(costPrice) : 0,
         image: image?.trim() || null,
         categoryId,
         branchId: branchId || null,
@@ -481,8 +481,8 @@ export const updateProduct = async (req: Request, res: Response): Promise<void> 
     const updateData: any = {};
     if (name !== undefined) updateData.name = name.trim();
     if (description !== undefined) updateData.description = description?.trim() || null;
-    if (price !== undefined) updateData.price = Math.round(Number(price) * 100); // Convert to cents
-    if (costPrice !== undefined) updateData.costPrice = Math.round(Number(costPrice) * 100);
+    if (price !== undefined) updateData.price = Number(price); // Fixed: Use direct value
+    if (costPrice !== undefined) updateData.costPrice = Number(costPrice);
     if (image !== undefined) updateData.image = image?.trim() || null;
     if (categoryId !== undefined) updateData.categoryId = categoryId;
     if (branchId !== undefined) updateData.branchId = branchId || null;

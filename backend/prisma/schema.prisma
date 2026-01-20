@@ -83,7 +83,7 @@ model Product {
   description       String?
   price             Int
   image             String?
-  branchId          String
+  branchId          String?
   quantity          Int                @default(0)
   costPrice         Int                @default(0)
   prepTime          Int                @default(15)
@@ -94,7 +94,7 @@ model Product {
   deletedAt         DateTime?
   inventory         Inventory?
   orderItems        OrderItem[]
-  branch            Branch             @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  branch            Branch?            @relation(fields: [branchId], references: [id], onDelete: Cascade)
   category          ProductCategory?   @relation(fields: [categoryId], references: [id])
   options           ProductOption[]
   stockRequests     StockRequest[]

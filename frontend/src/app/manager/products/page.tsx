@@ -283,29 +283,7 @@ function ProductsContent() {
       width: 250,
       render: (_, record: Product) => (
         <div style={{ display: "flex", alignItems: "center", gap: "12px", opacity: record.isAvailable ? 1 : 0.6 }}>
-          {record.image ? (
-            <Image
-              src={record.image}
-              alt={record.name}
-              width={50}
-              height={50}
-              style={{ borderRadius: "8px", objectFit: "cover" }}
-            />
-          ) : (
-            <div
-              style={{
-                width: 50,
-                height: 50,
-                borderRadius: "8px",
-                background: "#f5f5f5",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <ShoppingOutlined style={{ fontSize: "20px", color: "#bfbfbf" }} />
-            </div>
-          )}
+
           <div style={{ flex: 1 }}>
             <div style={{ fontWeight: 600, fontSize: "14px", color: record.isAvailable ? "#262626" : "#8c8c8c" }}>
               {record.name}
@@ -498,18 +476,18 @@ function ProductsContent() {
                       </Select.Option>
                     ))}
                   </Select>
-                    <Select
-                      value={statusFilter}
-                      onChange={setStatusFilter}
-                      style={{ width: 180 }}
-                      className={statusFilter !== "all" ? "[&>.ant-select-selector]:!bg-blue-50 [&>.ant-select-selector]:!border-blue-500" : ""}
-                    >
-                      <Select.Option value="all">Tất cả trạng thái</Select.Option>
-                      <Select.Option value="available">Đang bán</Select.Option>
-                      <Select.Option value="low-stock">Sắp hết</Select.Option>
-                      <Select.Option value="out-of-stock">Hết hàng</Select.Option>
-                      <Select.Option value="hidden">Đã ẩn</Select.Option>
-                    </Select>
+                  <Select
+                    value={statusFilter}
+                    onChange={setStatusFilter}
+                    style={{ width: 180 }}
+                    className={statusFilter !== "all" ? "[&>.ant-select-selector]:!bg-blue-50 [&>.ant-select-selector]:!border-blue-500" : ""}
+                  >
+                    <Select.Option value="all">Tất cả trạng thái</Select.Option>
+                    <Select.Option value="available">Đang bán</Select.Option>
+                    <Select.Option value="low-stock">Sắp hết</Select.Option>
+                    <Select.Option value="out-of-stock">Hết hàng</Select.Option>
+                    <Select.Option value="hidden">Đã ẩn</Select.Option>
+                  </Select>
                 </Space>
 
                 <Button
