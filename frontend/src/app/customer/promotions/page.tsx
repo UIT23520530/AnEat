@@ -4,8 +4,6 @@ import { useState, useEffect } from "react";
 import { PublicLayout } from "@/components/layouts/public-layout";
 import Image from "next/image";
 import { PromotionCard } from "@/components/promotion/promotion-card";
-import { useToast } from "@/hooks/use-toast";
-import { useCart } from "@/contexts/cart-context";
 import { Tag, Loader2 } from "lucide-react";
 import apiClient from "@/lib/api-client";
 
@@ -52,22 +50,22 @@ interface Promotion {
 const fallbackPromotions: Promotion[] = [
   {
     id: "1",
-    title: "Mỳ Ý Sốt Cay - Chiêu Mọi Ý",
-    description: "Thưởng thức món mỳ Ý sốt cay đậm đà chỉ với 40,000đ/phần",
-    image: "/promotions/my-y-sot-cay.jpg",
-    discount: "40,000đ/phần",
-    validFrom: "01/06/2025",
-    validTo: "30/06/2025",
+    title: "Giảm 20% Đơn Hàng",
+    description: "Giảm 20% cho đơn hàng từ 100,000đ",
+    image: "/promotions/sale20.svg",
+    discount: "Giảm 20%",
+    validFrom: "01/01/2026",
+    validTo: "31/03/2026",
     isActive: true,
   },
   {
     id: "2",
-    title: "Trà Chanh Hạt Chia Thanh Mát",
-    description: "Giải nhiệt mùa hè với trà chanh hạt chia chỉ 19,000đ",
-    image: "/promotions/tra-chanh.jpg",
-    discount: "19,000đ",
-    validFrom: "15/05/2025",
-    validTo: "31/07/2025",
+    title: "Giảm 30% Combo",
+    description: "Giảm 30% khi mua combo gà rán",
+    image: "/promotions/sale30.svg",
+    discount: "Giảm 30%",
+    validFrom: "01/01/2026",
+    validTo: "28/02/2026",
     isActive: true,
   },
 ];
@@ -91,6 +89,18 @@ const formatDiscount = (type: string, value: number): string => {
     // FIXED - value là số tiền VND
     return `${value.toLocaleString("vi-VN")}đ`;
   }
+};
+
+// Helper function để chọn ảnh dựa trên giá trị giảm giá
+const getPromotionImage = (type: string, value: number): string => {
+  if (type === "PERCENTAGE") {
+    if (value >= 30) return "/promotions/sale30.svg";
+    if (value >= 20) return "/promotions/sale20.svg";
+    return "/promotions/sale20.svg";
+  }
+  // FIXED type - dùng sale90.svg cho combo 50k
+  if (value >= 50000) return "/promotions/sale90.svg";
+  return "/promotions/banner.svg";
 };
 
 // Map API response sang Promotion format
@@ -123,7 +133,7 @@ const mapToPromotion = (apiPromotion: PromotionResponse): Promotion => {
     id: apiPromotion.id,
     title: title,
     description: description,
-    image: "/promotions/default-promotion.jpg", // Placeholder image
+    image: getPromotionImage(apiPromotion.type, apiPromotion.value),
     discount: formatDiscount(apiPromotion.type, apiPromotion.value),
     validFrom: validFrom,
     validTo: validTo,
@@ -132,8 +142,6 @@ const mapToPromotion = (apiPromotion: PromotionResponse): Promotion => {
 };
 
 export default function PromotionsPage() {
-  const { toast } = useToast();
-  const { addToCart } = useCart();
   const [promotions, setPromotions] = useState<Promotion[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -172,35 +180,6 @@ export default function PromotionsPage() {
     fetchPromotions();
   }, []);
 
-  const handleOrderClick = (promotion: Promotion) => {
-    // Parse giá từ discount string (ví dụ: "40,000đ" -> 40000, "Giảm 20%" -> 0)
-    const parsePrice = (discount: string): number => {
-      // Nếu là phần trăm thì không có giá cụ thể
-      if (discount.includes("%")) {
-        return 0; // Hoặc có thể tính giá dựa trên logic khác
-      }
-      // Loại bỏ các ký tự không phải số
-      const numbers = discount.replace(/[^\d]/g, "");
-      return numbers ? parseInt(numbers, 10) : 0;
-    };
-
-    const price = parsePrice(promotion.discount);
-
-    addToCart({
-      id: `promotion-${promotion.id}`,
-      name: promotion.title,
-      price: price,
-      quantity: 1,
-      image: promotion.image || "/placeholder.svg",
-    });
-
-    toast({
-      title: "Đã thêm vào giỏ hàng",
-      description: `${promotion.title} đã được thêm vào giỏ hàng của bạn`,
-      className: "bg-green-50 border-green-200",
-    });
-  };
-
   const activePromotions = promotions.filter((promo) => promo.isActive);
 
   return (
@@ -209,24 +188,13 @@ export default function PromotionsPage() {
         <div className="container mx-auto px-4 py-12 max-w-7xl">
           {/* Hero Banner */}
           <div className="relative mb-16 rounded-3xl overflow-hidden shadow-2xl">
-            <div className="relative h-[400px] md:h-[500px] bg-gradient-to-r from-orange-500 to-red-500">
-              <Image
-                src="/promotions/hero-banner.jpg"
-                alt="Khuyến mãi đặc biệt"
-                fill
-                className="object-cover opacity-90"
-              />
-              <div className="absolute inset-0 bg-gradient-to-r from-black/60 to-transparent flex items-center">
-                <div className="container mx-auto px-8">
-                  <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-4">
-                    Khuyến Mãi Đặc Biệt
-                  </h1>
-                  <p className="text-lg md:text-xl lg:text-2xl text-white/90 max-w-2xl">
-                    Khám phá những ưu đãi hấp dẫn và tiết kiệm chi phí cho bữa ăn của bạn
-                  </p>
-                </div>
-              </div>
-            </div>
+            <Image
+              src="/promotions/banner.svg"
+              alt="Khuyến mãi đặc biệt"
+              width={1920}
+              height={600}
+              className="w-full h-auto object-contain"
+            />
           </div>
 
           {/* Section Header */}
@@ -263,7 +231,6 @@ export default function PromotionsPage() {
                 <PromotionCard
                   key={promotion.id}
                   promotion={promotion}
-                  onOrderClick={handleOrderClick}
                 />
               ))}
             </div>

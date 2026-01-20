@@ -2,6 +2,158 @@ import { Request, Response } from 'express';
 import { prisma } from '../../db';
 import axios from 'axios';
 import crypto from 'crypto';
+
+/**
+ * MoMo IPN (Instant Payment Notification) handler
+ * MoMo gọi endpoint này khi thanh toán hoàn tất
+ */
+export const handleMoMoIPN = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const {
+      partnerCode,
+      orderId,
+      requestId,
+      amount,
+      orderInfo,
+      orderType,
+      transId,
+      resultCode,
+      message,
+      payType,
+      responseTime,
+      extraData,
+      signature,
+    } = req.body;
+
+    console.log('MoMo IPN received:', { orderId, resultCode, message, transId });
+
+    // Verify signature
+    const secretKey = process.env.MOMO_SECRET_KEY!;
+    const accessKey = process.env.MOMO_ACCESS_KEY!;
+    
+    const rawSignature = 
+      `accessKey=${accessKey}` +
+      `&amount=${amount}` +
+      `&extraData=${extraData}` +
+      `&message=${message}` +
+      `&orderId=${orderId}` +
+      `&orderInfo=${orderInfo}` +
+      `&orderType=${orderType}` +
+      `&partnerCode=${partnerCode}` +
+      `&payType=${payType}` +
+      `&requestId=${requestId}` +
+      `&responseTime=${responseTime}` +
+      `&resultCode=${resultCode}` +
+      `&transId=${transId}`;
+    
+    const expectedSignature = crypto.createHmac('sha256', secretKey)
+      .update(rawSignature)
+      .digest('hex');
+
+    if (signature !== expectedSignature) {
+      console.error('MoMo IPN: Invalid signature');
+      res.status(400).json({ message: 'Invalid signature' });
+      return;
+    }
+
+    // Extract orderNumber from orderInfo (format: "Thanh toán đơn hàng tại AnEat - ORD-XXXXXX")
+    const orderNumberMatch = orderInfo?.match(/ORD-[A-Z0-9]+/);
+    const orderNumber = orderNumberMatch ? orderNumberMatch[0] : null;
+
+    if (!orderNumber) {
+      console.error('MoMo IPN: Could not extract order number from orderInfo:', orderInfo);
+      res.status(200).json({ message: 'OK' }); // Vẫn trả về OK để MoMo không retry
+      return;
+    }
+
+    // resultCode = 0 means success
+    if (resultCode === 0 || resultCode === '0') {
+      // Update order payment status to PAID
+      const updatedOrder = await prisma.order.updateMany({
+        where: { orderNumber },
+        data: { 
+          paymentStatus: 'PAID',
+          updatedAt: new Date(),
+        },
+      });
+
+      console.log(`MoMo IPN: Order ${orderNumber} payment status updated to PAID`, updatedOrder);
+    } else {
+      // Payment failed
+      const updatedOrder = await prisma.order.updateMany({
+        where: { orderNumber },
+        data: { 
+          paymentStatus: 'FAILED',
+          updatedAt: new Date(),
+        },
+      });
+      
+      console.log(`MoMo IPN: Order ${orderNumber} payment failed with code ${resultCode}`, updatedOrder);
+    }
+
+    // MoMo expects HTTP 204 or 200 with empty body on success
+    res.status(204).send();
+  } catch (error: any) {
+    console.error('MoMo IPN error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+/**
+ * Update payment status from frontend (backup for IPN when testing locally)
+ */
+export const updatePaymentStatus = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { orderNumber, paymentStatus } = req.body;
+
+    if (!orderNumber || !paymentStatus) {
+      res.status(400).json({
+        status: 'error',
+        message: 'orderNumber and paymentStatus are required',
+      });
+      return;
+    }
+
+    const validStatuses = ['PENDING', 'PAID', 'FAILED', 'REFUNDED'];
+    if (!validStatuses.includes(paymentStatus)) {
+      res.status(400).json({
+        status: 'error',
+        message: 'Invalid payment status',
+      });
+      return;
+    }
+
+    const updatedOrder = await prisma.order.updateMany({
+      where: { orderNumber },
+      data: { 
+        paymentStatus,
+        updatedAt: new Date(),
+      },
+    });
+
+    if (updatedOrder.count === 0) {
+      res.status(404).json({
+        status: 'error',
+        message: 'Order not found',
+      });
+      return;
+    }
+
+    console.log(`Payment status updated: Order ${orderNumber} -> ${paymentStatus}`);
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Payment status updated',
+    });
+  } catch (error: any) {
+    console.error('Update payment status error:', error);
+    res.status(500).json({
+      status: 'error',
+      message: error.message || 'Failed to update payment status',
+    });
+  }
+};
+
 /**
  * Initiate MoMo payment for customer checkout
  */

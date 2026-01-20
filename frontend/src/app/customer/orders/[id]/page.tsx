@@ -181,6 +181,7 @@ export default function OrderDetailPage({
             },
             orderType: orderData.orderType,
             paymentMethod: orderData.paymentMethod || "CASH",
+            paymentStatus: orderData.paymentStatus || "PENDING",
             branch: orderData.branch
           };
 
@@ -491,18 +492,33 @@ export default function OrderDetailPage({
                     
                     <div className="pt-6 border-t border-gray-100">
                       <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Phương thức thanh toán</p>
-                      <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-xl border border-gray-100">
-                        <div className="bg-white p-2 rounded-lg shadow-sm">
-                          {order.paymentMethod === "CASH" ? (
-                            <DollarSign className="h-5 w-5 text-green-500" />
-                          ) : (
-                            <Wallet className="h-5 w-5 text-orange-500" />
-                          )}
+                      <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-100">
+                        <div className="flex items-center gap-3">
+                          <div className="bg-white p-2 rounded-lg shadow-sm">
+                            {order.paymentMethod === "CASH" ? (
+                              <DollarSign className="h-5 w-5 text-green-500" />
+                            ) : (
+                              <Wallet className="h-5 w-5 text-orange-500" />
+                            )}
+                          </div>
+                          <span className="font-bold text-gray-700">
+                            {order.paymentMethod === "CASH"
+                              ? "Tiền mặt (COD)"
+                              : order.paymentMethod === "E-WALLET" ? "Ví điện tử MoMo" : "Chuyển khoản / Khác"}
+                          </span>
                         </div>
-                        <span className="font-bold text-gray-700">
-                          {order.paymentMethod === "CASH"
-                            ? "Tiền mặt (COD)"
-                            : order.paymentMethod === "E-WALLET" ? "Ví điện tử MoMo" : "Chuyển khoản / Khác"}
+                        <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+                          order.paymentStatus === "PAID" 
+                            ? "bg-green-100 text-green-700" 
+                            : order.paymentStatus === "FAILED"
+                            ? "bg-red-100 text-red-700"
+                            : "bg-yellow-100 text-yellow-700"
+                        }`}>
+                          {order.paymentStatus === "PAID" 
+                            ? "Đã thanh toán" 
+                            : order.paymentStatus === "FAILED"
+                            ? "Thanh toán thất bại"
+                            : "Chưa thanh toán"}
                         </span>
                       </div>
                     </div>

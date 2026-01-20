@@ -312,6 +312,16 @@ export class StaffOrderService {
     
     if (status === OrderStatus.COMPLETED) {
       updateData.completedAt = new Date();
+      
+      // Nếu đơn COD hoàn thành, tự động cập nhật paymentStatus = PAID
+      const order = await prisma.order.findUnique({
+        where: { id: orderId },
+        select: { paymentMethod: true, paymentStatus: true },
+      });
+      
+      if (order && order.paymentMethod === 'CASH' && order.paymentStatus === 'PENDING') {
+        updateData.paymentStatus = 'PAID';
+      }
     }
 
     return await prisma.order.update({

@@ -9,13 +9,21 @@ import {
   getProfile,
   updateProfile,
   initiateMoMoPayment,
+  handleMoMoIPN,
+  updatePaymentStatus,
 } from '../controllers/customer/customer.controller';
 
 import { authenticate, isCustomer, validate } from '../middleware';
 
 const router = Router();
 
-router.post('/payment', initiateMoMoPayment); 
+router.post('/payment', initiateMoMoPayment);
+
+// MoMo IPN callback - không cần authenticate vì MoMo gọi trực tiếp
+router.post('/payment/momo-ipn', handleMoMoIPN);
+
+// Update payment status from frontend (backup for IPN)
+router.post('/payment/update-status', updatePaymentStatus); 
 
 router.use(authenticate);
 

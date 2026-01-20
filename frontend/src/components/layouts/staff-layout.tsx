@@ -156,9 +156,13 @@ export function StaffLayout({ children }: { children: ReactNode }) {
               >
                 {!collapsed ? (
                   <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-orange-500 to-green-500 flex items-center justify-center text-white font-bold text-sm shadow-md flex-shrink-0">
-                      {currentUser.name.charAt(0).toUpperCase()}
-                    </div>
+                    <Image
+                      src={currentUser.avatar || "/avt/avt-profile.jpg"}
+                      alt={currentUser.name}
+                      width={32}
+                      height={32}
+                      className="w-8 h-8 rounded-full object-cover shadow-md flex-shrink-0"
+                    />
                     <div className="flex-1 min-w-0">
                       <p className="text-xs font-semibold text-gray-900 truncate">
                         {currentUser.name}
@@ -169,9 +173,13 @@ export function StaffLayout({ children }: { children: ReactNode }) {
                     </div>
                   </div>
                 ) : (
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-orange-500 to-green-500 flex items-center justify-center text-white font-bold text-sm shadow-md mx-auto">
-                    {currentUser.name.charAt(0).toUpperCase()}
-                  </div>
+                  <Image
+                    src={currentUser.avatar || "/avt/avt-profile.jpg"}
+                    alt={currentUser.name}
+                    width={32}
+                    height={32}
+                    className="w-8 h-8 rounded-full object-cover shadow-md mx-auto"
+                  />
                 )}
               </Link>
             </div>

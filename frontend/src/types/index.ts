@@ -1,5 +1,5 @@
 // User roles
-export type UserRole = "ADMIN_SYSTEM" | "ADMIN_BRAND" | "STAFF" | "CUSTOMER"
+export type UserRole = "ADMIN_SYSTEM" | "ADMIN_BRAND" | "STAFF" | "LOGISTICS_STAFF" | "CUSTOMER"
 
 // User interface
 export interface User {

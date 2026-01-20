@@ -41,15 +41,15 @@ export default function ForgotPasswordPage() {
             {/* Left side - Brand */}
             <div className="hidden md:flex flex-col items-center justify-center bg-gradient-to-br from-orange-50 to-amber-50 p-8">
               <div className="text-center">
-                <div className="mb-8 rounded-2xl overflow-hidden shadow-lg">
+                <div className="mb-8">
                   <img 
-                    src="https://images.unsplash.com/photo-1512152272829-e3139592d56f?w=400&h=400&fit=crop" 
-                    alt="Khôi phục tài khoản" 
-                    className="w-64 h-64 object-cover"
+                    src="/icons/AnEat.svg" 
+                    alt="AnEat Logo" 
+                    className="w-96 h-96"
                   />
                 </div>
-                <h1 className="text-4xl font-bold text-slate-900 mb-4">Lấy lại mật khẩu</h1>
-                <p className="text-lg text-slate-600">Đừng lo lắng, chúng tôi sẽ hỗ trợ bạn khôi phục quyền truy cập vào AnEat.</p>
+                <h1 className="text-3xl font-bold text-slate-900 mb-2">AnEat <span className="text-orange-500">Account</span></h1>
+                <p className="text-lg text-slate-600">Khôi phục quyền truy cập tài khoản</p>
               </div>
             </div>
 

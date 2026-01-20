@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -26,6 +26,7 @@ export function BranchSelectorDialog() {
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const isFirstLoad = useRef(true);
 
   const loadBranches = useCallback(async (searchTerm: string = "") => {
     if (!isBranchSelectorOpen) return;
@@ -62,6 +63,7 @@ export function BranchSelectorDialog() {
   // Load branches when dialog opens (only once)
   useEffect(() => {
     if (isBranchSelectorOpen) {
+      isFirstLoad.current = true;
       loadBranches("");
     } else {
       // Reset state when dialog closes
@@ -72,9 +74,14 @@ export function BranchSelectorDialog() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isBranchSelectorOpen]);
 
-  // Debounce search (only when search changes, not on initial load)
+  // Debounce search - skip first load to avoid duplicate API call
   useEffect(() => {
-    if (!isBranchSelectorOpen || search === "") return;
+    if (!isBranchSelectorOpen) return;
+    
+    if (isFirstLoad.current) {
+      isFirstLoad.current = false;
+      return;
+    }
     
     const timer = setTimeout(() => {
       loadBranches(search);

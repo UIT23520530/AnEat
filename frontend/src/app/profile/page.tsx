@@ -16,7 +16,29 @@ import { PublicLayout } from "@/components/layouts/public-layout"
 import { User, Mail, Phone, MapPin, Save, Loader2 } from "lucide-react"
 import type { User as UserType } from "@/types"
 import apiClient from "@/lib/api-client"
-import { useToast } from "@/hooks/use-toast"
+
+// Constraints cho các trường
+const CONSTRAINTS = {
+  name: {
+    minLength: 2,
+    maxLength: 50,
+    pattern: /^[a-zA-ZÀ-ỹ\s]+$/,
+    message: "Họ tên từ 2-50 ký tự, chỉ chứa chữ cái và khoảng trắng",
+  },
+  phone: {
+    pattern: /^[0-9]{10}$/,
+    message: "Số điện thoại phải có đúng 10 số",
+  },
+  email: {
+    pattern: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+    maxLength: 100,
+    message: "Email không hợp lệ",
+  },
+  address: {
+    maxLength: 200,
+    message: "Địa chỉ tối đa 200 ký tự",
+  },
+}
 
 const getTierName = (tier?: string) => {
   switch (tier) {
@@ -30,7 +52,6 @@ const getTierName = (tier?: string) => {
 
 export default function ProfilePage() {
   const router = useRouter()
-  const { toast } = useToast()
   const [user, setUser] = useState<UserType | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -40,6 +61,64 @@ export default function ProfilePage() {
     phone: "",
     address: "",
   })
+  const [errors, setErrors] = useState<Record<string, string>>({})
+  const [saveSuccess, setSaveSuccess] = useState(false)
+
+  // Validate một trường
+  const validateField = (field: string, value: string): string => {
+    switch (field) {
+      case "name":
+        if (!value.trim()) return "Họ tên không được để trống"
+        if (value.length < CONSTRAINTS.name.minLength) return `Họ tên tối thiểu ${CONSTRAINTS.name.minLength} ký tự`
+        if (value.length > CONSTRAINTS.name.maxLength) return `Họ tên tối đa ${CONSTRAINTS.name.maxLength} ký tự`
+        if (!CONSTRAINTS.name.pattern.test(value)) return CONSTRAINTS.name.message
+        return ""
+      case "phone":
+        if (!value.trim()) return "Số điện thoại không được để trống"
+        if (!CONSTRAINTS.phone.pattern.test(value)) return CONSTRAINTS.phone.message
+        return ""
+      case "email":
+        if (!value.trim()) return "Email không được để trống"
+        if (value.length > CONSTRAINTS.email.maxLength) return `Email tối đa ${CONSTRAINTS.email.maxLength} ký tự`
+        if (!CONSTRAINTS.email.pattern.test(value)) return CONSTRAINTS.email.message
+        return ""
+      case "address":
+        if (value.length > CONSTRAINTS.address.maxLength) return CONSTRAINTS.address.message
+        return ""
+      default:
+        return ""
+    }
+  }
+
+  // Validate toàn bộ form
+  const validateForm = (): boolean => {
+    const newErrors: Record<string, string> = {}
+    
+    newErrors.name = validateField("name", formData.name)
+    newErrors.phone = validateField("phone", formData.phone)
+    newErrors.email = validateField("email", formData.email)
+    newErrors.address = validateField("address", formData.address)
+
+    // Xóa các error rỗng
+    Object.keys(newErrors).forEach(key => {
+      if (!newErrors[key]) delete newErrors[key]
+    })
+
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
+  }
+
+  // Handle thay đổi input với validation
+  const handleInputChange = (field: string, value: string) => {
+    setFormData({ ...formData, [field]: value })
+    
+    // Validate ngay khi nhập
+    const error = validateField(field, value)
+    setErrors(prev => ({
+      ...prev,
+      [field]: error,
+    }))
+  }
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -94,6 +173,11 @@ export default function ProfilePage() {
   const handleSave = async () => {
     if (!user) return
     
+    // Validate trước khi lưu
+    if (!validateForm()) {
+      return
+    }
+    
     setSaving(true)
     try {
       // Gọi API cập nhật profile
@@ -116,18 +200,12 @@ export default function ProfilePage() {
           localStorage.setItem("customerDefaultAddress", formData.address)
         }
         
-        toast({
-          title: "Thành công",
-          description: "Cập nhật thông tin thành công!",
-        })
+        // Hiển thị thông báo thành công
+        setSaveSuccess(true)
+        setTimeout(() => setSaveSuccess(false), 3000)
       }
     } catch (error: any) {
       console.error("Update profile error:", error)
-      toast({
-        title: "Lỗi",
-        description: error.response?.data?.message || "Không thể cập nhật thông tin",
-        variant: "destructive",
-      })
     } finally {
       setSaving(false)
     }
@@ -208,7 +286,7 @@ export default function ProfilePage() {
                 {/* Full Name */}
                 <div className="space-y-2">
                   <Label htmlFor="name" className="text-slate-700 font-semibold text-sm">
-                    HỌ VÀ TÊN
+                    HỌ VÀ TÊN <span className="text-red-500">*</span>
                   </Label>
                   <div className="relative">
                     <User className="absolute left-3 top-3.5 w-5 h-5 text-slate-400" />
@@ -216,16 +294,20 @@ export default function ProfilePage() {
                       id="name"
                       type="text"
                       value={formData.name}
-                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                      className="pl-10 py-6 bg-slate-50 border-0 rounded-lg focus:ring-2 focus:ring-orange-500 text-slate-900"
+                      onChange={(e) => handleInputChange("name", e.target.value)}
+                      maxLength={CONSTRAINTS.name.maxLength}
+                      className={`pl-10 py-6 bg-slate-50 border rounded-lg focus:ring-2 focus:ring-orange-500 text-slate-900 ${
+                        errors.name ? "border-red-500" : "border-transparent"
+                      }`}
                     />
                   </div>
+                  {errors.name && <p className="text-red-500 text-xs">{errors.name}</p>}
                 </div>
 
                 {/* Phone */}
                 <div className="space-y-2">
                   <Label htmlFor="phone" className="text-slate-700 font-semibold text-sm">
-                    SỐ ĐIỆN THOẠI
+                    SỐ ĐIỆN THOẠI <span className="text-red-500">*</span>
                   </Label>
                   <div className="relative">
                     <Phone className="absolute left-3 top-3.5 w-5 h-5 text-slate-400" />
@@ -233,16 +315,20 @@ export default function ProfilePage() {
                       id="phone"
                       type="tel"
                       value={formData.phone}
-                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                      className="pl-10 py-6 bg-slate-50 border-0 rounded-lg focus:ring-2 focus:ring-orange-500 text-slate-900"
+                      onChange={(e) => handleInputChange("phone", e.target.value.replace(/\D/g, "").slice(0, 10))}
+                      maxLength={10}
+                      className={`pl-10 py-6 bg-slate-50 border rounded-lg focus:ring-2 focus:ring-orange-500 text-slate-900 ${
+                        errors.phone ? "border-red-500" : "border-transparent"
+                      }`}
                     />
                   </div>
+                  {errors.phone && <p className="text-red-500 text-xs">{errors.phone}</p>}
                 </div>
 
                 {/* Email */}
                 <div className="space-y-2">
                   <Label htmlFor="email" className="text-slate-700 font-semibold text-sm">
-                    ĐỊA CHỈ EMAIL
+                    ĐỊA CHỈ EMAIL <span className="text-red-500">*</span>
                   </Label>
                   <div className="relative">
                     <Mail className="absolute left-3 top-3.5 w-5 h-5 text-slate-400" />
@@ -250,10 +336,14 @@ export default function ProfilePage() {
                       id="email"
                       type="email"
                       value={formData.email}
-                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                      className="pl-10 py-6 bg-slate-50 border-0 rounded-lg focus:ring-2 focus:ring-orange-500 text-slate-900"
+                      onChange={(e) => handleInputChange("email", e.target.value)}
+                      maxLength={CONSTRAINTS.email.maxLength}
+                      className={`pl-10 py-6 bg-slate-50 border rounded-lg focus:ring-2 focus:ring-orange-500 text-slate-900 ${
+                        errors.email ? "border-red-500" : "border-transparent"
+                      }`}
                     />
                   </div>
+                  {errors.email && <p className="text-red-500 text-xs">{errors.email}</p>}
                 </div>
 
                 {/* Address */}
@@ -267,13 +357,25 @@ export default function ProfilePage() {
                       id="address"
                       type="text"
                       value={formData.address}
-                      onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                      onChange={(e) => handleInputChange("address", e.target.value)}
+                      maxLength={CONSTRAINTS.address.maxLength}
                       placeholder="123 Đường Lê Lợi, Quận 1, TP. Hồ Chí Minh"
-                      className="pl-10 py-6 bg-slate-50 border-0 rounded-lg focus:ring-2 focus:ring-orange-500 text-slate-900 placeholder:text-slate-400"
+                      className={`pl-10 py-6 bg-slate-50 border rounded-lg focus:ring-2 focus:ring-orange-500 text-slate-900 placeholder:text-slate-400 ${
+                        errors.address ? "border-red-500" : "border-transparent"
+                      }`}
                     />
                   </div>
+                  {errors.address && <p className="text-red-500 text-xs">{errors.address}</p>}
+                  <p className="text-slate-400 text-xs">{formData.address.length}/{CONSTRAINTS.address.maxLength} ký tự</p>
                 </div>
               </form>
+
+              {/* Success Message */}
+              {saveSuccess && (
+                <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+                  <p className="text-green-600 text-sm font-medium">Lưu thông tin thành công!</p>
+                </div>
+              )}
 
               {/* Buttons */}
               <div className="flex flex-col sm:flex-row gap-4">
@@ -292,6 +394,7 @@ export default function ProfilePage() {
                 <Button
                   variant="outline"
                   className="flex-1 py-6 border-2 border-orange-500 text-orange-500 hover:bg-orange-50 font-semibold rounded-lg text-base"
+                  onClick={() => router.push("/auth/forgot-password")}
                 >
                   ĐỔI MẬT KHẨU
                 </Button>

@@ -43,8 +43,8 @@ export function CartSidebar() {
           </div>
         ) : (
           <>
-            <ScrollArea className="flex-1 my-4">
-              <div className="space-y-4">
+            <ScrollArea className="flex-1 my-4 max-h-[calc(100vh-250px)]">
+              <div className="space-y-4 pr-4">
                 {cartItems.map((item) => (
                   <div key={item.id} className="flex items-center space-x-4">
                     <Image

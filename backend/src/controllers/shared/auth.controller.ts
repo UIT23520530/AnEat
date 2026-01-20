@@ -284,7 +284,12 @@ export const systemLogin = async (req: Request, res: Response): Promise<void> =>
     }
 
     // Only allow system roles (not CUSTOMER)
-    const systemRoles = [UserRole.STAFF, UserRole.ADMIN_BRAND, UserRole.ADMIN_SYSTEM, UserRole.LOGISTICS_STAFF];
+    const systemRoles: UserRole[] = [
+      UserRole.STAFF, 
+      UserRole.ADMIN_BRAND, 
+      UserRole.ADMIN_SYSTEM, 
+      UserRole.LOGISTICS_STAFF
+  ];
     if (!systemRoles.includes(user.role)) {
       res.status(403).json({
         status: 'error',

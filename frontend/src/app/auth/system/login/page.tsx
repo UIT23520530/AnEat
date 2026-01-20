@@ -18,7 +18,7 @@ import { setCurrentUser } from "@/lib/auth"
 import { ROLE_ROUTES } from "@/constants/roles"
 import type { User, UserRole } from "@/types"
 import apiClient from "@/lib/api-client"
-import { Mail, Lock, Eye, EyeOff, ShieldCheck, Briefcase } from "lucide-react"
+import { Mail, Lock, Eye, EyeOff, ShieldCheck, Briefcase, Truck } from "lucide-react"
 
 export default function SystemLoginPage() {
   const router = useRouter()
@@ -117,6 +117,12 @@ export default function SystemLoginPage() {
                           <div className="flex items-center gap-2">
                             <Briefcase className="w-4 h-4 text-blue-500" />
                             <span>Nhân viên Cửa hàng</span>
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="LOGISTICS_STAFF">
+                          <div className="flex items-center gap-2">
+                            <Truck className="w-4 h-4 text-purple-500" />
+                            <span>Nhân viên Kho vận</span>
                           </div>
                         </SelectItem>
                         <SelectItem value="ADMIN_BRAND">

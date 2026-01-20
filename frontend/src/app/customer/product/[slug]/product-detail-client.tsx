@@ -60,103 +60,96 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
     kem: "Kem",
   }
 
-  // Helper function để extract group name từ description
-  // Format: "Chọn Gà: 1 Miếng Gà Giòn" -> "Chọn Gà"
-  const extractGroupName = (description: string): string => {
-    if (!description) return "Tùy chọn";
-    const match = description.match(/^(.+?):/);
-    return match ? match[1].trim() : "Tùy chọn";
-  };
-
-  // Helper function để xác định xem nhóm có phải là single choice (chọn 1 trong nhiều) hay không
-  const isSingleChoiceGroup = (groupName: string): boolean => {
-    const lowerName = groupName.toLowerCase();
-    // Các nhóm như "Chọn Gà", "Chọn Mì", "Nước Ngọt" là single choice
-    return lowerName.includes("chọn") || lowerName.includes("nước ngọt");
-  };
-
-  // Lấy options từ product và nhóm chúng
-  const allOptions = (product.options || [])
-    .filter((opt) => opt.isAvailable) // Chỉ hiển thị options available
-    .sort((a, b) => a.order - b.order) // Sort theo order
-    .map((opt) => ({
-      id: opt.id,
-      name: opt.name,
-      price: opt.price, // Đã được convert sang VND trong wrapper
-      description: opt.description,
-      isRequired: opt.isRequired,
-      type: opt.type,
-      groupName: extractGroupName(opt.description || ""),
-    }));
-
-  // Nhóm options theo groupName
-  const groupedOptions = allOptions.reduce((acc, opt) => {
-    const groupName = opt.groupName;
-    if (!acc[groupName]) {
-      acc[groupName] = [];
+  // Helper function để extract sub-group name từ name
+  // Format: "Chọn Gà 1: Gà Giòn" -> subGroup = "Chọn Gà 1", displayName = "Gà Giòn"
+  // Format: "Nước Ngọt 2: Pepsi Thường" -> subGroup = "Nước Ngọt 2", displayName = "Pepsi Thường"
+  const parseOptionName = (name: string): { subGroup: string; displayName: string } => {
+    const match = name.match(/^(.+?):\s*(.+)$/);
+    if (match) {
+      return { subGroup: match[1].trim(), displayName: match[2].trim() };
     }
-    acc[groupName].push(opt);
-    return acc;
-  }, {} as Record<string, typeof allOptions>);
+    return { subGroup: "", displayName: name };
+  };
 
-  // Tự động chọn các options bắt buộc (isRequired) hoặc option đầu tiên trong mỗi nhóm single choice
-  const [selectedAddons, setSelectedAddons] = useState<string[]>(() => {
-    const required = allOptions.filter((opt) => opt.isRequired).map((opt) => opt.id);
+  // Helper function để extract main group từ type
+  const getMainGroupName = (type: string): string => {
+    const typeMap: Record<string, string> = {
+      CHICKEN: "Gà",
+      PASTA: "Mì Ý", 
+      DRINK: "Nước ngọt",
+      ADDON: "Thêm",
+      SIZE: "Kích cỡ",
+    };
+    return typeMap[type] || type || "Tùy chọn";
+  };
+
+  // Lấy options từ product và parse chúng
+  const allOptions = (product.options || [])
+    .filter((opt) => opt.isAvailable)
+    .sort((a, b) => a.order - b.order)
+    .map((opt) => {
+      const parsed = parseOptionName(opt.name);
+      return {
+        id: opt.id,
+        name: opt.name,
+        displayName: parsed.displayName,
+        subGroup: parsed.subGroup, // "Chọn Gà 1", "Nước Ngọt 2", etc.
+        price: opt.price,
+        description: opt.description,
+        isRequired: opt.isRequired,
+        type: opt.type,
+        mainGroup: getMainGroupName(opt.type),
+      };
+    });
+
+  // Nhóm options theo mainGroup -> subGroup
+  // Structure: { "Gà": { "Chọn Gà 1": [...], "Chọn Gà 2": [...] }, ... }
+  const groupedByMain = allOptions.reduce((acc, opt) => {
+    const main = opt.mainGroup;
+    const sub = opt.subGroup || "default";
     
-    // Tự động chọn option đầu tiên trong mỗi nhóm single choice nếu chưa có option nào được chọn
-    const singleChoiceDefaults: string[] = [];
-    Object.entries(groupedOptions).forEach(([groupName, options]) => {
-      if (isSingleChoiceGroup(groupName) && options.length > 0) {
-        // Chọn option đầu tiên (hoặc option có giá = 0 nếu có)
-        const freeOption = options.find((opt) => opt.price === 0);
-        if (freeOption) {
-          singleChoiceDefaults.push(freeOption.id);
-        } else {
-          singleChoiceDefaults.push(options[0].id);
+    if (!acc[main]) acc[main] = {};
+    if (!acc[main][sub]) acc[main][sub] = [];
+    acc[main][sub].push(opt);
+    
+    return acc;
+  }, {} as Record<string, Record<string, typeof allOptions>>);
+
+  // Tự động chọn option đầu tiên (hoặc option miễn phí) trong mỗi subGroup
+  const [selectedAddons, setSelectedAddons] = useState<string[]>(() => {
+    const defaults: string[] = [];
+    
+    Object.values(groupedByMain).forEach((subGroups) => {
+      Object.values(subGroups).forEach((options) => {
+        if (options.length > 0) {
+          // Ưu tiên chọn option miễn phí, nếu không có thì chọn option đầu tiên
+          const freeOption = options.find((opt) => opt.price === 0);
+          defaults.push(freeOption ? freeOption.id : options[0].id);
         }
-      }
+      });
     });
     
-    return [...required, ...singleChoiceDefaults];
+    return defaults;
   });
 
-  const toggleAddon = (addonId: string, groupName: string) => {
-    const addon = allOptions.find((a) => a.id === addonId);
-    if (!addon) return;
-    
-    // Không cho phép bỏ chọn nếu option là required
-    if (addon.isRequired) {
-      return;
-    }
-
+  const toggleAddon = (addonId: string, subGroup: string, mainGroup: string) => {
     setSelectedAddons((prev) => {
-      const isSelected = prev.includes(addonId);
+      // Lấy tất cả options trong cùng subGroup
+      const optionsInSubGroup = groupedByMain[mainGroup]?.[subGroup] || [];
+      const otherIdsInSubGroup = optionsInSubGroup
+        .filter((opt) => opt.id !== addonId)
+        .map((opt) => opt.id);
       
-      // Nếu là nhóm single choice, chỉ cho chọn 1 option trong nhóm
-      if (isSingleChoiceGroup(groupName)) {
-        // Bỏ chọn tất cả options khác trong cùng nhóm
-        const otherOptionsInGroup = groupedOptions[groupName]
-          .filter((opt) => opt.id !== addonId)
-          .map((opt) => opt.id);
-        
-        if (isSelected) {
-          // Nếu đang bỏ chọn, không cho phép nếu là option duy nhất trong nhóm
-          const remainingInGroup = prev.filter((id) => !otherOptionsInGroup.includes(id));
-          if (remainingInGroup.length === 0) {
-            // Giữ lại option này nếu không còn option nào khác trong nhóm
-            return prev;
-          }
-          return prev.filter((id) => id !== addonId);
-        } else {
-          // Chọn option mới, bỏ chọn các options khác trong nhóm
-          return [...prev.filter((id) => !otherOptionsInGroup.includes(id)), addonId];
-        }
-      } else {
-        // Multiple choice: toggle bình thường
-        return isSelected 
-          ? prev.filter((id) => id !== addonId)
-          : [...prev, addonId];
+      // Single choice trong mỗi subGroup: bỏ các options khác, chọn option mới
+      // Không cho bỏ chọn nếu là option duy nhất đang được chọn trong subGroup
+      const isSelected = prev.includes(addonId);
+      if (isSelected) {
+        // Không cho bỏ chọn - phải luôn có 1 option được chọn trong mỗi subGroup
+        return prev;
       }
+      
+      // Chọn option mới, bỏ chọn các options khác trong cùng subGroup
+      return [...prev.filter((id) => !otherIdsInSubGroup.includes(id)), addonId];
     });
   }
 
@@ -247,32 +240,32 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
               </div>
             </div>
 
-            {/* Add-ons - Nhóm theo từng thành phần */}
-            {Object.keys(groupedOptions).length > 0 && (
+            {/* Add-ons - Chỉ hiển thị subGroup */}
+            {Object.keys(groupedByMain).length > 0 && (
               <div className="mb-6">
                 <h3 className="font-semibold mb-4">Tùy chọn</h3>
                 <div className="space-y-4">
-                  {Object.entries(groupedOptions).map(([groupName, options]) => (
-                    <div key={groupName} className="space-y-2">
-                      <h4 className="text-sm font-medium text-muted-foreground">{groupName}</h4>
-                      <div className="space-y-2">
-                        {options.map((addon) => {
-                          const isSelected = selectedAddons.includes(addon.id);
-                          const isRequired = addon.isRequired;
-                          const isSingleChoice = isSingleChoiceGroup(groupName);
-                          
-                          return (
-                            <Card
-                              key={addon.id}
-                              className={`transition-colors ${
-                                isSelected ? "border-primary bg-primary/5" : "border-border"
-                              } ${isRequired ? "" : "cursor-pointer hover:border-primary/50"}`}
-                              onClick={() => !isRequired && toggleAddon(addon.id, groupName)}
-                            >
-                              <CardContent className="p-3 flex items-center justify-between">
-                                <div className="flex-1">
-                                  <div className="flex items-center gap-2">
-                                    {isSingleChoice && (
+                  {Object.entries(groupedByMain).flatMap(([mainGroup, subGroups]) =>
+                    Object.entries(subGroups).map(([subGroup, options]) => (
+                      <div key={`${mainGroup}-${subGroup}`} className="space-y-2">
+                        {subGroup !== "default" && (
+                          <p className="text-sm font-medium text-muted-foreground">{subGroup}</p>
+                        )}
+                        <div className="space-y-1">
+                          {options.map((addon) => {
+                            const isSelected = selectedAddons.includes(addon.id);
+                            
+                            return (
+                              <Card
+                                key={addon.id}
+                                className={`transition-colors cursor-pointer ${
+                                  isSelected ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"
+                                }`}
+                                onClick={() => toggleAddon(addon.id, subGroup, mainGroup)}
+                              >
+                                <CardContent className="p-3 flex items-center justify-between">
+                                  <div className="flex-1">
+                                    <div className="flex items-center gap-2">
                                       <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
                                         isSelected 
                                           ? "border-primary bg-primary" 
@@ -282,45 +275,27 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
                                           <div className="w-2 h-2 rounded-full bg-white" />
                                         )}
                                       </div>
-                                    )}
-                                    {!isSingleChoice && (
-                                      <div className={`w-4 h-4 rounded border-2 flex items-center justify-center ${
-                                        isSelected 
-                                          ? "border-primary bg-primary" 
-                                          : "border-muted-foreground"
-                                      }`}>
-                                        {isSelected && (
-                                          <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                                          </svg>
-                                        )}
-                                      </div>
-                                    )}
-                                    <span className="font-medium">{addon.name}</span>
-                                    {isRequired && (
-                                      <Badge variant="outline" className="text-xs">
-                                        Bắt buộc
-                                      </Badge>
-                                    )}
+                                      <span className="font-medium">{addon.displayName}</span>
+                                    </div>
                                   </div>
-                                </div>
-                                <span className="text-sm text-muted-foreground ml-4 whitespace-nowrap">
-                                  {addon.price > 0 ? `+${addon.price.toLocaleString("vi-VN")}đ` : "Miễn phí"}
-                                </span>
-                              </CardContent>
-                            </Card>
-                          );
-                        })}
+                                  <span className="text-sm text-muted-foreground ml-4 whitespace-nowrap">
+                                    {addon.price > 0 ? `+${addon.price.toLocaleString("vi-VN")}đ` : "Miễn phí"}
+                                  </span>
+                                </CardContent>
+                              </Card>
+                            );
+                          })}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    ))
+                  )}
                 </div>
               </div>
             )}
 
             {/* Quantity */}
             <div className="mb-6">
-              <h3 className="font-semibold mb-3">Quantity</h3>
+              <h3 className="font-semibold mb-3">Số lượng</h3>
               <div className="flex items-center gap-4">
                 <Button
                   variant="outline"
@@ -340,7 +315,7 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
             {/* Total & Actions */}
             <div className="mt-auto space-y-4">
               <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
-                <span className="font-semibold">Total:</span>
+                <span className="font-semibold">Tổng cộng:</span>
                 <span className="text-2xl font-bold text-primary">{totalPrice.toLocaleString("vi-VN")}đ</span>
               </div>
               <div className="flex gap-3">
@@ -350,7 +325,7 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
                   onClick={handleAddToCart}
                 >
                   <ShoppingCart className="mr-2 h-5 w-5" />
-                  Add to Cart
+                  Thêm vào giỏ
                 </Button>
                 <Button 
                   variant="outline" 
@@ -358,7 +333,7 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
                   onClick={handleBuyNow}
                   className="flex-1 border-orange-500 text-orange-500 hover:bg-orange-50 hover:text-orange-600 bg-white"
                 >
-                  Buy Now
+                  Mua ngay
                 </Button>
               </div>
             </div>

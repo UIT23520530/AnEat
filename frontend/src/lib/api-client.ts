@@ -44,7 +44,8 @@ apiClient.interceptors.response.use(
 
     // Không redirect nếu đang ở trang login/register (lỗi 401 là do sai credentials)
     const isAuthEndpoint = originalRequest.url?.includes('/auth/login') || 
-                           originalRequest.url?.includes('/auth/register');
+                           originalRequest.url?.includes('/auth/register') ||
+                           originalRequest.url?.includes('/auth/system/login');
 
     // Handle 401 Unauthorized - Clear token and redirect to login
     // Chỉ redirect nếu KHÔNG phải đang đăng nhập/đăng ký
