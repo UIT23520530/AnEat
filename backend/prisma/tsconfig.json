@@ -1,8 +1,11 @@
 {
   "extends": "../tsconfig.json",
   "compilerOptions": {
-    "rootDir": ".",
-    "noEmit": true
+    "rootDir": ".",     
+    "noEmit": true,     
+    "types": ["node"] 
   },
-  "include": ["seed.ts"]
+  "include": [
+    "**/*.ts"            
+  ]
 }
