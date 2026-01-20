@@ -145,6 +145,7 @@ export default function CheckoutPaymentPage() {
         const data = await createMoMoPayment({
           amount: total,
           orderInfo: `Thanh toán đơn hàng tại AnEat - ${orderNumber}`,
+          orderNumber: orderNumber,
         });
         if (data?.data?.payUrl) {
           window.location.href = data.data.payUrl;

@@ -46,7 +46,7 @@ export default function CheckoutInfoPage() {
 
   // Đồng bộ store ID với chi nhánh đã chọn
   useEffect(() => {
-    if (selectedBranch?.id && !store) {
+    if (selectedBranch?.id && selectedBranch.id !== store) {
       setStore(selectedBranch.id);
     }
   }, [selectedBranch, store, setStore]);

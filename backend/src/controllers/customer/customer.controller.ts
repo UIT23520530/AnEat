@@ -8,7 +8,7 @@ import crypto from 'crypto';
 export const initiateMoMoPayment = async (req: Request, res: Response): Promise<void> => {
   try {
     // Get payment info from request body
-    const { amount, orderInfo } = req.body;
+    const { amount, orderInfo, orderNumber } = req.body;
     if (!amount || !orderInfo) {
       res.status(400).json({
         status: 'error',
@@ -21,11 +21,14 @@ export const initiateMoMoPayment = async (req: Request, res: Response): Promise<
     const accessKey = process.env.MOMO_ACCESS_KEY!;
     const secretKey = process.env.MOMO_SECRET_KEY!;
     const partnerCode = process.env.MOMO_PARTNER_CODE!;
-    const redirectUrl = process.env.MOMO_REDIRECT_URL!;
+    const baseRedirectUrl = process.env.MOMO_REDIRECT_URL!;
     const ipnUrl = process.env.MOMO_IPN_URL!;
     const requestType = process.env.MOMO_REQUEST_TYPE!;
     const orderId = partnerCode + new Date().getTime();
     const requestId = orderId;
+    
+    // Add order details to redirect URL
+    const redirectUrl = `${baseRedirectUrl}?orderId=${orderNumber || orderId}&total=${amount}`;
     const extraData = '';
     const orderGroupId = '';
     const autoCapture = true;

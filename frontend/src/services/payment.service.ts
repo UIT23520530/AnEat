@@ -10,12 +10,12 @@ export async function createMoMoPosPayment({ amount, orderInfo, paymentCode }: {
 }
 // src/services/payment.service.ts
 
-export async function createMoMoPayment({ amount, orderInfo }: { amount: number; orderInfo: string }) {
+export async function createMoMoPayment({ amount, orderInfo, orderNumber }: { amount: number; orderInfo: string; orderNumber?: string }) {
   const res = await fetch("http://localhost:3001/api/v1/customer/payment", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     credentials: "include",
-    body: JSON.stringify({ amount, orderInfo }),
+    body: JSON.stringify({ amount, orderInfo, orderNumber }),
   });
   if (!res.ok) throw new Error("Không thể tạo thanh toán MoMo");
   return res.json();
