@@ -9,6 +9,8 @@ import { Toaster } from '@/components/ui/toaster'
 import './fonts.css'
 import { BranchProvider } from '@/contexts/branch-context'
 
+import StyledComponentsRegistry from '@/lib/antd-registry';
+
 // Import dev helper in development mode
 if (process.env.NODE_ENV === 'development') {
   import('@/lib/dev-auth');
@@ -41,11 +43,13 @@ export default function RootLayout({
         />
       </head>
       <body className={`font-sans bg-slate-50 ${GeistSans.variable} ${GeistMono.variable}`}>
-        <CartProvider>
-          <BranchProvider>
-            {children}
-          </BranchProvider>
-        </CartProvider>
+        <StyledComponentsRegistry>
+          <CartProvider>
+            <BranchProvider>
+              {children}
+            </BranchProvider>
+          </CartProvider>
+        </StyledComponentsRegistry>
         <Toaster />
         <Analytics />
       </body>

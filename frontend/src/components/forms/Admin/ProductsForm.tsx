@@ -35,7 +35,7 @@ export default function ProductsForm({
         price: selectedProduct.price, // Giá đã là VND
         image: selectedProduct.image,
         categoryId: selectedProduct.categoryId,
-        branchId: selectedProduct.branchId || null,
+        branchIds: selectedProduct.branchId ? [selectedProduct.branchId] : [], // Convert to array
         quantity: selectedProduct.quantity,
         prepTime: selectedProduct.prepTime || undefined,
         isAvailable: selectedProduct.isAvailable,
@@ -43,7 +43,7 @@ export default function ProductsForm({
       })
     } else if (!isEdit) {
       form.resetFields()
-      form.setFieldsValue({ isAvailable: true, quantity: 0, branchId: null })
+      form.setFieldsValue({ isAvailable: true, quantity: 0, branchIds: [] }) // Empty array = global
     }
   }, [isEdit, selectedProduct, form])
 
@@ -151,16 +151,18 @@ export default function ProductsForm({
           <Col span={24}>
             <Form.Item
               label="Áp dụng chi nhánh"
-              name="branchId"
-              help="Nếu chọn 'Toàn hệ thống', sản phẩm sẽ hiển thị ở tất cả chi nhánh"
+              name="branchIds"
+              help="Để trống = Toàn hệ thống. Chọn 1 hoặc nhiều chi nhánh cụ thể để giới hạn."
             >
-              <Select placeholder="Chọn chi nhánh">
-                <Select.Option value={null}>
-                  <span className="font-semibold text-green-600">Toàn hệ thống</span>
-                </Select.Option>
+              <Select
+                mode="multiple"
+                placeholder="Chọn chi nhánh (để trống = toàn hệ thống)"
+                allowClear
+                maxTagCount="responsive"
+              >
                 {(isEdit ? branches : branches.filter(b => b.isActive)).map((branch) => (
                   <Select.Option key={branch.id} value={branch.id}>
-                    {branch.name}
+                    {branch.code} - {branch.name}
                   </Select.Option>
                 ))}
               </Select>

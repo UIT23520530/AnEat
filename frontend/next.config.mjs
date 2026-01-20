@@ -15,6 +15,7 @@ const withPWA = withPWAInit({
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  reactStrictMode: false,
   eslint: {
     ignoreDuringBuilds: true,
   },
@@ -27,7 +28,14 @@ const nextConfig = {
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
     minimumCacheTTL: 60,
   },
-  webpack: (config) => {
+  experimental: {
+    optimizePackageImports: ['antd', '@ant-design/icons', 'lucide-react'],
+  },
+  onDemandEntries: {
+    maxInactiveAge: 60 * 1000,
+    pagesBufferLength: 5,
+  },
+  webpack: (config, { dev, isServer }) => {
     config.resolve = config.resolve || {}
     config.resolve.alias = {
       ...(config.resolve.alias || {}),
@@ -36,6 +44,17 @@ const nextConfig = {
       '@lib': path.resolve(process.cwd(), 'src/lib'),
       '@styles': path.resolve(process.cwd(), 'src/styles'),
     }
+
+    // Optimize webpack cache for faster rebuilds
+    if (dev && !isServer) {
+      config.cache = {
+        type: 'filesystem',
+        buildDependencies: {
+          config: [path.resolve(process.cwd(), 'next.config.mjs')],
+        },
+      }
+    }
+
     return config
   }
 }

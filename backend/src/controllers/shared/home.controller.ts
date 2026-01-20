@@ -279,7 +279,7 @@ export const getPublicProducts = async (req: Request, res: Response, next: NextF
       order: sortOrder as 'asc' | 'desc',
       search: search as string | undefined,
       categoryId: categoryId as string | undefined,
-      isAvailable: undefined,
+      isAvailable: true, // Only show available products (not hidden by manager)
       branchId: branchId as string,
     };
 

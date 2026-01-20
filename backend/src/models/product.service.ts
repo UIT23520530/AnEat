@@ -61,17 +61,36 @@ export class ProductService {
     } as any;
 
     // Filter by branch if provided
+    // IMPORTANT: Show both global products (branchId = null) AND branch-specific products
     if (branchId) {
-      where.branchId = branchId;
+      where.OR = [
+        { branchId: branchId },  // Branch-specific products
+        { branchId: null },      // Global products (available at all branches)
+      ];
     }
 
     // Search filter
     if (search) {
-      where.OR = [
-        { name: { contains: search, mode: 'insensitive' } },
-        { code: { contains: search, mode: 'insensitive' } },
-        { description: { contains: search, mode: 'insensitive' } },
-      ];
+      // If OR already exists (from branchId), we need to combine with AND
+      if (where.OR) {
+        where.AND = [
+          { OR: where.OR }, // Keep the branchId OR condition
+          {
+            OR: [
+              { name: { contains: search, mode: 'insensitive' } },
+              { code: { contains: search, mode: 'insensitive' } },
+              { description: { contains: search, mode: 'insensitive' } },
+            ],
+          },
+        ];
+        delete where.OR; // Remove the top-level OR
+      } else {
+        where.OR = [
+          { name: { contains: search, mode: 'insensitive' } },
+          { code: { contains: search, mode: 'insensitive' } },
+          { description: { contains: search, mode: 'insensitive' } },
+        ];
+      }
     }
 
     // Category filter
@@ -503,11 +522,11 @@ export class ProductService {
         code: product.category.code,
         name: product.category.name,
       } : null,
-      branch: {
+      branch: product.branch ? {
         id: product.branch.id,
         code: product.branch.code,
         name: product.branch.name,
-      },
+      } : null,
       // Options grouped by type
       options: {
         sizes: sizes.map(opt => ({

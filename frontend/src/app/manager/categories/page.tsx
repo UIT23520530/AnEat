@@ -27,14 +27,13 @@ import {
   PlusOutlined,
   EditOutlined,
   DeleteOutlined,
-  EyeInvisibleOutlined,
   EyeOutlined,
-  InfoCircleOutlined,
   AppstoreOutlined,
   CheckCircleOutlined,
   StopOutlined,
   ArrowRightOutlined,
   FolderOpenOutlined,
+  CheckOutlined,
 } from "@ant-design/icons"
 import type { TableColumnsType } from "antd"
 import {
@@ -170,7 +169,7 @@ function CategoriesContent() {
           </p>
           {record.productCount > 0 && (
             <p className="text-red-600 text-sm mt-2">
-              ⚠️ Danh mục này có {record.productCount} sản phẩm trong cửa hàng của bạn. 
+              ⚠️ Danh mục này có {record.productCount} sản phẩm trong cửa hàng của bạn.
               Vệc xóa danh mục này sẽ ảnh hưởng đến các sản phẩm đó.
             </p>
           )}
@@ -205,7 +204,7 @@ function CategoriesContent() {
     const isNowVisible = !record.isActive // This is a bit tricky, the category state might not reflect branch visibility 1:1
     // For simplicity, we'll use a logic that toggles all products in this branch.
     // If we want a better UI, we'd need a separate "BranchCategory" state.
-    
+
     // We'll show a confirm modal since this affects multiple products
     modal.confirm({
       title: `${isNowVisible ? 'Hiển thị' : 'Ẩn'} toàn bộ sản phẩm trong danh mục này?`,
@@ -266,11 +265,11 @@ function CategoriesContent() {
       title: "Mã danh mục",
       dataIndex: "code",
       key: "code",
-      width: 130,      
-      fixed: 'left',      
+      width: 130,
+      fixed: 'left',
       render: (code: string, record: Category) => (
-        <Tag 
-          color={stringToColor(code)} 
+        <Tag
+          color={stringToColor(code)}
           style={{ opacity: record.isActive ? 1 : 0.5 }}
         >
           {code}
@@ -281,8 +280,8 @@ function CategoriesContent() {
       title: "Tên danh mục",
       dataIndex: "name",
       key: "name",
-      width: 150,      
-      fixed: 'left',      
+      width: 150,
+      fixed: 'left',
       render: (name: string, record: Category) => (
         <span style={{ opacity: record.isActive ? 1 : 0.5, fontWeight: 500 }}>{name}</span>
       ),
@@ -364,10 +363,10 @@ function CategoriesContent() {
               onClick={() => handleEditClick(record)}
             />
           </Tooltip>
-          <Tooltip title={record.isActive ? "Ẩn danh mục tại cửa hàng" : "Hiển thị danh mục tại cửa hàng"}>
+          <Tooltip title={record.isActive ? "Ẩn sản phẩm của danh mục tại cửa hàng" : "Hiển thị sản phẩm của danh mục tại cửa hàng"}>
             <Button
               type="text"
-              icon={record.isActive ? <EyeInvisibleOutlined /> : <EyeOutlined />}
+              icon={record.isActive ? <StopOutlined /> : <CheckOutlined />}
               onClick={() => handleToggleActiveForBranch(record)}
             />
           </Tooltip>
@@ -474,6 +473,7 @@ function CategoriesContent() {
             rowKey="id"
             scroll={{ x: 1400 }}
             className="ant-table-custom"
+            rowClassName={(record) => !record.isActive ? 'opacity-50' : ''}
             pagination={{
               ...pagination,
               showTotal: (total) => `Hiển thị ${total} danh mục`,

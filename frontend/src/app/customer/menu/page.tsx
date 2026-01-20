@@ -8,7 +8,7 @@ import { Product } from "@/types";
 import { useCart } from "@/contexts/cart-context";
 import { useToast } from "@/hooks/use-toast";
 import { createSlug } from "@/lib/utils";
-import { Truck, MapPin, Search, Loader2 } from "lucide-react";
+import { Truck, MapPin, Search, Loader2, RotateCw } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import apiClient from "@/lib/api-client";
@@ -239,6 +239,7 @@ export default function MenuPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [productsLoading, setProductsLoading] = useState(false);
   const [productsError, setProductsError] = useState<string | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
   const { addToCart } = useCart();
   const { toast } = useToast();
 
@@ -264,6 +265,19 @@ export default function MenuPage() {
     }
   }, [toast]);
 
+  // Auto-refresh when user returns to tab
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden && selectedBranch?.id) {
+        console.log("Tab visible again, refreshing products...");
+        setRefreshKey(prev => prev + 1);
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
+  }, [selectedBranch?.id]);
+
   // Auto-select first branch if none selected
   useEffect(() => {
     const autoSelectBranch = async () => {
@@ -280,7 +294,7 @@ export default function MenuPage() {
 
         if (branchesResponse.data?.success && branchesResponse.data.data?.length > 0) {
           const branches = branchesResponse.data.data;
-          
+
           // Tìm branch có products bằng cách thử fetch products
           for (const branch of branches) {
             try {
@@ -433,7 +447,7 @@ export default function MenuPage() {
           status: err.response?.status,
         });
         setProductsError(
-          err.response?.data?.message || 
+          err.response?.data?.message ||
           "Đã xảy ra lỗi khi tải sản phẩm. Vui lòng thử lại sau."
         );
         setProducts([]);
@@ -443,7 +457,7 @@ export default function MenuPage() {
     };
 
     fetchProducts();
-  }, [selectedBranch?.id, selectedCategory, sortOption]); // Removed searchQuery from dependencies
+  }, [selectedBranch?.id, selectedCategory, sortOption, refreshKey]);
 
   const handleConfirmAddress = () => {
     if (deliveryAddress.trim()) {
@@ -463,7 +477,7 @@ export default function MenuPage() {
       quantity: 1,
       image: product.image || "/placeholder.svg",
     });
-    
+
     toast({
       title: "Đã thêm vào giỏ hàng",
       description: `${product.name} đã được thêm vào giỏ hàng của bạn`,
@@ -474,10 +488,10 @@ export default function MenuPage() {
   // Products đã được filter từ API, filter thêm search client-side
   const filteredProducts = products.filter((product) => {
     if (!searchQuery.trim()) return true;
-    
+
     // Tạo slug từ input tìm kiếm (chữ thường, không dấu, có gạch nối)
     const searchSlug = createSlugFromName(searchQuery.trim());
-    
+
     // So sánh với slug của sản phẩm, kiểm tra slug tồn tại
     return typeof product.slug === "string" && product.slug.includes(searchSlug);
   });
@@ -553,34 +567,43 @@ export default function MenuPage() {
               <div className="flex gap-2 items-center">
                 <button
                   onClick={() => setSortOption("newest")}
-                  className={`px-5 py-2.5 rounded-full font-semibold text-sm whitespace-nowrap transition-all duration-200 ${
-                    sortOption === "newest"
-                      ? "bg-orange-500 text-white shadow-md"
-                      : "bg-white text-gray-600 hover:bg-gray-50 border border-gray-200"
-                  }`}
+                  className={`px-5 py-2.5 rounded-full font-semibold text-sm whitespace-nowrap transition-all duration-200 ${sortOption === "newest"
+                    ? "bg-orange-500 text-white shadow-md"
+                    : "bg-white text-gray-600 hover:bg-gray-50 border border-gray-200"
+                    }`}
                 >
                   Mới nhất
                 </button>
                 <button
                   onClick={() => setSortOption("bestselling")}
-                  className={`px-5 py-2.5 rounded-full font-semibold text-sm whitespace-nowrap transition-all duration-200 ${
-                    sortOption === "bestselling"
-                      ? "bg-orange-500 text-white shadow-md"
-                      : "bg-white text-gray-600 hover:bg-gray-50 border border-gray-200"
-                  }`}
+                  className={`px-5 py-2.5 rounded-full font-semibold text-sm whitespace-nowrap transition-all duration-200 ${sortOption === "bestselling"
+                    ? "bg-orange-500 text-white shadow-md"
+                    : "bg-white text-gray-600 hover:bg-gray-50 border border-gray-200"
+                    }`}
                 >
                   Bán chạy
                 </button>
                 <button
                   onClick={() => setSortOption("low-price")}
-                  className={`px-5 py-2.5 rounded-full font-semibold text-sm whitespace-nowrap transition-all duration-200 ${
-                    sortOption === "low-price"
-                      ? "bg-orange-500 text-white shadow-md"
-                      : "bg-white text-gray-600 hover:bg-gray-50 border border-gray-200"
-                  }`}
+                  className={`px-5 py-2.5 rounded-full font-semibold text-sm whitespace-nowrap transition-all duration-200 ${sortOption === "low-price"
+                    ? "bg-orange-500 text-white shadow-md"
+                    : "bg-white text-gray-600 hover:bg-gray-50 border border-gray-200"
+                    }`}
                 >
                   Giá mềm
                 </button>
+
+                {/* Refresh Button */}
+                {selectedBranch && (
+                  <button
+                    onClick={() => setRefreshKey(prev => prev + 1)}
+                    disabled={productsLoading}
+                    className="p-2.5 rounded-full bg-white text-gray-600 hover:bg-gray-50 border border-gray-200 transition-all duration-200 disabled:opacity-50"
+                    title="Làm mới danh sách"
+                  >
+                    <RotateCw className={`h-5 w-5 ${productsLoading ? 'animate-spin' : ''}`} />
+                  </button>
+                )}
               </div>
             </div>
           </div>

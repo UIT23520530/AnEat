@@ -192,6 +192,7 @@ export const getProductStats = async (req: Request, res: Response): Promise<void
 
 /**
  * Get product by ID
+ * Also returns all branches that have this product (same code)
  */
 export const getProductById = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -218,6 +219,13 @@ export const getProductById = async (req: Request, res: Response): Promise<void>
           },
         },
         branchId: true,
+        branch: {
+          select: {
+            id: true,
+            code: true,
+            name: true,
+          },
+        },
         quantity: true,
         prepTime: true,
         isAvailable: true,
@@ -235,12 +243,38 @@ export const getProductById = async (req: Request, res: Response): Promise<void>
       return;
     }
 
-    console.log('✅ Product fetched:', { id, name: product.name });
+    // Find all products with the same code to get branches list
+    const relatedProducts = await prisma.product.findMany({
+      where: {
+        code: product.code,
+        branchId: { not: null }, // Only branch-specific products
+      },
+      select: {
+        branchId: true,
+        branch: {
+          select: {
+            id: true,
+            code: true,
+            name: true,
+          },
+        },
+      },
+    });
+
+    // Extract unique branches
+    const branches = relatedProducts
+      .filter(p => p.branch !== null)
+      .map(p => p.branch!);
+
+    console.log('✅ Product fetched:', { id, name: product.name, branchesCount: branches.length });
 
     res.status(200).json({
       status: 'success',
       message: 'Lấy thông tin sản phẩm thành công',
-      data: product,
+      data: {
+        ...product,
+        branches: branches.length > 0 ? branches : undefined,
+      },
     });
   } catch (error) {
     console.error('❌ Get product by ID error:', error);
@@ -253,10 +287,11 @@ export const getProductById = async (req: Request, res: Response): Promise<void>
 
 /**
  * Create new product
+ * Supports creating products for multiple branches at once
  */
 export const createProduct = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { code, name, description, price, image, categoryId, branchId, quantity, prepTime, costPrice, isAvailable = true } = req.body;
+    const { code, name, description, price, image, categoryId, branchIds, quantity, prepTime, costPrice, isAvailable = true } = req.body;
 
     console.log('➕ Create product request:', {
       code,
@@ -264,7 +299,7 @@ export const createProduct = async (req: Request, res: Response): Promise<void> 
       description,
       price,
       categoryId,
-      branchId,
+      branchIds,
       quantity,
       prepTime,
       costPrice,
@@ -337,52 +372,106 @@ export const createProduct = async (req: Request, res: Response): Promise<void> 
       return;
     }
 
-    // Create product
-    const newProduct = await prisma.product.create({
-      data: {
-        code: code.trim().toUpperCase(),
-        name: name.trim(),
-        description: description?.trim() || null,
-        price: Number(price), // Fixed: Use direct value, no *100
-        costPrice: costPrice ? Number(costPrice) : 0,
-        image: image?.trim() || null,
-        categoryId,
-        branchId: branchId || null,
-        quantity: quantity !== undefined ? Number(quantity) : 0,
-        prepTime: prepTime !== undefined ? Number(prepTime) : 15, // Default 15 minutes
-        isAvailable: Boolean(isAvailable),
-      },
-      select: {
-        id: true,
-        code: true,
-        name: true,
-        description: true,
-        price: true,
-        costPrice: true,
-        image: true,
-        categoryId: true,
-        category: {
+    // Prepare base product data
+    const baseProductData = {
+      code: code.trim().toUpperCase(),
+      name: name.trim(),
+      description: description?.trim() || null,
+      price: Number(price),
+      costPrice: costPrice ? Number(costPrice) : 0,
+      image: image?.trim() || null,
+      categoryId,
+      quantity: quantity !== undefined ? Number(quantity) : 0,
+      prepTime: prepTime !== undefined ? Number(prepTime) : 15,
+      isAvailable: Boolean(isAvailable),
+    };
+
+    // Handle branch selection
+    const branchIdsArray = Array.isArray(branchIds) ? branchIds : [];
+
+    let createdProducts: any[] = [];
+
+    if (branchIdsArray.length === 0) {
+      // Empty array = Global product (branchId = null)
+      const newProduct = await prisma.product.create({
+        data: {
+          ...baseProductData,
+          branchId: null,
+        },
+        select: {
+          id: true,
+          code: true,
+          name: true,
+          description: true,
+          price: true,
+          costPrice: true,
+          image: true,
+          categoryId: true,
+          category: {
+            select: {
+              id: true,
+              code: true,
+              name: true,
+            },
+          },
+          branchId: true,
+          quantity: true,
+          prepTime: true,
+          isAvailable: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      });
+      createdProducts.push(newProduct);
+      console.log('✅ Global product created:', { id: newProduct.id, name: newProduct.name });
+    } else {
+      // Create one product per selected branch
+      for (const branchId of branchIdsArray) {
+        const newProduct = await prisma.product.create({
+          data: {
+            ...baseProductData,
+            branchId: branchId,
+          },
           select: {
             id: true,
             code: true,
             name: true,
+            description: true,
+            price: true,
+            costPrice: true,
+            image: true,
+            categoryId: true,
+            category: {
+              select: {
+                id: true,
+                code: true,
+                name: true,
+              },
+            },
+            branchId: true,
+            branch: {
+              select: {
+                id: true,
+                code: true,
+                name: true,
+              },
+            },
+            quantity: true,
+            prepTime: true,
+            isAvailable: true,
+            createdAt: true,
+            updatedAt: true,
           },
-        },
-        branchId: true,
-        quantity: true,
-        prepTime: true,
-        isAvailable: true,
-        createdAt: true,
-        updatedAt: true,
-      },
-    });
-
-    console.log('✅ Product created:', { id: newProduct.id, name: newProduct.name });
+        });
+        createdProducts.push(newProduct);
+      }
+      console.log(`✅ ${createdProducts.length} products created for branches:`, branchIdsArray);
+    }
 
     res.status(201).json({
       status: 'success',
-      message: 'Tạo sản phẩm thành công',
-      data: newProduct,
+      message: `Tạo thành công ${createdProducts.length} sản phẩm`,
+      data: createdProducts.length === 1 ? createdProducts[0] : createdProducts,
     });
   } catch (error) {
     console.error('❌ Create product error:', error);
