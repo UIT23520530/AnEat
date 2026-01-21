@@ -4,8 +4,8 @@ import { useState, useEffect, useRef } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { AdminLayout } from "@/components/layouts/admin-layout"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { BranchForm } from "@/components/forms/admin/BranchForm"
-import { BranchDetailModal } from "@/components/forms/admin/BranchDetailModal"
+import { BranchForm } from "@/components/forms/admin/branches/BranchForm"
+import { BranchDetailModal } from "@/components/forms/admin/branches/BranchDetailModal"
 import {
   Table,
   Button,

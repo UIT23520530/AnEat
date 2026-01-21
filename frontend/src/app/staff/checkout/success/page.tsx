@@ -7,7 +7,7 @@ import { StaffHeader } from "@/components/layouts/staff-header"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { CheckCircle, ArrowRight, Printer, FileText } from "lucide-react"
-import { InvoicePrintModal } from "@/components/forms/admin/InvoicePrintModal"
+import { InvoicePrintModal } from "@/components/forms/admin/invoices/InvoicePrintModal"
 import staffOrderService from "@/services/staff-order.service"
 import { staffTemplateService, TemplateCategory } from "@/services/staff-template.service"
 

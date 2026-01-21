@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { AdminLayout } from "@/components/layouts/admin-layout"
 import { Card, CardHeader } from "@/components/ui/card"
-import CategoriesForm from "@/components/forms/admin/CategoriesForm"
+import CategoriesForm from "@/components/forms/admin/categories/CategoriesForm"
 import {
   Table,
   Button,

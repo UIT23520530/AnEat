@@ -10,9 +10,9 @@ import dayjs from "dayjs";
 import { adminBillService, BillDTO, UpdateBillDto } from "@/services/admin-bill.service";
 import { adminBranchService } from "@/services/admin-branch.service";
 import ThermalPrintReceipt from "@/components/invoice/ThermalPrintReceipt";
-import { InvoiceEditForm } from "@/components/forms/admin/InvoiceEditForm";
-import { InvoiceHistoryModal } from "@/components/forms/admin/InvoiceHistoryModal"; import { InvoiceDetailModal } from "@/components/forms/admin/InvoiceDetailModal";
-import { InvoicePrintModal } from "@/components/forms/admin/InvoicePrintModal";
+import { InvoiceEditForm } from "@/components/forms/admin/invoices/InvoiceEditForm";
+import { InvoiceHistoryModal } from "@/components/forms/admin/invoices/InvoiceHistoryModal"; import { InvoiceDetailModal } from "@/components/forms/admin/invoices/InvoiceDetailModal";
+import { InvoicePrintModal } from "@/components/forms/admin/invoices/InvoicePrintModal";
 const { Option } = Select;
 
 // Search normalization helper

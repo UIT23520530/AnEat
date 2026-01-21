@@ -3,8 +3,8 @@
 import { useState, useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { AdminLayout } from "@/components/layouts/admin-layout"
-import UsersForm from "@/components/forms/admin/UsersForm"
-import UsersDetailModal from "@/components/forms/admin/UsersDetailModal"
+import UsersForm from "@/components/forms/admin/users/UsersForm"
+import UsersDetailModal from "@/components/forms/admin/users/UsersDetailModal"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import {
   Table,

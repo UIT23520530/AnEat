@@ -24,7 +24,7 @@ import {
 import staffOrderService from "@/services/staff-order.service"
 import { toast } from "sonner"
 import Image from "next/image"
-import { InvoicePrintModal } from "@/components/forms/admin/InvoicePrintModal"
+import { InvoicePrintModal } from "@/components/forms/admin/invoices/InvoicePrintModal"
 
 interface OrderItem {
   id: string

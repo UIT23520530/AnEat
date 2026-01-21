@@ -23,9 +23,9 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { adminTemplateService, TemplateDTO, TemplateCategory, TemplateStatus, CreateTemplateDto, UpdateTemplateDto } from "@/services/admin-template.service";
 import { adminBranchService } from "@/services/admin-branch.service";
-import { TemplateForm } from "@/components/forms/admin/TemplateForm";
-import { TemplateDetailModal } from "@/components/forms/admin/TemplateDetailModal";
-import { InvoicePrintModal } from "@/components/forms/admin/InvoicePrintModal";
+import { TemplateForm } from "@/components/forms/admin/templates/TemplateForm";
+import { TemplateDetailModal } from "@/components/forms/admin/templates/TemplateDetailModal";
+import { InvoicePrintModal } from "@/components/forms/admin/invoices/InvoicePrintModal";
 import dayjs from "dayjs";
 
 const { Option } = Select;

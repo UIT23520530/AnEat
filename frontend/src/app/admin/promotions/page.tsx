@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react"
 import { AdminLayout } from "@/components/layouts/admin-layout"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
-import PromotionsForm from "@/components/forms/admin/PromotionsForm"
+import PromotionsForm from "@/components/forms/admin/promotions/PromotionsForm"
 import {
   Table,
   Button,

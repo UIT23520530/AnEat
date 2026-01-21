@@ -3,8 +3,8 @@
 import { useState, useEffect } from "react"
 import { AdminLayout } from "@/components/layouts/admin-layout"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import CustomersForm from "@/components/forms/admin/CustomersForm"
-import CustomersDetailModal from "@/components/forms/admin/CustomersDetailModal"
+import CustomersForm from "@/components/forms/admin/customers/CustomersForm"
+import CustomersDetailModal from "@/components/forms/admin/customers/CustomersDetailModal"
 import {
   Table,
   Button,

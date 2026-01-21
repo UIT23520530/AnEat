@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { AdminLayout } from "@/components/layouts/admin-layout"
 import { Card, CardHeader } from "@/components/ui/card"
-import ProductsForm from "@/components/forms/admin/ProductsForm"
+import ProductsForm from "@/components/forms/admin/products/ProductsForm"
 import {
   Table,
   Button,

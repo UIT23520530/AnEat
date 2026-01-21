@@ -5,10 +5,6 @@ import { StaffLayout } from "@/components/layouts/staff-layout"
 import { StaffHeader } from "@/components/layouts/staff-header"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
@@ -21,17 +17,18 @@ import {
   Phone,
   MapPin,
   Package,
-  DollarSign,
   User,
-  Loader2,
-  AlertTriangle,
-  ChevronRight,
-  CreditCard
+  Loader2
 } from "lucide-react"
-import staffOrderTrackingService, { TrackingOrder, OrderItem } from "@/services/staff-order-tracking.service"
+import staffOrderTrackingService, { TrackingOrder } from "@/services/staff-order-tracking.service"
+import soundService from "@/services/sound.service"
 import { toast } from "sonner"
 import Image from "next/image"
-import { cn } from "@/lib/utils"
+import { ViewOrderModal } from "@/components/forms/staff/tracking-order/ViewOrderModal"
+import { EditOrderModal } from "@/components/forms/staff/tracking-order/EditOrderModal"
+import { CancelOrderModal } from "@/components/forms/staff/tracking-order/CancelOrderModal"
+import { PaymentMethodModal } from "@/components/forms/staff/tracking-order/PaymentMethodModal"
+import { BillDetailModal } from "@/components/forms/staff/tracking-order/BillDetailModal"
 
 export default function StaffOrderTrackingPage() {
   const [activeTab, setActiveTab] = useState<'pending' | 'preparing'>('pending')
@@ -39,6 +36,7 @@ export default function StaffOrderTrackingPage() {
   const [preparingOrders, setPreparingOrders] = useState<TrackingOrder[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [previousPendingCount, setPreviousPendingCount] = useState<number>(0)
 
   // Modal states
   const [selectedOrder, setSelectedOrder] = useState<TrackingOrder | null>(null)
@@ -62,9 +60,9 @@ export default function StaffOrderTrackingPage() {
   const [isProcessing, setIsProcessing] = useState(false)
 
   // Fetch orders
-  const fetchOrders = async () => {
+  const fetchOrders = async (isInitialLoad = false) => {
     try {
-      setLoading(true)
+      setLoading(isInitialLoad)
       setError(null)
 
       const [pendingRes, preparingRes] = await Promise.all([
@@ -73,7 +71,19 @@ export default function StaffOrderTrackingPage() {
       ])
 
       if (pendingRes.success) {
-        setPendingOrders(pendingRes.data)
+        const newPendingOrders = pendingRes.data
+        
+        // Check for new orders and play sound
+        if (!isInitialLoad && previousPendingCount > 0 && newPendingOrders.length > previousPendingCount) {
+          const newOrdersCount = newPendingOrders.length - previousPendingCount
+          soundService.playNotification()
+          toast.success(`🔔 Có ${newOrdersCount} đơn hàng mới!`, {
+            duration: 5000,
+          })
+        }
+        
+        setPendingOrders(newPendingOrders)
+        setPreviousPendingCount(newPendingOrders.length)
       }
 
       if (preparingRes.success) {
@@ -89,9 +99,12 @@ export default function StaffOrderTrackingPage() {
   }
 
   useEffect(() => {
-    fetchOrders()
+    // Initial load
+    fetchOrders(true)
+    
     // Auto refresh every 30 seconds
-    const interval = setInterval(fetchOrders, 30000)
+    const interval = setInterval(() => fetchOrders(false), 30000)
+    
     return () => clearInterval(interval)
   }, [])
 
@@ -498,7 +511,7 @@ export default function StaffOrderTrackingPage() {
               {error && !loading && (
                 <div className="bg-red-50 border border-red-200 rounded-lg p-4">
                   <p className="text-red-600">{error}</p>
-                  <Button onClick={fetchOrders} variant="outline" className="mt-2">
+                  <Button onClick={() => fetchOrders(true)} variant="outline" className="mt-2">
                     Thử lại
                   </Button>
                 </div>
@@ -540,611 +553,54 @@ export default function StaffOrderTrackingPage() {
         </div>
       </div>
 
-      {/* View Order Modal */}
-      <Dialog open={isViewModalOpen} onOpenChange={setIsViewModalOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Chi tiết đơn hàng</DialogTitle>
-          </DialogHeader>
+      {/* Modals */}
+      <ViewOrderModal
+        open={isViewModalOpen}
+        onOpenChange={setIsViewModalOpen}
+        order={selectedOrder}
+        isProcessing={isProcessing}
+        onAcceptOrder={handleAcceptOrder}
+        onOpenEditModal={handleOpenEditModal}
+        onOpenCancelModal={handleOpenCancelModal}
+      />
 
-          {selectedOrder && (
-            <div className="space-y-4">
-              {/* Order info */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label className="text-xs text-gray-500">Mã đơn hàng</Label>
-                  <p className="font-semibold">{selectedOrder.orderNumber}</p>
-                </div>
-                <div>
-                  <Label className="text-xs text-gray-500">Loại đơn</Label>
-                  <p className="font-semibold">
-                    {selectedOrder.orderType === 'DINE_IN' && 'Tại bàn'}
-                    {selectedOrder.orderType === 'TAKEAWAY' && 'Mang về'}
-                    {selectedOrder.orderType === 'DELIVERY' && 'Giao hàng'}
-                  </p>
-                </div>
-              </div>
+      <EditOrderModal
+        open={isEditModalOpen}
+        onOpenChange={setIsEditModalOpen}
+        order={selectedOrder}
+        editItems={editItems}
+        editReason={editReason}
+        isProcessing={isProcessing}
+        onUpdateQuantity={handleUpdateEditQuantity}
+        onRemoveItem={handleRemoveEditItem}
+        onReasonChange={setEditReason}
+        onSubmit={handleSubmitEdit}
+      />
 
-              {/* Customer */}
-              {selectedOrder.customer && (
-                <div>
-                  <Label className="text-xs text-gray-500">Khách hàng</Label>
-                  <div className="flex items-center gap-2 mt-1">
-                    <User className="h-4 w-4" />
-                    <span>{selectedOrder.customer.name}</span>
-                    <span className="text-gray-400">•</span>
-                    <Phone className="h-4 w-4" />
-                    <span>{selectedOrder.customer.phone}</span>
-                  </div>
-                </div>
-              )}
+      <CancelOrderModal
+        open={isCancelModalOpen}
+        onOpenChange={setIsCancelModalOpen}
+        order={selectedOrder}
+        cancelReason={cancelReason}
+        isProcessing={isProcessing}
+        onReasonChange={setCancelReason}
+        onSubmit={handleSubmitCancel}
+      />
 
-              {/* Delivery address */}
-              {selectedOrder.orderType === 'DELIVERY' && selectedOrder.deliveryAddress && (
-                <div>
-                  <Label className="text-xs text-gray-500">Địa chỉ giao hàng</Label>
-                  <div className="flex items-start gap-2 mt-1 p-2 bg-blue-50 rounded">
-                    <MapPin className="h-4 w-4 mt-0.5" />
-                    <span className="text-sm">{selectedOrder.deliveryAddress}</span>
-                  </div>
-                </div>
-              )}
+      <PaymentMethodModal
+        open={isPaymentModalOpen}
+        onOpenChange={setIsPaymentModalOpen}
+        selectedPaymentMethod={selectedPaymentMethod}
+        isProcessing={isProcessing}
+        onSelectPaymentMethod={setSelectedPaymentMethod}
+        onSubmit={handleUpdatePaymentAndComplete}
+      />
 
-              <Separator />
-
-              {/* Items */}
-              <div>
-                <Label className="text-xs text-gray-500">Sản phẩm</Label>
-                <div className="space-y-2 mt-2">
-                  {selectedOrder.items.map(item => (
-                    <div key={item.id} className="flex items-center gap-3 p-2 bg-gray-50 rounded">
-                      <div className="w-12 h-12 bg-white rounded flex items-center justify-center overflow-hidden">
-                        {item.image ? (
-                          <Image
-                            src={item.image}
-                            alt={item.name}
-                            width={48}
-                            height={48}
-                            className="object-cover w-full h-full"
-                          />
-                        ) : (
-                          <Package className="h-6 w-6 text-gray-400" />
-                        )}
-                      </div>
-                      <div className="flex-1">
-                        <p className="font-medium text-sm">{item.name}</p>
-                        <p className="text-xs text-gray-500">
-                          {item.price.toLocaleString('vi-VN')}₫ x {item.quantity}
-                        </p>
-                        {!item.isAvailable && (
-                          <div className="flex items-center gap-1 text-xs text-red-600 mt-1">
-                            <AlertTriangle className="h-3 w-3" />
-                            <span>Không khả dụng</span>
-                          </div>
-                        )}
-                        {item.isAvailable && item.stockQuantity < item.quantity && (
-                          <div className="flex items-center gap-1 text-xs text-orange-600 mt-1">
-                            <AlertTriangle className="h-3 w-3" />
-                            <span>Chỉ còn {item.stockQuantity} sản phẩm</span>
-                          </div>
-                        )}
-                      </div>
-                      <p className="font-semibold">
-                        {(item.price * item.quantity).toLocaleString('vi-VN')}₫
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <Separator />
-
-              {/* Summary */}
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span>Tạm tính</span>
-                  <span>{selectedOrder.subtotal.toLocaleString('vi-VN')}₫</span>
-                </div>
-                {selectedOrder.discountAmount > 0 && (
-                  <div className="flex justify-between text-sm text-orange-600">
-                    <span>Giảm giá</span>
-                    <span>-{selectedOrder.discountAmount.toLocaleString('vi-VN')}₫</span>
-                  </div>
-                )}
-                <Separator />
-                <div className="flex justify-between font-bold text-lg">
-                  <span>Tổng cộng</span>
-                  <span className="text-orange-600">
-                    {selectedOrder.total.toLocaleString('vi-VN')}₫
-                  </span>
-                </div>
-                
-                {/* Payment Method */}
-                {selectedOrder.paymentMethod && (
-                  <>
-                    <Separator />
-                    <div className="flex justify-between items-center pt-2 bg-gray-50 p-3 rounded-lg mt-2">
-                      <span className="text-sm font-medium text-gray-700">Phương thức thanh toán</span>
-                      <span
-                        className={cn(
-                          "inline-flex items-center px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap",
-                          selectedOrder.paymentMethod === 'CASH' && "bg-green-100 text-green-700",
-                          selectedOrder.paymentMethod === 'CARD' && "bg-blue-100 text-blue-700",
-                          selectedOrder.paymentMethod === 'BANK_TRANSFER' && "bg-red-100 text-red-700",
-                          selectedOrder.paymentMethod === 'E_WALLET' && "bg-purple-100 text-purple-700"
-                        )}
-                      >
-                        {selectedOrder.paymentMethod === 'CASH' && 'Tiền mặt'}
-                        {selectedOrder.paymentMethod === 'CARD' && 'Thẻ'}
-                        {selectedOrder.paymentMethod === 'BANK_TRANSFER' && 'Chuyển khoản'}
-                        {selectedOrder.paymentMethod === 'E_WALLET' && 'Ví điện tử'}
-                      </span>
-                    </div>
-                  </>
-                )}
-              </div>
-
-              {/* Notes */}
-              {selectedOrder.notes && (
-                <div>
-                  <Label className="text-xs text-gray-500">Ghi chú</Label>
-                  <div className="p-2 bg-yellow-50 rounded text-sm mt-1">
-                    {selectedOrder.notes}
-                  </div>
-                </div>
-              )}
-
-              {/* Actions */}
-              {selectedOrder.status === 'PENDING' && (
-                <div className="flex gap-2 pt-4">
-                  <Button
-                    onClick={() => handleAcceptOrder(selectedOrder.id)}
-                    className="flex-1 bg-green-600 hover:bg-green-700"
-                    disabled={isProcessing}
-                  >
-                    {isProcessing ? (
-                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                    ) : (
-                      <CheckCircle2 className="h-4 w-4 mr-2" />
-                    )}
-                    Chấp nhận đơn
-                  </Button>
-                  <Button
-                    onClick={() => handleOpenEditModal(selectedOrder)}
-                    variant="outline"
-                    disabled={isProcessing}
-                  >
-                    <Edit className="h-4 w-4 mr-2" />
-                    Chỉnh sửa
-                  </Button>
-                  <Button
-                    onClick={() => handleOpenCancelModal(selectedOrder)}
-                    variant="destructive"
-                    disabled={isProcessing}
-                  >
-                    <XCircle className="h-4 w-4 mr-2" />
-                    Hủy
-                  </Button>
-                </div>
-              )}
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
-
-      {/* Edit Order Modal */}
-      <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
-        <DialogContent className="max-w-3xl max-h-[100vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Chỉnh sửa đơn hàng</DialogTitle>
-          </DialogHeader>
-
-          {selectedOrder && (
-            <div className="space-y-">
-              <div className="text-sm text-gray-600">
-                Đơn hàng: <strong>{selectedOrder.orderNumber}</strong>
-              </div>
-
-              {/* Items */}
-              <div className="mb-5">
-                <Label>Sản phẩm</Label>
-                <div className="space-y-3 mt-2">
-                  {editItems.map((editItem, index) => {
-                    const item = selectedOrder.items.find(i => i.productId === editItem.productId)
-                    if (!item) return null
-
-                    return (
-                      <div key={`edit-item-${index}-${item.productId}`} className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
-                        <div className="w-16 h-16 bg-white rounded flex items-center justify-center overflow-hidden flex-shrink-0">
-                          {item.image ? (
-                            <Image
-                              src={item.image}
-                              alt={item.name}
-                              width={64}
-                              height={64}
-                              className="object-cover w-full h-full"
-                            />
-                          ) : (
-                            <Package className="h-6 w-6 text-gray-400" />
-                          )}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium text-sm text-gray-900 mb-1">{item.name}</p>
-                          <p className="text-xs text-gray-500 mb-2">
-                            Đơn giá: {item.price.toLocaleString('vi-VN')}₫
-                          </p>
-                          <div className="flex items-center gap-2">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                handleUpdateEditQuantity(item.productId, -1)
-                              }}
-                              disabled={editItem.quantity <= 1}
-                              className="h-8 w-8 p-0"
-                            >
-                              -
-                            </Button>
-                            <span className="w-12 text-center font-semibold text-sm bg-white px-2 py-1 rounded border">
-                              {editItem.quantity}
-                            </span>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                handleUpdateEditQuantity(item.productId, 1)
-                              }}
-                              className="h-8 w-8 p-0"
-                            >
-                              +
-                            </Button>
-                            <div className="flex-1"></div>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                handleRemoveEditItem(item.productId)
-                              }}
-                              className="text-red-600 hover:text-red-700 hover:bg-red-50 h-8"
-                            >
-                              <XCircle className="h-4 w-4 mr-1" />
-                              <span className="text-xs">Xóa</span>
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-
-              {/* Reason */}
-              <div>
-                <Label htmlFor="edit-reason" className="mb-5">
-                  Lý do chỉnh sửa <span className="text-red-500">*</span>
-                </Label>
-                <Textarea
-                  id="edit-reason"
-                  placeholder="Ví dụ: Hết hàng sản phẩm X, thay thế bằng sản phẩm Y..."
-                  value={editReason}
-                  onChange={(e) => setEditReason(e.target.value)}
-                  rows={3}
-                  className="mb-5"
-                />
-              </div>
-
-              <DialogFooter className="mt-4">
-                <Button
-                  variant="outline"
-                  onClick={() => setIsEditModalOpen(false)}
-                  disabled={isProcessing}
-                >
-                  Hủy
-                </Button>
-                <Button 
-                  className="bg-orange-500 hover:bg-orange-600 !text-white"
-                  onClick={handleSubmitEdit}
-                  disabled={isProcessing || editItems.length === 0 || !editReason.trim()}
-                >
-                  {isProcessing ? (
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  ) : null}
-                  Lưu thay đổi
-                </Button>
-              </DialogFooter>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
-
-      {/* Cancel Order Modal */}
-      <Dialog open={isCancelModalOpen} onOpenChange={setIsCancelModalOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Hủy đơn hàng</DialogTitle>
-          </DialogHeader>
-
-          {selectedOrder && (
-            <div className="space-y-4">
-              <div className="text-sm text-gray-600">
-                Bạn có chắc muốn hủy đơn hàng <strong>{selectedOrder.orderNumber}</strong>?
-              </div>
-
-              <div>
-                <Label htmlFor="cancel-reason">
-                  Lý do hủy <span className="text-red-500">*</span>
-                </Label>
-                <Textarea
-                  id="cancel-reason"
-                  placeholder="Ví dụ: Khách hàng hủy, không đủ nguyên liệu, đã gọi xác nhận với khách..."
-                  value={cancelReason}
-                  onChange={(e) => setCancelReason(e.target.value)}
-                  rows={4}
-                  className="mt-1"
-                />
-                <p className="text-xs text-gray-500 mt-1">Tối thiểu 10 ký tự</p>
-              </div>
-
-              <div className="bg-yellow-50 border border-yellow-200 rounded p-3 text-sm text-yellow-800">
-                <AlertTriangle className="h-4 w-4 inline mr-2" />
-                Số lượng sản phẩm sẽ được hoàn lại kho
-              </div>
-
-              <DialogFooter>
-                <Button
-                  variant="outline"
-                  onClick={() => setIsCancelModalOpen(false)}
-                  disabled={isProcessing}
-                >
-                  Quay lại
-                </Button>
-                <Button
-                  variant="destructive"
-                  onClick={handleSubmitCancel}
-                  disabled={isProcessing || !cancelReason.trim() || cancelReason.trim().length < 10}
-                >
-                  {isProcessing ? (
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  ) : (
-                    <XCircle className="h-4 w-4 mr-2" />
-                  )}
-                  Xác nhận hủy
-                </Button>
-              </DialogFooter>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
-
-      {/* Payment Method Modal */}
-      <Dialog open={isPaymentModalOpen} onOpenChange={setIsPaymentModalOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Chọn phương thức thanh toán</DialogTitle>
-          </DialogHeader>
-
-          <div className="space-y-3">
-            <p className="text-sm text-gray-600">
-              Vui lòng chọn phương thức thanh toán để hoàn thành đơn hàng
-            </p>
-            
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                onClick={() => setSelectedPaymentMethod('CASH')}
-                className={cn(
-                  "flex items-center justify-center gap-2 p-4 rounded-lg border-2 transition-colors",
-                  selectedPaymentMethod === 'CASH'
-                    ? "border-green-500 bg-green-50"
-                    : "border-gray-200 hover:border-gray-300"
-                )}
-              >
-                <DollarSign className="h-5 w-5" />
-                <span className="font-medium">Tiền mặt</span>
-              </button>
-
-              <button
-                onClick={() => setSelectedPaymentMethod('CARD')}
-                className={cn(
-                  "flex items-center justify-center gap-2 p-4 rounded-lg border-2 transition-colors",
-                  selectedPaymentMethod === 'CARD'
-                    ? "border-blue-500 bg-blue-50"
-                    : "border-gray-200 hover:border-gray-300"
-                )}
-              >
-                <CreditCard className="h-5 w-5" />
-                <span className="font-medium">Thẻ</span>
-              </button>
-
-              <button
-                onClick={() => setSelectedPaymentMethod('E_WALLET')}
-                className={cn(
-                  "flex items-center justify-center gap-2 p-4 rounded-lg border-2 transition-colors",
-                  selectedPaymentMethod === 'E_WALLET'
-                    ? "border-purple-500 bg-purple-50"
-                    : "border-gray-200 hover:border-gray-300"
-                )}
-              >
-                <CreditCard className="h-5 w-5" />
-                <span className="font-medium">Ví điện tử</span>
-              </button>
-
-              <button
-                onClick={() => setSelectedPaymentMethod('BANK_TRANSFER')}
-                className={cn(
-                  "flex items-center justify-center gap-2 p-4 rounded-lg border-2 transition-colors",
-                  selectedPaymentMethod === 'BANK_TRANSFER'
-                    ? "border-red-500 bg-red-50"
-                    : "border-gray-200 hover:border-gray-300"
-                )}
-              >
-                <CreditCard className="h-5 w-5" />
-                <span className="font-medium">Chuyển khoản</span>
-              </button>
-            </div>
-          </div>
-
-          <DialogFooter className="mt-4">
-            <Button
-              variant="outline"
-              onClick={() => setIsPaymentModalOpen(false)}
-              disabled={isProcessing}
-            >
-              Hủy
-            </Button>
-            <Button
-              className="bg-orange-500 hover:bg-orange-600 !text-white"
-              onClick={handleUpdatePaymentAndComplete}
-              disabled={isProcessing || !selectedPaymentMethod}
-            >
-              {isProcessing ? (
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-              ) : null}
-              Xác nhận
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Bill Detail Modal */}
-      <Dialog open={isBillDetailOpen} onOpenChange={setIsBillDetailOpen}>
-        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="text-2xl font-bold flex items-center gap-2">
-              <Package className="h-6 w-6 text-orange-500" />
-              Chi Tiết Hóa Đơn
-            </DialogTitle>
-          </DialogHeader>
-          
-          {completedBill && (
-            <div className="space-y-4">
-              {/* Bill Number */}
-              <div className="bg-gray-50 rounded-lg p-4">
-                <Label className="text-xs text-gray-500">Mã hóa đơn</Label>
-                <p className="text-lg font-bold text-gray-900">{completedBill.billNumber}</p>
-                <Badge variant="outline" className="mt-2">Đã phát hành</Badge>
-              </div>
-
-              {/* Customer Info */}
-              {(completedBill.customerName || completedBill.customerPhone) && (
-                <div className="border rounded-lg p-4">
-                  <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                    <User className="h-4 w-4" />
-                    Thông Tin Khách Hàng
-                  </h3>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <Label className="text-xs text-gray-500">Tên khách hàng</Label>
-                      <p className="text-sm font-medium">{completedBill.customerName || 'Khách vãng lai'}</p>
-                    </div>
-                    {completedBill.customerPhone && (
-                      <div>
-                        <Label className="text-xs text-gray-500">Số điện thoại</Label>
-                        <p className="text-sm font-medium">{completedBill.customerPhone}</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* Order Items */}
-              <div className="border rounded-lg p-4">
-                <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                  <Package className="h-4 w-4" />
-                  Chi Tiết Đơn Hàng
-                </h3>
-                {completedBill.items && completedBill.items.length > 0 ? (
-                  <div className="space-y-2">
-                    {completedBill.items.map((item: any) => (
-                      <div key={item.id} className="flex items-center gap-3 py-2 border-b last:border-0">
-                        {item.productImage && (
-                          <div className="w-12 h-12 bg-gray-100 rounded overflow-hidden flex-shrink-0">
-                            <Image
-                              src={item.productImage}
-                              alt={item.productName}
-                              width={48}
-                              height={48}
-                              className="object-cover w-full h-full"
-                            />
-                          </div>
-                        )}
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-gray-900 truncate">{item.productName}</p>
-                          <p className="text-xs text-gray-500">{item.price.toLocaleString()}₫ x {item.quantity}</p>
-                        </div>
-                        <span className="text-sm font-semibold text-gray-900 whitespace-nowrap">
-                          {item.total.toLocaleString()}₫
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-sm text-gray-500">Không có sản phẩm</p>
-                )}
-              </div>
-
-              {/* Payment Summary */}
-              <div className="border rounded-lg p-4">
-                <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                  <DollarSign className="h-4 w-4" />
-                  Thông Tin Thanh Toán
-                </h3>
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Tạm tính</span>
-                    <span className="font-medium">{completedBill.subtotal.toLocaleString()}₫</span>
-                  </div>
-                  {completedBill.discountAmount > 0 && (
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">Giảm giá</span>
-                      <span className="font-medium text-orange-600">-{completedBill.discountAmount.toLocaleString()}₫</span>
-                    </div>
-                  )}
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">VAT (8%)</span>
-                    <span className="font-medium">{completedBill.taxAmount.toLocaleString()}₫</span>
-                  </div>
-                  <Separator />
-                  <div className="flex justify-between pt-2">
-                    <span className="text-base font-bold">Tổng cộng</span>
-                    <span className="text-lg font-bold text-orange-600">{completedBill.total.toLocaleString()}₫</span>
-                  </div>
-                  <div className="pt-2 flex justify-between items-center">
-                    <span className="text-sm text-gray-600">Phương thức thanh toán</span>
-                    {completedBill.paymentMethod ? (
-                      <span className={cn(
-                        "inline-flex items-center px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap",
-                        completedBill.paymentMethod === 'CASH' && 'bg-green-100 text-green-700',
-                        completedBill.paymentMethod === 'CARD' && 'bg-blue-100 text-blue-700',
-                        completedBill.paymentMethod === 'E_WALLET' && 'bg-purple-100 text-purple-700',
-                        completedBill.paymentMethod === 'BANK_TRANSFER' && 'bg-red-100 text-red-700'
-                      )}>
-                        {completedBill.paymentMethod === 'CASH' && 'Tiền mặt'}
-                        {completedBill.paymentMethod === 'CARD' && 'Thẻ'}
-                        {completedBill.paymentMethod === 'E_WALLET' && 'Ví điện tử'}
-                        {completedBill.paymentMethod === 'BANK_TRANSFER' && 'Chuyển khoản'}
-                      </span>
-                    ) : (
-                      <span className="text-sm text-gray-400">Chưa thanh toán</span>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              <DialogFooter className="mt-4">
-                <Button
-                  className="bg-orange-500 hover:bg-orange-600 !text-white w-full"
-                  onClick={() => setIsBillDetailOpen(false)}
-                >
-                  Đóng
-                </Button>
-              </DialogFooter>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+      <BillDetailModal
+        open={isBillDetailOpen}
+        onOpenChange={setIsBillDetailOpen}
+        bill={completedBill}
+      />
     </StaffLayout>
   )
 }

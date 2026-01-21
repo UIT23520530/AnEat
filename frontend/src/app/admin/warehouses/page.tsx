@@ -11,12 +11,12 @@ import { adminWarehouseService, type WarehouseRequest, type LogisticsStaff, type
 import apiClient from "@/lib/api-client";
 
 // Import Modal Components
-import { ApproveRequestModal } from "@/components/forms/admin/ApproveRequestModal";
-import { RejectRequestModal } from "@/components/forms/admin/RejectRequestModal";
-import { AssignLogisticsModal } from "@/components/forms/admin/AssignLogisticsModal";
-import { CancelRequestModal } from "@/components/forms/admin/CancelRequestModal";
-import { RequestDetailModal } from "@/components/forms/admin/RequestDetailModal";
-import { CreateShipmentModal } from "@/components/forms/admin/CreateShipmentModal";
+import { ApproveRequestModal } from "@/components/forms/admin/stock-requests/ApproveRequestModal";
+import { RejectRequestModal } from "@/components/forms/admin/stock-requests/RejectRequestModal";
+import { AssignLogisticsModal } from "@/components/forms/admin/stock-requests/AssignLogisticsModal";
+import { CancelRequestModal } from "@/components/forms/admin/stock-requests/CancelRequestModal";
+import { RequestDetailModal } from "@/components/forms/admin/stock-requests/RequestDetailModal";
+import { CreateShipmentModal } from "@/components/forms/admin/stock-requests/CreateShipmentModal";
 
 const { Option } = Select;
 
