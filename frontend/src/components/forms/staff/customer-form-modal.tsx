@@ -17,7 +17,7 @@ interface Customer {
 interface CustomerFormModalProps {
   isOpen: boolean
   onClose: () => void
-  onSubmit: (customer: { name: string; phone: string; email: string }) => void
+  onSubmit: (customer: { name: string; phone: string; email: string; points?: number }) => void
   customer?: Customer | null
 }
 
@@ -26,6 +26,7 @@ export function CustomerFormModal({ isOpen, onClose, onSubmit, customer }: Custo
     name: "",
     phone: "",
     email: "",
+    points: 0,
   })
 
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -36,12 +37,14 @@ export function CustomerFormModal({ isOpen, onClose, onSubmit, customer }: Custo
         name: customer.name,
         phone: customer.phone,
         email: customer.email || "",
+        points: customer.points || 0,
       })
     } else {
       setFormData({
         name: "",
         phone: "",
         email: "",
+        points: 0,
       })
     }
     setErrors({})
@@ -64,6 +67,10 @@ export function CustomerFormModal({ isOpen, onClose, onSubmit, customer }: Custo
       newErrors.email = "Email không hợp lệ"
     }
 
+    if (formData.points < 0) {
+      newErrors.points = "Điểm tích lũy không được âm"
+    }
+
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
   }
@@ -76,7 +83,7 @@ export function CustomerFormModal({ isOpen, onClose, onSubmit, customer }: Custo
     }
   }
 
-  const handleChange = (field: string, value: string) => {
+  const handleChange = (field: string, value: string | number) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
     // Clear error when user starts typing
     if (errors[field]) {
@@ -138,16 +145,22 @@ export function CustomerFormModal({ isOpen, onClose, onSubmit, customer }: Custo
             {errors.email && <p className="text-xs text-red-600 mt-1">{errors.email}</p>}
           </div>
 
-          {/* Điểm tích lũy - Read only for staff */}
+          {/* Điểm tích lũy - Editable for staff */}
           {customer && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Điểm tích lũy</label>
               <Input
-                value={customer.points || 0}
-                disabled
-                className="bg-gray-50 cursor-not-allowed"
+                type="number"
+                value={formData.points}
+                onChange={(e) => {
+                  const value = e.target.value === "" ? 0 : parseInt(e.target.value);
+                  handleChange("points", isNaN(value) ? 0 : value);
+                }}
+                placeholder="0"
+                min="0"
+                className={errors.points ? "border-red-500" : ""}
               />
-              <p className="text-xs text-gray-500 mt-1">Chỉ Manager mới có thể chỉnh sửa điểm</p>
+              {errors.points && <p className="text-xs text-red-600 mt-1">{errors.points}</p>}
             </div>
           )}
 

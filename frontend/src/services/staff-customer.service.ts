@@ -52,6 +52,7 @@ export interface UpdateCustomerRequest {
   name?: string;
   email?: string;
   avatar?: string;
+  points?: number;
 }
 
 export interface CustomerQueryParams {

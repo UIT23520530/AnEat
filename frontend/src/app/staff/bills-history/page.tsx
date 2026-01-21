@@ -166,7 +166,7 @@ export default function StaffBillsHistoryPage() {
         <StaffHeader />
         <div className="flex-1 overflow-y-auto p-6">
           <div className="mb-6">
-            <h1 className="text-2xl font-bold text-gray-900">Lịch Sử Đơn Hàng</h1>
+            <h1 className="text-2xl font-bold text-gray-900">Lịch sử đơn hàng</h1>
             <p className="text-sm text-gray-500 mt-1">Xem lại tất cả các đơn hàng đã thực hiện</p>
           </div>
 

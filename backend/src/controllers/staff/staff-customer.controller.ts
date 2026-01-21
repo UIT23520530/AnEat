@@ -201,12 +201,12 @@ export const getCustomerById = async (req: Request, res: Response) => {
 /**
  * Update customer information
  * Level 3: Validation, standard response
- * Staff can update: name, email, avatar (not tier or points)
+ * Staff can update: name, email, avatar, points (not tier)
  */
 export const updateCustomer = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { name, email, avatar } = req.body;
+    const { name, email, avatar, points } = req.body;
 
     // Check if customer exists
     const existingCustomer = await CustomerService.findById(id);
@@ -219,11 +219,12 @@ export const updateCustomer = async (req: Request, res: Response) => {
       });
     }
 
-    // Update via service layer (only allow name, email, avatar)
+    // Update via service layer (only allow name, email, avatar, points)
     const updatedCustomer = await CustomerService.update(id, {
       name,
       email,
       avatar,
+      points,
     });
 
     return res.status(200).json({

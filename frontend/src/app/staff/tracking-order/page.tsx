@@ -415,7 +415,7 @@ export default function StaffOrderTrackingPage() {
                     e.stopPropagation()
                     handleAcceptOrder(order.id)
                   }}
-                  className="flex-1 bg-green-600 hover:bg-green-700 min-w-0 text-sm"
+                  className="flex-1 bg-green-600 hover:bg-green-700 min-w-0 text-sm !text-white"
                   disabled={isProcessing}
                 >
                   <CheckCircle2 className="h-4 w-4 mr-1 flex-shrink-0" />
@@ -438,7 +438,7 @@ export default function StaffOrderTrackingPage() {
                     handleOpenCancelModal(order)
                   }}
                   variant="destructive"
-                  className="w-10 h-10 p-0 flex-shrink-0"
+                  className="w-10 h-10 p-0 flex-shrink-0 !text-white"
                   disabled={isProcessing}
                 >
                   <XCircle className="h-4 w-4" />

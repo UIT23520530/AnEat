@@ -94,13 +94,14 @@ export default function CustomersPage() {
     }
   }
 
-  const handleSubmitCustomer = async (customerData: { name: string; phone: string; email: string }) => {
+  const handleSubmitCustomer = async (customerData: { name: string; phone: string; email: string; points?: number }) => {
     try {
       if (editingCustomer) {
         // Update existing customer
         await staffCustomerService.update(editingCustomer.id, {
           name: customerData.name,
-          email: customerData.email || undefined
+          email: customerData.email || undefined,
+          points: customerData.points
         })
       } else {
         // Create new customer
@@ -140,7 +141,7 @@ export default function CustomersPage() {
           {/* Header */}
           <div className="mb-6 flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Quản Lý Khách Hàng</h1>
+              <h1 className="text-2xl font-bold text-gray-900">Quản lý khách hàng</h1>
               <p className="text-sm text-gray-500 mt-1">Danh sách khách hàng thân thiết</p>
             </div>
             <Button className="bg-red-500 hover:bg-red-500 !text-white" onClick={handleAddCustomer}>

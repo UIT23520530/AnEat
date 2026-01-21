@@ -34,6 +34,8 @@ import {
   ChefHat,
   ClipboardCheck,
   Wallet,
+  XCircle,
+  DollarSign,
 } from "lucide-react";
 
 const statusSteps = [
@@ -119,6 +121,7 @@ interface OrderTrackingResponse {
     estimatedTime: string | null;
     paymentStatus: string;
     paymentMethod: string | null;
+    notes: string | null;
     promotion?: {
       id: string;
       code: string;
@@ -197,6 +200,7 @@ export default function OrderDetailPage({
             orderType: orderData.orderType,
             paymentMethod: orderData.paymentMethod || "CASH",
             paymentStatus: orderData.paymentStatus || "PENDING",
+            notes: orderData.notes || null,
             branch: orderData.branch
           };
 
@@ -362,6 +366,23 @@ export default function OrderDetailPage({
               </div>
             </CardContent>
           </Card>
+
+          {/* Cancellation Reason */}
+          {order.status === "cancelled" && order.notes && (
+            <Card className="mb-6 border-red-200 bg-red-50/50 shadow-premium rounded-2xl overflow-hidden">
+              <CardHeader className="bg-red-100/50 border-b border-red-200">
+                <CardTitle className="flex items-center gap-2 text-lg text-red-900">
+                  <XCircle className="h-5 w-5 text-red-600" />
+                  Lý do hủy đơn
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-6">
+                <p className="text-sm text-red-800 leading-relaxed whitespace-pre-line">
+                  {order.notes}
+                </p>
+              </CardContent>
+            </Card>
+          )}
 
           <div className="grid lg:grid-cols-3 gap-8 text-white">
             {/* Left Column - Order Details */}
@@ -564,25 +585,4 @@ export default function OrderDetailPage({
       </div>
     </PublicLayout>
   );
-}
-
-// Additional Icon needed
-function DollarSign(props: any) {
-  return (
-    <svg
-      {...props}
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <line x1="12" x2="12" y1="2" y2="22" />
-      <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
-    </svg>
-  )
 }

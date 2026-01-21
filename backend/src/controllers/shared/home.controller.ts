@@ -855,6 +855,7 @@ export const trackOrder = async (req: Request, res: Response, next: NextFunction
         paymentStatus: order.paymentStatus,
         paymentMethod: order.paymentMethod,
         promotion: order.promotion,
+        notes: order.notes,
       },
     });
   } catch (error) {

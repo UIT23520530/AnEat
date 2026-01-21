@@ -547,9 +547,8 @@ export default function WarehousePage() {
               setSelectedProduct(null)
             }}
             onSubmit={handleSubmitRequest}
-            productName={selectedProduct?.name}
-            currentStock={selectedProduct?.quantity}
-            mode="request"
+            products={inventoryItems}
+            selectedProduct={selectedProduct}
           />
         </div>
       </div>

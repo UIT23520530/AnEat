@@ -8,14 +8,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea"
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { CalendarIcon } from "lucide-react"
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
+import { CalendarIcon, Check, Search } from "lucide-react"
 import { format } from "date-fns"
 import { vi } from "date-fns/locale"
 import { cn } from "@/lib/utils"
+import { InventoryItemDTO } from "@/services/staff-warehouse.service"
 
 interface StockRequest {
   id?: string
-  productName: string
+  productId: string
   type: "RESTOCK" | "ADJUSTMENT" | "RETURN"
   requestedQuantity: number
   expectedDate?: Date
@@ -26,8 +28,8 @@ interface WarehouseFormModalProps {
   isOpen: boolean
   onClose: () => void
   onSubmit: (request: StockRequest) => void
-  productName?: string
-  currentStock?: number
+  products: InventoryItemDTO[]
+  selectedProduct?: InventoryItemDTO | null
   mode?: "request"
 }
 
@@ -35,38 +37,44 @@ export function WarehouseFormModal({
   isOpen, 
   onClose, 
   onSubmit, 
-  productName,
-  currentStock,
+  products,
+  selectedProduct,
   mode = "request" 
 }: WarehouseFormModalProps) {
   const [formData, setFormData] = useState<StockRequest>({
-    productName: "",
+    productId: "",
     type: "RESTOCK",
-    requestedQuantity: 0,
+    requestedQuantity: 1,
     notes: "",
   })
 
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const [open, setOpen] = useState(false)
 
   useEffect(() => {
-    if (productName) {
-      setFormData((prev) => ({ ...prev, productName }))
+    if (selectedProduct) {
+      setFormData({
+        productId: selectedProduct.id,
+        type: "RESTOCK",
+        requestedQuantity: 1,
+        notes: "",
+      })
     } else {
       setFormData({
-        productName: "",
+        productId: "",
         type: "RESTOCK",
-        requestedQuantity: 0,
+        requestedQuantity: 1,
         notes: "",
       })
     }
     setErrors({})
-  }, [productName, isOpen])
+  }, [selectedProduct, isOpen])
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {}
 
-    if (!formData.productName.trim()) {
-      newErrors.productName = "Vui lòng nhập tên sản phẩm"
+    if (!formData.productId) {
+      newErrors.productId = "Vui lòng chọn sản phẩm"
     }
 
     if (!formData.type) {
@@ -97,70 +105,132 @@ export function WarehouseFormModal({
     }
   }
 
+  // Find info of product being requested
+  const productInfo = selectedProduct || products?.find(p => p.id === formData.productId)
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-xl font-bold">Tạo Yêu Cầu Nhập Kho</DialogTitle>
+          <DialogTitle className="text-xl font-bold">Tạo yêu cầu nhập kho</DialogTitle>
         </DialogHeader>
 
-        {productName && currentStock !== undefined && (
-          <div className="mb-4 p-3 bg-gray-50 rounded-lg">
-            <div className="text-sm">
-              <p className="font-semibold text-gray-900">{productName}</p>
-              <p className="text-gray-600 mt-1">
-                Tồn kho hiện tại: <strong>{currentStock}</strong>
-              </p>
+        {productInfo && (
+          <div className="mb-4 p-3 bg-gray-50 rounded border border-gray-100">
+            <div className="flex items-center gap-3">
+              {productInfo.image && (
+                <img
+                  src={productInfo.image}
+                  alt={productInfo.name}
+                  className="w-16 h-16 rounded object-cover border border-gray-200"
+                />
+              )}
+              <div>
+                <div className="font-medium text-blue-600">{productInfo.name}</div>
+                <div className="text-sm text-gray-500">
+                  Mã sản phẩm: <span className="font-mono">{productInfo.code}</span>
+                </div>
+                <div className="text-sm text-gray-500">
+                  Tồn kho hiện tại: <strong className={productInfo.quantity < 10 ? "text-red-500" : "text-gray-700"}>{productInfo.quantity}</strong>
+                </div>
+              </div>
             </div>
           </div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {!productName && (
+          {!selectedProduct && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Tên sản phẩm <span className="text-red-600">*</span>
+                Chọn sản phẩm <span className="text-red-600">*</span>
               </label>
-              <Input
-                value={formData.productName}
-                onChange={(e) => handleChange("productName", e.target.value)}
-                placeholder="Nhập tên sản phẩm"
-                className={errors.productName ? "border-red-500" : ""}
-              />
-              {errors.productName && <p className="text-xs text-red-600 mt-1">{errors.productName}</p>}
+              <Popover open={open} onOpenChange={setOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={open}
+                    className={cn(
+                      "w-full justify-between",
+                      errors.productId && "border-red-500"
+                    )}
+                  >
+                    {formData.productId
+                      ? products?.find(p => p.id === formData.productId)?.name + " - " + 
+                        products?.find(p => p.id === formData.productId)?.code + 
+                        " (Tồn: " + products?.find(p => p.id === formData.productId)?.quantity + ")"
+                      : "Chọn sản phẩm cần nhập kho"}
+                    <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-full p-0" align="start" style={{ width: "var(--radix-popover-trigger-width)" }}>
+                  <Command>
+                    <CommandInput placeholder="Tìm kiếm sản phẩm..." />
+                    <CommandList>
+                      <CommandEmpty>Không tìm thấy sản phẩm.</CommandEmpty>
+                      <CommandGroup>
+                        {products?.map((p) => (
+                          <CommandItem
+                            key={p.id}
+                            value={p.name + " " + p.code}
+                            onSelect={() => {
+                              handleChange("productId", p.id)
+                              setOpen(false)
+                            }}
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                formData.productId === p.id ? "opacity-100" : "opacity-0"
+                              )}
+                            />
+                            {p.name} - {p.code} (Tồn: {p.quantity})
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+              {errors.productId && <p className="text-xs text-red-600 mt-1">{errors.productId}</p>}
             </div>
           )}
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Loại yêu cầu <span className="text-red-600">*</span>
-            </label>
-            <Select value={formData.type} onValueChange={(value) => handleChange("type", value)}>
-              <SelectTrigger className={errors.type ? "border-red-500" : ""}>
-                <SelectValue placeholder="Chọn loại yêu cầu" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="RESTOCK">Nhập hàng</SelectItem>
-                <SelectItem value="ADJUSTMENT">Điều chỉnh</SelectItem>
-                <SelectItem value="RETURN">Trả hàng</SelectItem>
-              </SelectContent>
-            </Select>
-            {errors.type && <p className="text-xs text-red-600 mt-1">{errors.type}</p>}
-          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Loại yêu cầu <span className="text-red-600">*</span>
+              </label>
+              <Select value={formData.type} onValueChange={(value) => handleChange("type", value)}>
+                <SelectTrigger className={errors.type ? "border-red-500" : ""}>
+                  <SelectValue placeholder="Chọn loại yêu cầu" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="RESTOCK">Nhập hàng</SelectItem>
+                  <SelectItem value="ADJUSTMENT">Điều chỉnh</SelectItem>
+                  <SelectItem value="RETURN">Trả hàng</SelectItem>
+                </SelectContent>
+              </Select>
+              {errors.type && <p className="text-xs text-red-600 mt-1">{errors.type}</p>}
+            </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Số lượng yêu cầu <span className="text-red-600">*</span>
-            </label>
-            <Input
-              value={formData.requestedQuantity}
-              onChange={(e) => handleChange("requestedQuantity", parseInt(e.target.value) || 0)}
-              placeholder="0"
-              type="number"
-              min="1"
-              className={errors.requestedQuantity ? "border-red-500" : ""}
-            />
-            {errors.requestedQuantity && <p className="text-xs text-red-600 mt-1">{errors.requestedQuantity}</p>}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Số lượng yêu cầu <span className="text-red-600">*</span>
+              </label>
+              <Input
+                value={formData.requestedQuantity}
+                onChange={(e) => {
+                  const value = e.target.value === "" ? 1 : parseInt(e.target.value);
+                  handleChange("requestedQuantity", isNaN(value) ? 1 : value);
+                }}
+                placeholder="1"
+                type="number"
+                min="1"
+                className={errors.requestedQuantity ? "border-red-500" : ""}
+              />
+              {errors.requestedQuantity && <p className="text-xs text-red-600 mt-1">{errors.requestedQuantity}</p>}
+            </div>
           </div>
 
           <div>
@@ -214,7 +284,7 @@ export function WarehouseFormModal({
             >
               Hủy
             </Button>
-            <Button type="submit" className="flex-1 bg-orange-500 hover:bg-orange-600 text-white">
+            <Button type="submit" className="flex-1 bg-orange-500 hover:bg-orange-600 !text-white">
               Tạo yêu cầu
             </Button>
           </div>
