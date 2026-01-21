@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { PublicLayout } from "@/components/layouts/public-layout";
 import { CheckoutProgress } from "@/components/checkout/checkout-progress";
@@ -11,7 +11,15 @@ import Link from "next/link";
 import apiClient from "@/lib/api-client";
 import { useCart } from "@/contexts/cart-context";
 
-export default function CheckoutSuccessPage() {
+export default function CheckoutSuccessPageWrapper() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <CheckoutSuccessPage />
+    </Suspense>
+  );
+}
+
+function CheckoutSuccessPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { removeFromCart } = useCart();

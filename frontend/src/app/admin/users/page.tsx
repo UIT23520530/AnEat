@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { AdminLayout } from "@/components/layouts/admin-layout"
 import UsersForm from "@/components/forms/admin/users/UsersForm"
@@ -713,7 +713,9 @@ export default function AdminUsersPage() {
   return (
     <AdminLayout title="Quản lý người dùng">
       <App>
-        <UsersContent />
+        <Suspense fallback={<div>Loading...</div>}>
+          <UsersContent />
+        </Suspense>
       </App>
     </AdminLayout>
   )

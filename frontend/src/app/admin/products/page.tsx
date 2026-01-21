@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { AdminLayout } from "@/components/layouts/admin-layout"
 import { Card, CardHeader } from "@/components/ui/card"
@@ -724,7 +724,9 @@ export default function ProductsPage() {
   return (
     <AdminLayout title="Quản lý Sản phẩm">
       <App>
-        <ProductsContent />
+        <Suspense fallback={<div>Loading...</div>}>
+          <ProductsContent />
+        </Suspense>
       </App>
     </AdminLayout>
   )

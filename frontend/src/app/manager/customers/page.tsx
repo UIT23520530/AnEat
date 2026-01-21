@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, Suspense } from "react"
 import { ManagerLayout } from "@/components/layouts/manager-layout"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
@@ -485,7 +485,9 @@ export default function ManagerCustomersPage() {
   return (
     <ManagerLayout title="Quản lý khách hàng">
       <App>
-        <CustomersContent />
+        <Suspense fallback={<div>Loading...</div>}>
+          <CustomersContent />
+        </Suspense>
       </App>
     </ManagerLayout>
   )

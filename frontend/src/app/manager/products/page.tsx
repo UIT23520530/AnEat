@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { ManagerLayout } from "@/components/layouts/manager-layout"
 import { Card, CardHeader } from "@/components/ui/card"
@@ -588,7 +588,9 @@ export default function ProductsPage() {
   return (
     <ManagerLayout title="Quản lý sản phẩm">
       <App>
-        <ProductsContent />
+        <Suspense fallback={<div>Loading...</div>}>
+          <ProductsContent />
+        </Suspense>
       </App>
     </ManagerLayout>
   )

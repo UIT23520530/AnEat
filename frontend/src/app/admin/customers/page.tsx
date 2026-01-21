@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, Suspense } from "react"
 import { AdminLayout } from "@/components/layouts/admin-layout"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import CustomersForm from "@/components/forms/admin/customers/CustomersForm"
@@ -569,7 +569,9 @@ export default function AdminCustomersPage() {
   return (
     <AdminLayout title="Quản lý Khách hàng">
       <App>
-        <CustomersContent />
+        <Suspense fallback={<div>Loading...</div>}>
+          <CustomersContent />
+        </Suspense>
       </App>
     </AdminLayout>
   )

@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import React, { useEffect, useState, Suspense } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import { StaffLayout } from "@/components/layouts/staff-layout"
 import { StaffHeader } from "@/components/layouts/staff-header"
@@ -84,7 +84,15 @@ const generateInvoiceHtml = (templateContent: string, invoice: any) => {
   return content;
 };
 
-export default function StaffCheckoutSuccessPage() {
+export default function StaffCheckoutSuccessPageWrapper() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <StaffCheckoutSuccessPage />
+    </Suspense>
+  )
+}
+
+function StaffCheckoutSuccessPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [orderData, setOrderData] = useState({

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, Suspense, useRef } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { AdminLayout } from "@/components/layouts/admin-layout"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -582,7 +582,9 @@ export default function AdminBranchesPage() {
   return (
     <AdminLayout title="Quản lý chi nhánh">
       <App>
-        <BranchesContent />
+        <Suspense fallback={<div>Loading...</div>}>
+          <BranchesContent />
+        </Suspense>
       </App>
     </AdminLayout>
   )
