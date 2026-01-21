@@ -47,6 +47,7 @@ import {
 } from "@/services/admin-product.service"
 import { managerCategoryService } from "@/services/manager-category.service"
 import { type Category } from "@/services/admin-category.service"
+import { onEvent, onStorageEvent } from "@/lib/events"
 
 // Generate consistent color from string
 const stringToColor = (str: string) => {
@@ -118,6 +119,35 @@ function ProductsContent() {
     loadStatistics()
     loadCategories()
   }, [searchQuery, categoryFilter, statusFilter])
+
+  // Listen to category toggle events
+  useEffect(() => {
+    const unsubscribe = onEvent('category:toggled', (detail) => {
+      console.log('🔔 Category toggled event received:', detail)
+      // Reload products to reflect the cascade update
+      loadProducts()
+      loadStatistics()
+      
+      // Show notification
+      if (detail?.productCount > 0) {
+        message.info(`${detail.productCount} sản phẩm đã được ${detail.isActive ? 'hiện' : 'ẩn'} theo danh mục`)
+      }
+    })
+
+    // Also listen to storage events (from other tabs)
+    const unsubscribeStorage = onStorageEvent((eventName, detail) => {
+      if (eventName === 'category:toggled') {
+        console.log('🔔 Category toggled event from storage:', detail)
+        loadProducts()
+        loadStatistics()
+      }
+    })
+
+    return () => {
+      unsubscribe()
+      unsubscribeStorage()
+    }
+  }, [])
 
   // Load products
   const loadProducts = async () => {

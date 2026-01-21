@@ -47,6 +47,7 @@ import {
 } from "@/services/admin-product.service"
 import { adminCategoryService, type Category } from "@/services/admin-category.service"
 import { adminBranchService, type Branch } from "@/services/admin-branch.service"
+import { onEvent, onStorageEvent } from "@/lib/events"
 
 // Generate consistent color from string
 const stringToColor = (str: string) => {
@@ -126,6 +127,35 @@ function ProductsContent() {
     loadCategories()
     loadBranches()
   }, [searchQuery, categoryFilter, branchFilter, statusFilter])
+
+  // Listen to category toggle events
+  useEffect(() => {
+    const unsubscribe = onEvent('category:toggled', (detail) => {
+      console.log('🔔 Category toggled event received:', detail)
+      // Reload products to reflect the cascade update
+      loadProducts()
+      loadStatistics()
+      
+      // Show notification
+      if (detail?.productCount > 0) {
+        message.info(`${detail.productCount} sản phẩm đã được ${detail.isActive ? 'hiện' : 'ẩn'} theo danh mục`)
+      }
+    })
+
+    // Also listen to storage events (from other tabs)
+    const unsubscribeStorage = onStorageEvent((eventName, detail) => {
+      if (eventName === 'category:toggled') {
+        console.log('🔔 Category toggled event from storage:', detail)
+        loadProducts()
+        loadStatistics()
+      }
+    })
+
+    return () => {
+      unsubscribe()
+      unsubscribeStorage()
+    }
+  }, [])
 
   // Load products
   const loadProducts = async () => {
@@ -722,7 +752,7 @@ function ProductsContent() {
 
 export default function ProductsPage() {
   return (
-    <AdminLayout title="Quản lý Sản phẩm">
+    <AdminLayout title="Quản lý sản phẩm">
       <App>
         <Suspense fallback={<div>Loading...</div>}>
           <ProductsContent />

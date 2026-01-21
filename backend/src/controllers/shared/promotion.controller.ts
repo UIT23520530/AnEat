@@ -127,9 +127,25 @@ export const createPromotion = async (req: Request, res: Response): Promise<Resp
       });
     }
 
-    const { code, type, value, maxUses, isActive, expiryDate, minOrderAmount, applicableProducts } = req.body;
+    const { code, type, value, maxUses, isActive, expiryDate, minOrderAmount, applicableProducts, branchId: requestedBranchId } = req.body;
 
-    const branchId = req.user.role === 'ADMIN_SYSTEM' ? undefined : (req.user.branchId || undefined);
+    // Determine branchId based on role and request
+    let branchId: string | null = null;
+    
+    if (req.user.role === 'ADMIN_SYSTEM') {
+      // Admin can choose: null (global) or specific branch
+      // Check if branchId key exists in body (to differentiate between null and undefined)
+      if ('branchId' in req.body) {
+        branchId = requestedBranchId; // Use the exact value: null for global, string for specific
+      } else {
+        branchId = null; // Default to global if not specified
+      }
+    } else {
+      // Non-admin users can only create for their own branch
+      branchId = req.user.branchId || null;
+    }
+
+    console.log('[Create Promotion] User role:', req.user.role, 'Requested BranchId:', requestedBranchId, 'Final BranchId:', branchId);
 
     const promotion = await PromotionService.create({
       code,
@@ -169,11 +185,13 @@ export const updatePromotion = async (req: Request, res: Response): Promise<Resp
     }
 
     const { id } = req.params;
-    const { code, type, value, maxUses, isActive, expiryDate, minOrderAmount, applicableProducts } = req.body;
+    const { code, type, value, maxUses, isActive, expiryDate, minOrderAmount, applicableProducts, branchId: requestedBranchId } = req.body;
 
+    // Get existing promotion
+    const existing = await PromotionService.findById(id);
+    
     // Check if permission allowed
     if (req.user.role !== 'ADMIN_SYSTEM') {
-      const existing = await PromotionService.findById(id);
       if (existing && !existing.branchId) {
         return res.status(403).json({
           success: false,
@@ -188,7 +206,20 @@ export const updatePromotion = async (req: Request, res: Response): Promise<Resp
       }
     }
 
-    const promotion = await PromotionService.update(id, {
+    // Determine branchId for update
+    let branchId: string | null | undefined = undefined; // undefined means don't update this field
+    
+    // ADMIN_SYSTEM can change branchId (including setting to null for global)
+    if (req.user.role === 'ADMIN_SYSTEM') {
+      // If branchId is explicitly provided in request (even if null), use it
+      if ('branchId' in req.body) {
+        branchId = requestedBranchId; // Can be null (global) or string (specific branch)
+        console.log('[Update Promotion] ADMIN setting branchId to:', branchId);
+      }
+    }
+    // For non-admin users, branchId cannot be changed
+
+    const updateData: any = {
       code,
       type,
       value,
@@ -197,7 +228,16 @@ export const updatePromotion = async (req: Request, res: Response): Promise<Resp
       expiryDate: expiryDate ? new Date(expiryDate) : undefined,
       minOrderAmount,
       applicableProducts,
-    });
+    };
+
+    // Only include branchId if it was explicitly provided by admin
+    if (branchId !== undefined) {
+      updateData.branchId = branchId; // This can be null (for global) or string (for specific branch)
+    }
+
+    console.log('[Update Promotion] User role:', req.user.role, 'Requested BranchId:', requestedBranchId, 'Final Update Data:', updateData);
+
+    const promotion = await PromotionService.update(id, updateData);
 
     res.status(200).json({
       success: true,

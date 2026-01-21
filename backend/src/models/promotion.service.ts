@@ -19,7 +19,7 @@ interface CreatePromotionData {
   expiryDate?: Date;
   minOrderAmount?: number;
   applicableProducts?: string;
-  branchId?: string;
+  branchId?: string | null;
 }
 
 interface UpdatePromotionData {
@@ -31,6 +31,7 @@ interface UpdatePromotionData {
   expiryDate?: Date;
   minOrderAmount?: number;
   applicableProducts?: string;
+  branchId?: string | null;
 }
 
 export class PromotionService {
@@ -58,11 +59,8 @@ export class PromotionService {
     if (branchId) {
       where.OR = [
         { branchId: branchId },
-        { branchId: null }, // Include global promotions
+        { branchId: null }, 
       ];
-    } else {
-      where.branchId = null; // System admin sees only global if no branchId requested? 
-      // Actually Admin usually should see everything, but let's keep it simple.
     }
 
     const [promotions, total] = await Promise.all([
@@ -242,17 +240,23 @@ export class PromotionService {
       throw new Error('Không tìm thấy khuyến mãi');
     }
 
-    // If updating code, check if new code already exists
-    if (data.code && data.code !== promotion.code) {
+    // Determine the target branchId (use updated value if provided, otherwise keep existing)
+    const targetBranchId = data.branchId !== undefined ? data.branchId : promotion.branchId;
+    const targetCode = data.code ? data.code.toUpperCase() : promotion.code;
+
+    // Check for conflicts with the NEW combination of [code, branchId]
+    // Only check if either code or branchId is being changed
+    if (data.code !== undefined || data.branchId !== undefined) {
       const existingPromotion = await prisma.promotion.findFirst({
         where: {
-          code: data.code.toUpperCase(),
-          branchId: promotion.branchId // Check in the SAME scope as the existing promotion
+          code: targetCode,
+          branchId: targetBranchId,
+          id: { not: id }, // Exclude current promotion
         },
       });
 
       if (existingPromotion) {
-        throw new Error('Mã khuyến mãi đã tồn tại');
+        throw new Error('Mã khuyến mãi đã tồn tại với cùng phạm vi áp dụng');
       }
     }
 
@@ -267,6 +271,8 @@ export class PromotionService {
         ...(data.expiryDate !== undefined && { expiryDate: data.expiryDate }),
         ...(data.minOrderAmount !== undefined && { minOrderAmount: data.minOrderAmount }),
         ...(data.applicableProducts !== undefined && { applicableProducts: data.applicableProducts }),
+        // CRITICAL: Must handle null explicitly for branchId
+        ...(data.branchId !== undefined ? { branchId: data.branchId } : {}),
       },
       select: {
         id: true,

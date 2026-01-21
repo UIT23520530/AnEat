@@ -47,6 +47,7 @@ import {
 } from "@/services/promotion.service"
 import { adminProductService, type Product } from "@/services/admin-product.service"
 import { adminCategoryService, type Category } from "@/services/admin-category.service"
+import { adminBranchService, type Branch } from "@/services/admin-branch.service"
 import dayjs from "dayjs"
 
 const { Search } = Input
@@ -68,6 +69,7 @@ function PromotionsContent() {
   // States
   const [promotions, setPromotions] = useState<Promotion[]>([])
   const [productTreeData, setProductTreeData] = useState<any[]>([])
+  const [branches, setBranches] = useState<Branch[]>([])
   const [statistics, setStatistics] = useState<PromotionStatistics | null>(null)
   const [loading, setLoading] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
@@ -101,7 +103,7 @@ function PromotionsContent() {
         adminProductService.getProducts({ page: 1, limit: 999 }),
         adminCategoryService.getCategories({ page: 1, limit: 999 })
       ])
-      
+
       const products: Product[] = productsRes.data
       const categories: Category[] = categoriesRes.data
 
@@ -138,6 +140,16 @@ function PromotionsContent() {
       setProductTreeData(tree)
     } catch (error) {
       console.error("Failed to load products/categories:", error)
+    }
+  }
+
+  // Load branches for selection
+  const loadBranches = async () => {
+    try {
+      const response = await adminBranchService.getBranches({ page: 1, limit: 999 })
+      setBranches(response.data)
+    } catch (error) {
+      console.error("Failed to load branches:", error)
     }
   }
 
@@ -191,6 +203,7 @@ function PromotionsContent() {
   useEffect(() => {
     loadStatistics()
     loadProductTree()
+    loadBranches()
   }, [])
 
   useEffect(() => {
@@ -209,18 +222,115 @@ function PromotionsContent() {
 
   const handleSubmit = async (values: any) => {
     try {
-      const data: CreatePromotionDto = {
-        ...values,
+      console.log('=== FORM VALUES ===', values)
+
+      const baseData = {
+        code: values.code,
+        type: values.type,
+        value: values.value,
+        maxUses: values.maxUses,
+        isActive: values.isActive,
         expiryDate: values.expiryDate ? dayjs(values.expiryDate).toISOString() : undefined,
+        minOrderAmount: values.minOrderAmount,
         applicableProducts: values.applicableProducts?.length ? JSON.stringify(values.applicableProducts) : undefined,
       }
 
       if (editingPromotion) {
-        await promotionService.updatePromotion(editingPromotion.id, data)
-        message.success("Cập nhật khuyến mãi thành công!")
+        // EDIT MODE: Hỗ trợ chọn nhiều chi nhánh
+        if (values.branchScope === "all") {
+          // TOÀN HỆ THỐNG: Cập nhật promotion hiện tại thành global
+          const updateData: CreatePromotionDto = {
+            ...baseData,
+            branchId: null,
+          }
+
+          console.log('✅ Cập nhật thành TOÀN HỆ THỐNG:', updateData)
+          await promotionService.updatePromotion(editingPromotion.id, updateData)
+          message.success("Cập nhật khuyến mãi thành công!")
+        } else if (values.branchScope === "specific") {
+          if (!values.branchIds || values.branchIds.length === 0) {
+            message.error("Vui lòng chọn ít nhất một chi nhánh!")
+            return
+          }
+
+          const selectedBranchIds: string[] = values.branchIds
+
+          if (selectedBranchIds.length === 1) {
+            // Chỉ 1 chi nhánh: Cập nhật promotion hiện tại
+            const updateData: CreatePromotionDto = {
+              ...baseData,
+              branchId: selectedBranchIds[0],
+            }
+
+            console.log('✅ Cập nhật cho 1 chi nhánh:', updateData)
+            await promotionService.updatePromotion(editingPromotion.id, updateData)
+            message.success("Cập nhật khuyến mãi thành công!")
+          } else {
+            // Nhiều chi nhánh: Vô hiệu hóa promotion cũ và tạo mới cho từng chi nhánh
+            console.log(`✅ Tạo lại khuyến mãi cho ${selectedBranchIds.length} chi nhánh:`, selectedBranchIds)
+
+            // Vô hiệu hóa promotion cũ
+            await promotionService.updatePromotion(editingPromotion.id, { isActive: false })
+
+            // Tạo promotion mới cho từng chi nhánh
+            const createPromises = selectedBranchIds.map(branchId => {
+              const data: CreatePromotionDto = {
+                ...baseData,
+                branchId: branchId,
+              }
+              return promotionService.createPromotion(data)
+            })
+
+            await Promise.all(createPromises)
+
+            const branchNames = selectedBranchIds
+              .map(id => branches.find(b => b.id === id)?.name)
+              .filter(Boolean)
+              .join(', ')
+
+            message.success(`Đã tạo lại khuyến mãi cho ${selectedBranchIds.length} chi nhánh: ${branchNames}`)
+          }
+        }
       } else {
-        await promotionService.createPromotion(data)
-        message.success("Tạo khuyến mãi thành công!")
+        // CREATE MODE: Hỗ trợ tạo cho nhiều chi nhánh
+        if (values.branchScope === "all") {
+          // TOÀN HỆ THỐNG: Tạo 1 promotion với branchId = null
+          const data: CreatePromotionDto = {
+            ...baseData,
+            branchId: null,
+          }
+
+          console.log('✅ Tạo khuyến mãi TOÀN HỆ THỐNG:', data)
+          await promotionService.createPromotion(data)
+          message.success("Tạo khuyến mãi cho toàn hệ thống thành công!")
+        } else if (values.branchScope === "specific") {
+          // CHI NHÁNH CỤ THỂ: Tạo nhiều promotion cho từng chi nhánh
+          if (!values.branchIds || values.branchIds.length === 0) {
+            message.error("Vui lòng chọn ít nhất một chi nhánh!")
+            return
+          }
+
+          const selectedBranchIds: string[] = values.branchIds
+          console.log(`✅ Tạo khuyến mãi cho ${selectedBranchIds.length} chi nhánh:`, selectedBranchIds)
+
+          // Tạo promotion cho từng chi nhánh
+          const createPromises = selectedBranchIds.map(branchId => {
+            const data: CreatePromotionDto = {
+              ...baseData,
+              branchId: branchId,
+            }
+            return promotionService.createPromotion(data)
+          })
+
+          await Promise.all(createPromises)
+
+          const branchNames = selectedBranchIds
+            .map(id => branches.find(b => b.id === id)?.name)
+            .filter(Boolean)
+            .join(', ')
+
+          message.success(`Tạo khuyến mãi thành công cho ${selectedBranchIds.length} chi nhánh: ${branchNames}`)
+        }
       }
 
       setIsModalOpen(false)
@@ -229,9 +339,10 @@ function PromotionsContent() {
       loadPromotions()
       loadStatistics()
     } catch (error: any) {
+      console.error('Error submitting promotion:', error)
       const errorMsg = error.response?.data?.message || "Không thể lưu khuyến mãi"
       if (errorMsg.includes("Unique constraint")) {
-        message.error("Mã khuyến mãi đã tồn tại!")
+        message.error("Mã khuyến mãi đã tồn tại cho một hoặc nhiều chi nhánh được chọn!")
       } else {
         message.error(errorMsg)
       }
@@ -285,11 +396,36 @@ function PromotionsContent() {
       title: "Mã khuyến mãi",
       dataIndex: "code",
       key: "code",
-      width: 150,
+      width: 180,
       fixed: "left",
       render: (code: string, record: Promotion) => (
-        <span style={{ opacity: record.isActive ? 1 : 0.5 }}>
+        <Space direction="vertical" size={0} style={{ opacity: record.isActive ? 1 : 0.5 }}>
           <Tag color="blue" style={{ fontWeight: 600 }}>{code}</Tag>
+          <Tooltip title={record.branchId ? "Áp dụng cho một chi nhánh cụ thể" : "Áp dụng cho tất cả chi nhánh trong hệ thống"}>
+            <Tag
+              color={record.branchId ? "cyan" : "purple"}
+              style={{ fontSize: '10px', marginTop: '4px' }}
+              bordered={false}
+            >
+              {record.branchId ? "CHI NHÁNH" : "TOÀN HỆ THỐNG"}
+            </Tag>
+          </Tooltip>
+        </Space>
+      ),
+    },
+    {
+      title: "Phạm vi",
+      dataIndex: "branchId",
+      key: "scope",
+      width: 140,
+      align: "center",
+      render: (branchId: string | null | undefined, record: Promotion) => (
+        <span style={{ opacity: record.isActive ? 1 : 0.5 }}>
+          <Tooltip title={branchId ? "Chỉ áp dụng cho chi nhánh cụ thể" : "Áp dụng cho tất cả chi nhánh trong hệ thống"}>
+            <Tag color={branchId ? "cyan" : "purple"} icon={branchId ? <CheckCircleOutlined /> : <TagOutlined />}>
+              {branchId ? "Chi nhánh" : "Toàn hệ thống"}
+            </Tag>
+          </Tooltip>
         </span>
       ),
     },
@@ -300,8 +436,8 @@ function PromotionsContent() {
       width: 140,
       render: (type: string, record: Promotion) => (
         <span style={{ opacity: record.isActive ? 1 : 0.5 }}>
-          <Tag 
-            color={type === "PERCENTAGE" ? "orange" : "green"} 
+          <Tag
+            color={type === "PERCENTAGE" ? "orange" : "green"}
             icon={type === "PERCENTAGE" ? <PercentageOutlined /> : <DollarOutlined />}
           >
             {type === "PERCENTAGE" ? "Phần trăm" : "Cố định"}
@@ -401,8 +537,8 @@ function PromotionsContent() {
             title="Xóa khuyến mãi?"
             description={
               <div>
-                 <p>Bạn có chắc muốn xóa <strong>{record.code}</strong>?</p>
-                 <p className="text-xs text-red-500 mt-1">Hành động này không thể hoàn tác.</p>
+                <p>Bạn có chắc muốn xóa <strong>{record.code}</strong>?</p>
+                <p className="text-xs text-red-500 mt-1">Hành động này không thể hoàn tác.</p>
               </div>
             }
             onConfirm={() => handleDelete(record.id)}
@@ -555,6 +691,7 @@ function PromotionsContent() {
           isEdit={!!editingPromotion}
           editingPromotion={editingPromotion}
           productTreeData={productTreeData}
+          branches={branches}
           onCancel={() => {
             setIsModalOpen(false)
             form.resetFields()

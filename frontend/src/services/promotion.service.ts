@@ -44,6 +44,7 @@ export interface CreatePromotionDto {
   expiryDate?: string;
   minOrderAmount?: number;
   applicableProducts?: string;
+  branchId?: string | null;
 }
 
 export interface UpdatePromotionDto {
@@ -55,6 +56,7 @@ export interface UpdatePromotionDto {
   expiryDate?: string;
   minOrderAmount?: number;
   applicableProducts?: string;
+  branchId?: string | null;
 }
 
 export interface PromotionStatistics {

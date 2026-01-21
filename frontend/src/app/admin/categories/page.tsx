@@ -41,6 +41,8 @@ import {
   type Category,
   type CategoryStats,
 } from "@/services/admin-category.service"
+import { adminProductService } from "@/services/admin-product.service"
+import { emitEvent } from "@/lib/events"
 
 // Generate consistent color from string
 const stringToColor = (str: string) => {
@@ -185,17 +187,74 @@ function CategoriesContent() {
   // Handle hide/unhide
   const handleToggleActive = async (record: Category) => {
     const action = record.isActive ? "ẩn" : "hiện"
-    try {
-      await adminCategoryService.updateCategory(record.id, {
-        isActive: !record.isActive,
-      })
-      message.success(`Đã ${action} danh mục thành công`)
-      loadCategories()
-      loadStatistics()
-    } catch (error: any) {
-      const errorMessage = error.response?.data?.message || `Không thể ${action} danh mục`
-      message.error(errorMessage)
-    }
+    const actionVerb = record.isActive ? "Ẩn" : "Hiện"
+    
+    modal.confirm({
+      title: `${actionVerb} danh mục`,
+      content: (
+        <div className="space-y-2">
+          <p>
+            Bạn có chắc chắn muốn <strong>{action}</strong> danh mục <strong>{record.name}</strong>?
+          </p>
+          {record.productCount > 0 && (
+            <div className="bg-yellow-50 border border-yellow-200 rounded p-3 mt-2">
+              <p className="text-yellow-800 text-sm">
+                ⚠️ <strong>Lưu ý:</strong> Tất cả <strong>{record.productCount} sản phẩm</strong> thuộc danh mục này sẽ {record.isActive ? "bị ẩn" : "được hiện"} theo.
+              </p>
+            </div>
+          )}
+        </div>
+      ),
+      okText: `Xác nhận ${action}`,
+      cancelText: "Hủy",
+      okButtonProps: { danger: record.isActive },
+      onOk: async () => {
+        const hideMessage = message.loading(`Đang ${action} danh mục và sản phẩm...`, 0)
+        try {
+          // Step 1: Get all products in this category
+          const productsResponse = await adminProductService.getProducts({
+            categoryId: record.id,
+            limit: 999,
+          })
+          
+          const products = productsResponse.data
+          const newIsAvailable = !record.isActive
+          
+          // Step 2: Update all products to match category's new status
+          if (products && products.length > 0) {
+            const updatePromises = products.map((product: any) =>
+              adminProductService.updateProduct(product.id, {
+                isAvailable: newIsAvailable,
+              })
+            )
+            
+            await Promise.all(updatePromises)
+          }
+          
+          // Step 3: Update category
+          await adminCategoryService.updateCategory(record.id, {
+            isActive: !record.isActive,
+          })
+          
+          hideMessage()
+          
+          // Emit event to notify other components (e.g., products page)
+          emitEvent('category:toggled', {
+            categoryId: record.id,
+            isActive: !record.isActive,
+            productCount: record.productCount
+          })
+          
+          message.success(`Đã ${action} danh mục và ${products.length} sản phẩm thành công`)
+          loadCategories()
+          loadStatistics()
+        } catch (error: any) {
+          hideMessage()
+          const errorMessage = error.response?.data?.message || `Không thể ${action} danh mục`
+          message.error(errorMessage)
+        }
+      },
+    })
   }
 
   // Navigate to products filtered by category
@@ -503,7 +562,7 @@ function CategoriesContent() {
 
 export default function CategoriesPage() {
   return (
-    <AdminLayout title="Quản lý Danh mục sản phẩm">
+    <AdminLayout title="Quản lý danh mục sản phẩm">
       <App>
         <CategoriesContent />
       </App>
