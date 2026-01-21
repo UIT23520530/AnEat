@@ -616,10 +616,6 @@ export default function StaffBillsHistoryPage() {
                       <span className="font-medium text-orange-600">-{selectedBill.discountAmount.toLocaleString()}₫</span>
                     </div>
                   )}
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">VAT (8%)</span>
-                    <span className="font-medium text-gray-900">{selectedBill.taxAmount.toLocaleString()}₫</span>
-                  </div>
                   <div className="border-t pt-2 flex justify-between">
                     <span className="text-base font-bold text-gray-900">Tổng cộng</span>
                     <span className="text-lg font-bold text-orange-600">{selectedBill.total.toLocaleString()}₫</span>

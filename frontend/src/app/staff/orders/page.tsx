@@ -264,13 +264,11 @@ export default function StaffOrdersPage() {
 
   const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0)
   const discount = appliedDiscount
-  const vat = Math.round((subtotal - discount) * 0.08)
-  const total = subtotal - discount + vat
+  const total = subtotal - discount
 
   // Display values (đã là VND)
   const displaySubtotal = subtotal
   const displayDiscount = discount
-  const displayVat = vat
   const displayTotal = total
 
   const handleCancelOrder = () => {
@@ -711,10 +709,6 @@ export default function StaffOrdersPage() {
                     )}
                   </span>
                   <span className="font-medium text-orange-600">-{displayDiscount.toLocaleString()}₫</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">VAT (8%)</span>
-                  <span className="font-medium">{displayVat.toLocaleString()}₫</span>
                 </div>
                 <div className="flex justify-between text-lg font-bold border-t pt-2">
                   <span>Tổng cộng</span>

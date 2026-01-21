@@ -138,6 +138,9 @@ function StaffCheckoutSuccessPage() {
             total: (it.price || 0) * (it.quantity || 0),
           }))
 
+          // Calculate subtotal from items
+          const calculatedSubtotal = order.items.reduce((sum: number, item: any) => sum + (item.price * item.quantity), 0)
+
           // Cập nhật orderData với tổng tiền từ đơn hàng thực tế
           setOrderData(prev => ({
             ...prev,
@@ -156,8 +159,7 @@ function StaffCheckoutSuccessPage() {
             customerPhone: order.customer?.phone || "",
             customerAddress: order.deliveryAddress || undefined,
             items,
-            subtotal: order.subtotal || 0,
-            tax: Math.round(((order.subtotal || 0) - (order.discountAmount || 0)) * 0.08), // Example tax calc
+            subtotal: calculatedSubtotal,
             discount: order.discountAmount || 0,
             total: order.total || 0,
             paymentMethod: order.paymentMethod || "CASH",

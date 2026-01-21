@@ -157,10 +157,6 @@ const ThermalPrintReceipt: React.FC<ReceiptProps> = ({
           <span>Tạm tính:</span>
           <span>{subtotal.toLocaleString()}đ</span>
         </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-          <span>VAT (10%):</span>
-          <span>{tax.toLocaleString()}đ</span>
-        </div>
         {discount > 0 && (
           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
             <span>Giảm giá:</span>

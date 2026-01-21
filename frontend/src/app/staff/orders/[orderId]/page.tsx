@@ -165,6 +165,9 @@ export default function StaffOrderDetailPage() {
       total: (it.price || 0) * (it.quantity || 0),
     }))
 
+    // Calculate subtotal from items
+    const subtotal = order.items.reduce((sum, item) => sum + (item.price * item.quantity), 0)
+
     setInvoice({
       billNumber: order.orderNumber,
       orderNumber: order.orderNumber,
@@ -176,8 +179,7 @@ export default function StaffOrderDetailPage() {
       customerPhone: order.customer?.phone || "",
       customerAddress: order.deliveryAddress || undefined,
       items,
-      subtotal: order.subtotal || 0,
-      tax: Math.round(((order.subtotal || 0) - (order.discountAmount || 0)) * 0.08),
+      subtotal: subtotal,
       discount: order.discountAmount || 0,
       total: order.total || 0,
       paymentMethod: order.paymentMethod || "CASH",
@@ -222,7 +224,8 @@ export default function StaffOrderDetailPage() {
     )
   }
 
-  const vat = Math.round((order.subtotal - order.discountAmount) * 0.08)
+  // Calculate subtotal from items
+  const calculatedSubtotal = order.items.reduce((sum, item) => sum + (item.price * item.quantity), 0)
 
   return (
     <StaffLayout>
@@ -404,7 +407,7 @@ export default function StaffOrderDetailPage() {
                 <CardContent className="space-y-3">
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-600">Tạm tính</span>
-                    <span className="font-medium">{(order.subtotal || 0).toLocaleString("vi-VN")}₫</span>
+                    <span className="font-medium">{calculatedSubtotal.toLocaleString("vi-VN")}₫</span>
                   </div>
                   
                   {order.discountAmount > 0 && (
@@ -420,11 +423,6 @@ export default function StaffOrderDetailPage() {
                       </span>
                     </div>
                   )}
-                  
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">VAT (8%)</span>
-                    <span className="font-medium">{(vat || 0).toLocaleString("vi-VN")}₫</span>
-                  </div>
                   
                   <Separator />
                   

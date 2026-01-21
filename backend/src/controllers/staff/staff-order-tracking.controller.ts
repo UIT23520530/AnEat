@@ -34,10 +34,6 @@ export const getPendingOrders = async (
         where: {
           branchId,
           status: OrderStatus.PENDING,
-          // Only show customer orders (not staff-created orders)
-          customer: {
-            isNot: null,
-          },
         },
         skip,
         take,
@@ -79,9 +75,6 @@ export const getPendingOrders = async (
         where: {
           branchId,
           status: OrderStatus.PENDING,
-          customer: {
-            isNot: null,
-          },
         },
       }),
     ]);
