@@ -51,7 +51,7 @@ export const AssignLogisticsModal = ({
             onCancel={onCancel}
             footer={null}
             width={500}
-            destroyOnClose
+            destroyOnHidden
         >
             <Form
                 form={form}

@@ -1,17 +1,18 @@
-import withPWAInit from "@ducanh2912/next-pwa";
+// import withPWAInit from "@ducanh2912/next-pwa";
 import path from 'path';
 
-const withPWA = withPWAInit({
-  dest: "public",
-  cacheOnFrontEndNav: true,
-  aggressiveFrontEndNavCaching: true,
-  reloadOnOnline: true,
-  swcMinify: true,
-  disable: process.env.NODE_ENV === "development",
-  workboxOptions: {
-    disableDevLogs: true,
-  },
-});
+// Disabled PWA to avoid build errors
+// const withPWA = withPWAInit({
+//   dest: "public",
+//   cacheOnFrontEndNav: true,
+//   aggressiveFrontEndNavCaching: true,
+//   reloadOnOnline: true,
+//   swcMinify: true,
+//   disable: process.env.NODE_ENV === "development",
+//   workboxOptions: {
+//     disableDevLogs: true,
+//   },
+// });
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
@@ -59,4 +60,4 @@ const nextConfig = {
   }
 }
 
-export default withPWA(nextConfig);
+export default nextConfig;

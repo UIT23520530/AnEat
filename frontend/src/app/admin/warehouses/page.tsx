@@ -343,7 +343,6 @@ function WarehouseContent() {
       title: "Chi nhánh",
       key: "branch",
       width: 150,
-      fixed: "left",
       render: (_, record) => (
         <div>
           <div className="font-medium">{record.branch.name}</div>
@@ -355,7 +354,6 @@ function WarehouseContent() {
       title: "Sản phẩm",
       key: "product",
       width: 200,
-      fixed: "left",
       render: (_, record) => (
         <div className="flex items-center gap-2">
           {record.product.image && (
@@ -369,6 +367,20 @@ function WarehouseContent() {
             <div className="font-medium">{record.product.name}</div>
             <div className="text-xs text-gray-500">SKU: {record.product.code}</div>
           </div>
+        </div>
+      ),
+    },
+    {
+      title: "SL tồn kho",
+      key: "currentStock",
+      width: 110,
+      align: "center",
+      sorter: (a, b) => a.product.quantity - b.product.quantity,
+      render: (_, record) => (
+        <div className="font-medium">
+          <Tag color={record.product.quantity > 0 ? "green" : "red"}>
+            {record.product.quantity}
+          </Tag>
         </div>
       ),
     },
@@ -719,7 +731,7 @@ function WarehouseContent() {
 
 export default function AdminWarehousePage() {
   return (
-    <AdminLayout title="Quản lý Yêu cầu kho">
+    <AdminLayout title="Quản lý yêu cầu kho">
       <App>
         <WarehouseContent />
       </App>
