@@ -1,6 +1,6 @@
 "use client"
 
-import { Form, Input, InputNumber, Select, Row, Col } from "antd"
+import { Form, Input, InputNumber, Select, Row, Col, Switch } from "antd"
 import { Customer } from "@/services/admin-customer.service"
 import { useEffect } from "react"
 
@@ -25,6 +25,7 @@ export default function CustomersForm({
         email: selectedCustomer.email,
         tier: selectedCustomer.tier,
         currentPoints: selectedCustomer.points,
+        isActive: !selectedCustomer.deletedAt, // Active if not deleted
       })
     } else if (!isEdit) {
       form.resetFields()
@@ -58,23 +59,37 @@ export default function CustomersForm({
       </Form.Item>
 
       {isEdit ? (
-        <Row gutter={16}>
-          <Col span={12}>
-            <Form.Item label="Hạng thành viên" name="tier" rules={[{ required: true }]}>
-              <Select placeholder="Chọn hạng thành viên">
-                <Select.Option value="BRONZE">Hạng Đồng</Select.Option>
-                <Select.Option value="SILVER">Hạng Bạc</Select.Option>
-                <Select.Option value="GOLD">Hạng Vàng</Select.Option>
-                <Select.Option value="VIP">Hạng VIP</Select.Option>
-              </Select>
-            </Form.Item>
-          </Col>
-          <Col span={12}>
-            <Form.Item label="Điểm tích lũy" name="currentPoints">
-              <InputNumber style={{ width: "100%" }} min={0} />
-            </Form.Item>
-          </Col>
-        </Row>
+        <>
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item label="Hạng thành viên" name="tier" rules={[{ required: true }]}>
+                <Select placeholder="Chọn hạng thành viên">
+                  <Select.Option value="BRONZE">Hạng Đồng</Select.Option>
+                  <Select.Option value="SILVER">Hạng Bạc</Select.Option>
+                  <Select.Option value="GOLD">Hạng Vàng</Select.Option>
+                  <Select.Option value="VIP">Hạng VIP</Select.Option>
+                </Select>
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item label="Điểm tích lũy" name="currentPoints">
+                <InputNumber style={{ width: "100%" }} min={0} />
+              </Form.Item>
+            </Col>
+          </Row>
+          
+          <Form.Item
+            label="Trạng thái"
+            name="isActive"
+            valuePropName="checked"
+            tooltip="Bật để khôi phục khách hàng đã xóa"
+          >
+            <Switch
+              checkedChildren="Đang hoạt động"
+              unCheckedChildren="Đã xóa"
+            />
+          </Form.Item>
+        </>
       ) : (
         <Row gutter={16}>
           <Col span={12}>

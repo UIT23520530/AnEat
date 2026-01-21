@@ -13,7 +13,7 @@ import {
   UserCircle,
 } from "lucide-react"
 
-import { logout, getCurrentUser } from "@/lib/auth"
+import { logout, systemLogout, getCurrentUser } from "@/lib/auth"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -210,7 +210,14 @@ export function Sidebar({
                 "w-full justify-start text-gray-600 hover:bg-red-50 hover:text-red-600",
                 isCollapsed && "w-auto justify-center p-2"
               )}
-              onClick={logout}
+              onClick={() => {
+                // Use systemLogout for system users, logout for customers
+                if (currentUser?.role === "CUSTOMER") {
+                  logout()
+                } else {
+                  systemLogout()
+                }
+              }}
               title={isCollapsed ? "Logout" : undefined}
             >
               <LogOut className="h-5 w-5" />

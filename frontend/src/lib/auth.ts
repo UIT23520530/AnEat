@@ -37,6 +37,15 @@ export const logout = () => {
   window.location.href = "/auth/login"
 }
 
+export const systemLogout = () => {
+  if (typeof window === "undefined") return
+  localStorage.removeItem("currentUser")
+  localStorage.removeItem("token")
+  localStorage.removeItem("customerInfo")
+  document.cookie = "user=; path=/; max-age=0"
+  window.location.href = "/auth/system/login"
+}
+
 export const hasRole = (user: User | null, allowedRoles: string[]): boolean => {
   if (!user) return false
   return allowedRoles.includes(user.role)

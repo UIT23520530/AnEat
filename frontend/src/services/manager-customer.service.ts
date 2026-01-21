@@ -14,6 +14,7 @@ export interface Customer {
   lastOrderDate?: string;
   createdAt: string;
   updatedAt: string;
+  deletedAt?: string | null;
   _count?: {
     orders: number;
     reviews: number;
@@ -148,6 +149,7 @@ export const managerCustomerService = {
     order?: 'asc' | 'desc';
     search?: string;
     tier?: CustomerTier;
+    includeDeleted?: boolean;
   }): Promise<CustomersResponse> => {
     const response = await apiClient.get('/manager/customers', { params });
     return response.data;

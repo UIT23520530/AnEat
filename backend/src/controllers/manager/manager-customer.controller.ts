@@ -14,6 +14,7 @@ export const getAllCustomers = async (req: Request, res: Response): Promise<void
     const order = (req.query.order as 'asc' | 'desc') || 'desc';
     const search = req.query.search as string;
     const tier = req.query.tier as CustomerTier;
+    const includeDeleted = req.query.includeDeleted === 'true';
 
     const { customers, total } = await CustomerService.findAll({
       page,
@@ -22,6 +23,7 @@ export const getAllCustomers = async (req: Request, res: Response): Promise<void
       order,
       search,
       tier,
+      includeDeleted,
     });
 
     res.status(200).json({
@@ -109,12 +111,12 @@ export const getCustomerStatistics = async (req: Request, res: Response): Promis
 export const updateCustomer = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    const { name, email, phone, avatar, tier, points } = req.body;
+    const { name, email, phone, avatar, tier, points, isActive } = req.body;
 
     console.log('[DEBUG] updateCustomer body:', JSON.stringify(req.body));
 
-    // Check if customer exists
-    const existingCustomer = await CustomerService.findById(id);
+    // Check if customer exists (include deleted for restore functionality)
+    const existingCustomer = await CustomerService.findById(id, true);
     if (!existingCustomer) {
       res.status(404).json({
         success: false,
@@ -127,7 +129,7 @@ export const updateCustomer = async (req: Request, res: Response): Promise<void>
     // Validation: Ensure at least one field is provided
     // Note: checks against undefined to allow 0 or empty strings if valid
     if (name === undefined && email === undefined && phone === undefined &&
-      avatar === undefined && tier === undefined && points === undefined) {
+      avatar === undefined && tier === undefined && points === undefined && isActive === undefined) {
       console.log('[DEBUG] Validation failed: No fields to update');
       res.status(400).json({
         success: false,
@@ -199,6 +201,12 @@ export const updateCustomer = async (req: Request, res: Response): Promise<void>
     }
 
     console.log('[DEBUG] Final updateData:', JSON.stringify(updateData));
+
+    // Handle restore (set deletedAt to null when isActive is true)
+    if (isActive === true && existingCustomer.deletedAt) {
+      updateData.deletedAt = null;
+      console.log('[DEBUG] Restoring customer - setting deletedAt to null');
+    }
 
     const updatedCustomer = await CustomerService.update(id, updateData);
 

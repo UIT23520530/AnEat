@@ -103,43 +103,6 @@ export default function SystemLoginPage() {
 
                 {/* Form */}
                 <form onSubmit={handleLogin} className="space-y-6">
-                  {/* Role Selector (Added for System Login) */}
-                  <div className="space-y-2">
-                    <Label htmlFor="role" className="text-slate-700 font-semibold">
-                      Vai trò truy cập
-                    </Label>
-                    <Select value={role} onValueChange={(value) => setRole(value as UserRole)}>
-                      <SelectTrigger className="w-full py-6 bg-slate-50 border-0 rounded-lg focus:ring-2 focus:ring-orange-500 text-slate-900">
-                        <SelectValue placeholder="Chọn vai trò của bạn" />
-                      </SelectTrigger>
-                      <SelectContent className="rounded-lg border-slate-200">
-                        <SelectItem value="STAFF">
-                          <div className="flex items-center gap-2">
-                            <Briefcase className="w-4 h-4 text-blue-500" />
-                            <span>Nhân viên Cửa hàng</span>
-                          </div>
-                        </SelectItem>
-                        <SelectItem value="LOGISTICS_STAFF">
-                          <div className="flex items-center gap-2">
-                            <Truck className="w-4 h-4 text-purple-500" />
-                            <span>Nhân viên Kho vận</span>
-                          </div>
-                        </SelectItem>
-                        <SelectItem value="ADMIN_BRAND">
-                          <div className="flex items-center gap-2">
-                            <ShieldCheck className="w-4 h-4 text-emerald-500" />
-                            <span>Quản lý Chi nhánh</span>
-                          </div>
-                        </SelectItem>
-                        <SelectItem value="ADMIN_SYSTEM">
-                          <div className="flex items-center gap-2">
-                            <ShieldCheck className="w-4 h-4 text-orange-500" />
-                            <span>Quản trị Hệ thống</span>
-                          </div>
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
 
                   {/* Email Field */}
                   <div className="space-y-2">

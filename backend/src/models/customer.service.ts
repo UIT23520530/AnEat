@@ -24,6 +24,7 @@ interface CustomerQueryParams {
   search?: string;
   tier?: CustomerTier;
   branchId?: string; // For admin to filter by branch
+  includeDeleted?: boolean; // Show deleted customers
 }
 
 interface CustomerUpdateData {
@@ -33,6 +34,7 @@ interface CustomerUpdateData {
   avatar?: string;
   tier?: CustomerTier;
   points?: number;
+  deletedAt?: Date | null; // For restore functionality
 }
 
 interface CustomerCreateData {
@@ -56,12 +58,15 @@ export class CustomerService {
    * Find all customers with pagination, sorting, and filtering
    */
   static async findAll(params: CustomerQueryParams) {
-    const { page, limit, sort, order, search, tier, branchId } = params;
+    const { page, limit, sort, order, search, tier, branchId, includeDeleted } = params;
     const skip = (page - 1) * limit;
 
-    const where: Prisma.CustomerWhereInput = {
-      deletedAt: null, // Level 3: Filter soft-deleted records
-    };
+    const where: Prisma.CustomerWhereInput = {};
+    
+    // Only filter deleted if includeDeleted is not true
+    if (!includeDeleted) {
+      where.deletedAt = null;
+    }
 
     if (search) {
       where.OR = [
@@ -106,6 +111,7 @@ export class CustomerService {
           lastOrderDate: true,
           createdAt: true,
           updatedAt: true,
+          deletedAt: true,
           _count: {
             select: {
               orders: true,
@@ -123,12 +129,16 @@ export class CustomerService {
   /**
    * Find customer by ID with detailed information
    */
-  static async findById(id: string) {
+  static async findById(id: string, includeDeleted = false) {
+    const where: any = { id };
+    
+    // Only filter deleted if includeDeleted is not true
+    if (!includeDeleted) {
+      where.deletedAt = null;
+    }
+    
     return prisma.customer.findFirst({
-      where: {
-        id,
-        deletedAt: null, // Level 3: Filter soft-deleted records
-      },
+      where,
       select: {
         id: true,
         phone: true,
@@ -141,6 +151,7 @@ export class CustomerService {
         lastOrderDate: true,
         createdAt: true,
         updatedAt: true,
+        deletedAt: true,
         _count: {
           select: {
             orders: true,
@@ -218,6 +229,7 @@ export class CustomerService {
         points: true,
         totalSpent: true,
         updatedAt: true,
+        deletedAt: true,
       },
     });
   }

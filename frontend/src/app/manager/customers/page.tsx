@@ -71,6 +71,7 @@ function CustomersContent() {
         limit: pagination.pageSize,
         search: searchQuery || undefined,
         tier: selectedTier !== "all" ? (selectedTier as CustomerTier) : undefined,
+        includeDeleted: true, // Show deleted customers with fade effect
       })
 
       setCustomers(response.data)
@@ -176,7 +177,8 @@ function CustomersContent() {
         phone: values.phone,
         email: values.email,
         tier: values.tier,
-        points: values.currentPoints
+        points: values.currentPoints,
+        isActive: values.isActive, // For restore functionality
       }
       await managerCustomerService.updateCustomer(selectedCustomer.id, updateData)
 
@@ -233,7 +235,12 @@ function CustomersContent() {
         <Space>
           <Avatar src={record.avatar} icon={<UserOutlined />} />
           <div>
-            <div className="font-medium text-slate-900">{text}</div>
+            <div className="font-medium text-slate-900">
+              {text}
+              {record.deletedAt && (
+                <Tag color="red" className="ml-2">Đã xóa</Tag>
+              )}
+            </div>
             <div className="text-xs text-slate-500">{record.phone}</div>
           </div>
         </Space>
@@ -288,6 +295,8 @@ function CustomersContent() {
               type="text"
               icon={<EyeOutlined />}
               onClick={() => handleViewDetail(record)}
+              disabled={!!record.deletedAt}
+              className={record.deletedAt ? 'opacity-40' : ''}
             />
           </Tooltip>
           <Tooltip title="Chỉnh sửa">
@@ -303,6 +312,8 @@ function CustomersContent() {
               danger
               icon={<DeleteOutlined />}
               onClick={() => handleDelete(record)}
+              disabled={!!record.deletedAt}
+              className={record.deletedAt ? 'opacity-40' : ''}
             />
           </Tooltip>
         </Space>
@@ -413,6 +424,7 @@ function CustomersContent() {
               dataSource={customers}
               rowKey="id"
               loading={loading}
+              rowClassName={(record) => record.deletedAt ? 'opacity-40' : ''}
               pagination={{
                 current: pagination.current,
                 pageSize: pagination.pageSize,
