@@ -699,7 +699,7 @@ export const updateProfile = async (req: Request, res: Response): Promise<void> 
       return;
     }
 
-    const { name, phone, address } = req.body;
+    const { name, email, phone, address } = req.body;
 
     // Get current user
     const user = await prisma.user.findUnique({
@@ -715,22 +715,50 @@ export const updateProfile = async (req: Request, res: Response): Promise<void> 
       return;
     }
 
-    // Update User table
-    const updatedUser = await prisma.user.update({
-      where: { id: req.user.id },
-      data: {
-        name: name || user.name,
-      },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        phone: true,
-        avatar: true,
-      },
-    });
+    // Kiểm tra nếu email mới đã tồn tại với user khác
+    if (email && email !== user.email) {
+      const existingUserByEmail = await prisma.user.findUnique({
+        where: { email: email },
+      });
 
-    // Update Customer table (for address)
+      if (existingUserByEmail) {
+        res.status(400).json({
+          status: 'error',
+          message: 'Email đã được sử dụng',
+        });
+        return;
+      }
+    }
+
+    // Kiểm tra nếu phone mới đã tồn tại với user khác
+    if (phone && phone !== user.phone) {
+      const existingUserByPhone = await prisma.user.findFirst({
+        where: { phone: phone },
+      });
+
+      if (existingUserByPhone) {
+        res.status(400).json({
+          status: 'error',
+          message: 'Số điện thoại đã được sử dụng',
+        });
+        return;
+      }
+
+      // Kiểm tra phone mới có tồn tại trong Customer table không
+      const existingCustomer = await prisma.customer.findUnique({
+        where: { phone: phone },
+      });
+
+      if (existingCustomer) {
+        res.status(400).json({
+          status: 'error',
+          message: 'Số điện thoại đã được sử dụng bởi khách hàng khác',
+        });
+        return;
+      }
+    }
+
+    // Update Customer table first (using old phone as key)
     let customerData = null;
     if (user.phone) {
       const customer = await prisma.customer.findUnique({
@@ -739,13 +767,20 @@ export const updateProfile = async (req: Request, res: Response): Promise<void> 
 
       if (customer) {
         try {
-          // Thử cập nhật với address
+          // Thử cập nhật Customer với address và phone mới nếu có
+          const updateData: any = {
+            name: name || customer.name,
+            address: address !== undefined ? address : customer.address,
+          };
+          
+          // Chỉ update phone nếu có thay đổi
+          if (phone && phone !== user.phone) {
+            updateData.phone = phone;
+          }
+
           customerData = await prisma.customer.update({
             where: { phone: user.phone },
-            data: {
-              name: name || customer.name,
-              address: address !== undefined ? address : customer.address,
-            },
+            data: updateData,
             select: {
               id: true,
               tier: true,
@@ -756,12 +791,17 @@ export const updateProfile = async (req: Request, res: Response): Promise<void> 
           });
         } catch (updateError) {
           // Nếu trường address chưa tồn tại, cập nhật không có address
-          console.log('Updating without address field...');
+          const updateData: any = {
+            name: name || customer.name,
+          };
+          
+          if (phone && phone !== user.phone) {
+            updateData.phone = phone;
+          }
+
           customerData = await prisma.customer.update({
             where: { phone: user.phone },
-            data: {
-              name: name || customer.name,
-            },
+            data: updateData,
             select: {
               id: true,
               tier: true,
@@ -772,6 +812,23 @@ export const updateProfile = async (req: Request, res: Response): Promise<void> 
         }
       }
     }
+
+    // Update User table
+    const updatedUser = await prisma.user.update({
+      where: { id: req.user.id },
+      data: {
+        name: name || user.name,
+        email: email || user.email,
+        phone: phone || user.phone,
+      },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        phone: true,
+        avatar: true,
+      },
+    });
 
     res.status(200).json({
       status: 'success',

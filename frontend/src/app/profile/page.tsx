@@ -183,6 +183,8 @@ export default function ProfilePage() {
       // Gọi API cập nhật profile
       const response = await apiClient.put("/customer/profile", {
         name: formData.name,
+        email: formData.email,
+        phone: formData.phone,
         address: formData.address,
       })
 
@@ -190,6 +192,8 @@ export default function ProfilePage() {
         const updatedUser = {
           ...user,
           name: formData.name,
+          email: formData.email,
+          phone: formData.phone,
           address: formData.address,
         }
         setCurrentUser(updatedUser)
