@@ -28,35 +28,8 @@ export function LogisticsStaffLayout({ children }: LogisticsStaffLayoutProps) {
   const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
-    // Initial load
-    setUser(getCurrentUser());
-
-    // Listen for storage changes
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === 'currentUser') {
-        setUser(getCurrentUser());
-      }
-    };
-    window.addEventListener('storage', handleStorageChange);
-
-    // Polling to capture changes within the same tab/window if not triggered by storage event
-    const intervalId = setInterval(() => {
-      const updatedUser = getCurrentUser();
-      setUser((prevUser) => {
-        if (updatedUser && JSON.stringify(updatedUser) !== JSON.stringify(prevUser)) {
-          return updatedUser;
-        }
-        if (!updatedUser && prevUser) {
-          return null;
-        }
-        return prevUser;
-      });
-    }, 1000);
-
-    return () => {
-      window.removeEventListener('storage', handleStorageChange);
-      clearInterval(intervalId);
-    };
+    const currentUser = getCurrentUser();
+    setUser(currentUser);
   }, []);
 
   const handleLogout = () => {
@@ -81,7 +54,7 @@ export function LogisticsStaffLayout({ children }: LogisticsStaffLayoutProps) {
           <Badge count={2} size="small">
             <AntButton icon={<BellOutlined />} shape="circle" />
           </Badge>
-
+          
           {/* Profile Dropdown */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

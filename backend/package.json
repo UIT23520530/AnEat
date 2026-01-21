@@ -4,7 +4,8 @@
   "description": "Backend API for AnEat application - Level 3 with TypeScript",
   "main": "dist/server.js",
   "scripts": {
-    "build": "tsc",
+    "build": "tsc -p tsconfig.build.json",
+    "build:strict": "tsc",
     "start": "node dist/server.js",
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
     "dev:watch": "nodemon --exec ts-node src/server.ts",

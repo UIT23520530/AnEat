@@ -640,7 +640,7 @@ const baseProducts = [
 const banners = [
   {
     imageUrl: '/assets/fried-chicken-combo-meal.jpg',
-    title: 'NỞ CÀNG BỤNG VUI BẤT MOOD',
+    title: 'NO CĂNG BỤNG VUI BẬT MOOD',
     description: 'Combo siêu tiết kiệm chỉ 79.000đ',
     badge: 'HOT',
     displayOrder: 0,

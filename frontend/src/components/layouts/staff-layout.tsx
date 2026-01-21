@@ -36,35 +36,8 @@ export function StaffLayout({ children }: { children: ReactNode }) {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
 
   useEffect(() => {
-    // Initial load
-    setCurrentUser(getCurrentUser());
-
-    // Listen for storage changes
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === 'currentUser') {
-        setCurrentUser(getCurrentUser());
-      }
-    };
-    window.addEventListener('storage', handleStorageChange);
-
-    // Polling with functional update to avoid stale closure and infinite loop
-    const intervalId = setInterval(() => {
-      const updatedUser = getCurrentUser();
-      setCurrentUser((prevUser) => {
-        if (updatedUser && JSON.stringify(updatedUser) !== JSON.stringify(prevUser)) {
-          return updatedUser;
-        }
-        if (!updatedUser && prevUser) {
-          return null;
-        }
-        return prevUser;
-      });
-    }, 1000);
-
-    return () => {
-      window.removeEventListener('storage', handleStorageChange);
-      clearInterval(intervalId);
-    };
+    const user = getCurrentUser();
+    setCurrentUser(user);
   }, []);
 
   const navItems = [
@@ -120,7 +93,7 @@ export function StaffLayout({ children }: { children: ReactNode }) {
               const isActive = pathname.startsWith(item.href);
               const isTrackingOrder = item.href === "/staff/tracking-order";
               const showBadge = isTrackingOrder && pendingCount > 0;
-
+              
               return (
                 <Link key={item.href} href={item.href}>
                   <button
@@ -178,7 +151,7 @@ export function StaffLayout({ children }: { children: ReactNode }) {
           {/* User Profile Section */}
           {currentUser && (
             <div className={cn("mb-2", collapsed ? "px-2" : "px-4")}>
-              <Link
+              <Link 
                 href="/profile"
                 className={cn(
                   "block p-3 bg-gradient-to-br from-orange-50 to-amber-50 rounded-xl border border-orange-100 hover:shadow-md transition-all cursor-pointer",
