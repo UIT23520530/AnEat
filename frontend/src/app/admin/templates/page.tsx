@@ -722,6 +722,8 @@ function TemplatesContent() {
           open={isPreviewModalOpen}
           invoice={null}
           customHtmlContent={generateSampleContent(selectedTemplate)}
+          isTemplatePreview={true}
+          printSettings={selectedTemplate.printSettings}
           onClose={() => {
             setIsPreviewModalOpen(false);
             setSelectedTemplate(null);

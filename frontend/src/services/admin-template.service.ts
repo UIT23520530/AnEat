@@ -3,12 +3,25 @@ import apiClient from "@/lib/api-client";
 export type TemplateCategory = "INVOICE" | "ORDER" | "RECEIPT" | "REPORT";
 export type TemplateStatus = "ACTIVE" | "INACTIVE";
 
+export interface PrintSettings {
+  pageSize?: string;
+  pageWidth?: string;
+  pageHeight?: string;
+  marginTop?: string;
+  marginRight?: string;
+  marginBottom?: string;
+  marginLeft?: string;
+  contentWidth?: string;
+  customCss?: string;
+}
+
 export interface TemplateDTO {
   id: string;
   name: string;
   type: string;
   description?: string;
   content: string;
+  printSettings?: PrintSettings;
   category: TemplateCategory;
   status: TemplateStatus;
   isDefault: boolean;
@@ -25,6 +38,7 @@ export interface CreateTemplateDto {
   type: string;
   description?: string;
   content: string;
+  printSettings?: PrintSettings;
   category: TemplateCategory;
   status?: TemplateStatus;
   isDefault?: boolean;
@@ -36,6 +50,7 @@ export interface UpdateTemplateDto {
   type?: string;
   description?: string;
   content?: string;
+  printSettings?: PrintSettings;
   category?: TemplateCategory;
   status?: TemplateStatus;
   isDefault?: boolean;

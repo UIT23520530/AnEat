@@ -4,6 +4,7 @@ import React from "react";
 import { Modal, Button } from "antd";
 import { PrinterOutlined } from "@ant-design/icons";
 import ThermalPrintReceipt from "@/components/invoice/ThermalPrintReceipt";
+import { PrintSettings } from "@/services/admin-template.service";
 
 interface InvoiceItem {
   id: string;
@@ -42,6 +43,8 @@ interface InvoicePrintModalProps {
   onConfirmPrint: () => void;
   getPaymentMethodText?: (method: string | null) => string;
   customHtmlContent?: string;
+  isTemplatePreview?: boolean;
+  printSettings?: PrintSettings;
 }
 
 export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
@@ -51,7 +54,88 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
   onConfirmPrint,
   getPaymentMethodText,
   customHtmlContent,
+  isTemplatePreview = false,
+  printSettings,
 }) => {
+  // Generate print CSS from settings
+  const generatePrintCss = () => {
+    if (!printSettings) {
+      // Default thermal receipt settings
+      return `
+        @page {
+          size: A4;
+          margin: 20mm;
+        }
+        body * {
+          visibility: hidden;
+        }
+        #thermal-receipt,
+        #thermal-receipt * {
+          visibility: visible;
+        }
+        #thermal-receipt img {
+          visibility: visible !important;
+        }
+        #thermal-receipt {
+          position: fixed;
+          left: 50%;
+          top: 50%;
+          transform: translate(-50%, -50%);
+          margin: 0;
+          box-shadow: none;
+          width: 80mm;
+        }
+      `;
+    }
+
+    const {
+      pageSize = 'A4',
+      pageWidth,
+      pageHeight,
+      marginTop = '20mm',
+      marginRight = '20mm',
+      marginBottom = '20mm',
+      marginLeft = '20mm',
+      contentWidth = '80mm',
+      customCss = '',
+    } = printSettings;
+
+    let pageSizeValue = pageSize;
+    if (pageSize === 'custom' && pageWidth && pageHeight) {
+      pageSizeValue = `${pageWidth} ${pageHeight}`;
+    }
+
+    return `
+      @page {
+        size: ${pageSizeValue};
+        margin-top: ${marginTop};
+        margin-right: ${marginRight};
+        margin-bottom: ${marginBottom};
+        margin-left: ${marginLeft};
+      }
+      body * {
+        visibility: hidden;
+      }
+      #thermal-receipt,
+      #thermal-receipt * {
+        visibility: visible;
+      }
+      #thermal-receipt img {
+        visibility: visible !important;
+      }
+      #thermal-receipt {
+        position: fixed;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        margin: 0;
+        box-shadow: none;
+        width: ${contentWidth};
+        ${customCss}
+      }
+    `;
+  };
+
   return (
     <>
       <Modal
@@ -82,7 +166,18 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
         {customHtmlContent ? (
           <div
             id="thermal-receipt"
-            style={{
+            style={isTemplatePreview ? {
+              maxHeight: '70vh',
+              overflow: 'auto',
+              maxWidth: '100%',
+              margin: '0 auto',
+              padding: '20px',
+              background: 'white',
+              fontSize: '14px',
+              lineHeight: '1.6',
+              color: 'black',
+              boxShadow: '0 0 5px rgba(0,0,0,0.1)'
+            } : {
               maxHeight: '70vh',
               overflow: 'auto',
               width: '80mm',
@@ -125,30 +220,7 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
       {/* Print Styles */}
       <style jsx global>{`
         @media print {
-          @page {
-            size: A4;
-            margin: 20mm;
-          }
-          body * {
-            visibility: hidden;
-          }
-          #thermal-receipt,
-          #thermal-receipt * {
-            visibility: visible;
-          }
-          /* Ensure external images (if any) are visible */
-          #thermal-receipt img {
-             visibility: visible !important;
-          }
-          #thermal-receipt {
-            position: fixed;
-            left: 50%;
-            top: 50%;
-            transform: translate(-50%, -50%);
-            margin: 0;
-            box-shadow: none;
-            width: 80mm; /* Force specific width for receipt look if not set by content */
-          }
+          ${generatePrintCss()}
         }
       `}</style>
     </>

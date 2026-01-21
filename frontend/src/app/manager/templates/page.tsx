@@ -22,7 +22,7 @@ import { managerTemplateService } from "@/services/manager-template.service";
 import { TemplateDTO, TemplateCategory, TemplateStatus, CreateTemplateDto, UpdateTemplateDto } from "@/services/admin-template.service";
 import { TemplateForm } from "@/components/forms/admin/TemplateForm";
 import { TemplateDetailModal } from "@/components/forms/admin/TemplateDetailModal";
-import { TemplatePreviewModal } from "@/components/forms/admin/TemplatePreviewModal";
+import { InvoicePrintModal } from "@/components/forms/admin/invoices/InvoicePrintModal";
 import dayjs from "dayjs";
 
 const { Option } = Select;
@@ -37,6 +37,97 @@ const normalizeSearchString = (str: string) => {
     .replace(/\s+/g, "-")
     .trim()
 }
+
+// Helper to generate sample content for preview
+const generateSampleContent = (template: TemplateDTO) => {
+  let content = template.content;
+
+  // Sample data for iteration
+  const sampleItems = [
+    { name: 'Gà Rán Giòn (2 miếng)', quantity: 2, price: '35,000đ', total: '70,000đ' },
+    { name: 'Khoai Tây Chiên (Lớn)', quantity: 1, price: '25,000đ', total: '25,000đ' },
+    { name: 'Pepsi Tươi (Lớn)', quantity: 2, price: '15,000đ', total: '30,000đ' }
+  ];
+
+  // Handle {{#items}}...{{/items}} block (Handlebars style)
+  const itemsBlockRegex = /{{#items}}([\s\S]*?){{\/ items}}/g;
+  content = content.replace(itemsBlockRegex, (match, innerContent) => {
+    return sampleItems.map(item => {
+      let itemRow = innerContent;
+      itemRow = itemRow.replace(/{{name}}/g, item.name);
+      itemRow = itemRow.replace(/{{quantity}}/g, String(item.quantity));
+      itemRow = itemRow.replace(/{{price}}/g, item.price);
+      itemRow = itemRow.replace(/{{total}}/g, item.total);
+      return itemRow;
+    }).join('');
+  });
+
+  // Common placeholders
+  content = content.replace(/{{billNumber}}/g, 'BILL-2026-0001');
+  content = content.replace(/{{billId}}/g, 'BILL-2026-0001');
+  content = content.replace(/{{orderNumber}}/g, 'ORD-2026-0001');
+  content = content.replace(/{{orderId}}/g, 'ORD-2026-0001');
+  content = content.replace(/{{receiptNumber}}/g, 'REC-2026-0001');
+  content = content.replace(/{{customerName}}/g, 'Nguyễn Văn A');
+  content = content.replace(/{{customerPhone}}/g, '0901234567');
+  content = content.replace(/{{customerAddress}}/g, '123 Nguyễn Huệ, Quận 1, TP.HCM');
+  content = content.replace(/{{address}}/g, '123 Nguyễn Huệ, Quận 1, TP.HCM');
+
+  // Financial
+  content = content.replace(/{{total}}/g, '125,000đ');
+  content = content.replace(/{{grandTotal}}/g, '125,000đ');
+  content = content.replace(/{{subtotal}}/g, '113,636đ');
+  content = content.replace(/{{tax}}/g, '11,364đ');
+  content = content.replace(/{{discount}}/g, '0đ');
+  content = content.replace(/{{finalTotal}}/g, '125,000đ');
+
+  content = content.replace(/{{date}}/g, new Date().toLocaleDateString('vi-VN'));
+  content = content.replace(/{{time}}/g, new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }));
+  content = content.replace(/{{tableNumber}}/g, 'Bàn 5');
+  content = content.replace(/{{branchName}}/g, 'AnEat - Chi nhánh Quận 1');
+  content = content.replace(/{{branchAddress}}/g, '456 Lê Lợi, Quận 1, TP.HCM');
+  content = content.replace(/{{branchPhone}}/g, '028 3822 1111');
+  content = content.replace(/{{staffName}}/g, 'Trần Thị Thu Ngân');
+  content = content.replace(/{{paymentMethod}}/g, 'Tiền mặt');
+
+  // Fallback for simple {{itemsList}} placeholder
+  const sampleItemsList = sampleItems.map(i => `${i.quantity} x ${i.name} = ${i.total}`).join('<br/>');
+  content = content.replace(/{{itemsList}}/g, sampleItemsList);
+
+  // Fallback for simple {{items}} placeholder if block syntax not used
+  const sampleItemsTable = `
+    <table style="width: 100%; border-collapse: collapse; margin: 10px 0;">
+      <thead>
+        <tr style="border-bottom: 1px solid #ddd;">
+          <th style="text-align: left; padding: 8px;">Món</th>
+          <th style="text-align: center; padding: 8px;">SL</th>
+          <th style="text-align: right; padding: 8px;">Giá</th>
+          <th style="text-align: right; padding: 8px;">Thành tiền</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${sampleItems.map(item => `
+          <tr>
+            <td style="padding: 6px 8px;">${item.name}</td>
+            <td style="text-align: center; padding: 6px 8px;">${item.quantity}</td>
+            <td style="text-align: right; padding: 6px 8px;">${item.price}</td>
+            <td style="text-align: right; padding: 6px 8px;">${item.total}</td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  `;
+  content = content.replace(/{{items}}/g, sampleItemsTable);
+
+  // Report specific
+  content = content.replace(/{{reportDate}}/g, new Date().toLocaleDateString('vi-VN'));
+  content = content.replace(/{{totalSales}}/g, '15,000,000đ');
+  content = content.replace(/{{revenue}}/g, '13,500,000đ');
+  content = content.replace(/{{profit}}/g, '3,200,000đ');
+  content = content.replace(/{{orderCount}}/g, '45');
+
+  return content;
+};
 
 function TemplatesContent() {
   const { message, modal } = App.useApp();
@@ -671,14 +762,17 @@ function TemplatesContent() {
 
       {/* Preview Modal */}
       {selectedTemplate && (
-        <TemplatePreviewModal
+        <InvoicePrintModal
           open={isPreviewModalOpen}
-          template={selectedTemplate}
+          invoice={null}
+          customHtmlContent={generateSampleContent(selectedTemplate)}
+          isTemplatePreview={true}
+          printSettings={selectedTemplate.printSettings}
           onClose={() => {
             setIsPreviewModalOpen(false);
             setSelectedTemplate(null);
           }}
-          onPrint={handleConfirmPrint}
+          onConfirmPrint={handleConfirmPrint}
         />
       )}
 
