@@ -47,9 +47,13 @@ const corsOptions = {
       }
     }
 
-    // In production, use CORS_ORIGIN env variable
-    const allowedOrigin = process.env.CORS_ORIGIN || 'http://localhost:3000';
-    if (origin === allowedOrigin || allowedOrigin === '*') {
+    // In production, use CORS_ORIGIN or FRONTEND_URL env variable
+    const corsOrigin = process.env.CORS_ORIGIN || process.env.FRONTEND_URL || 'http://localhost:3000';
+    
+    // Support multiple origins (comma-separated)
+    const allowedOrigins = corsOrigin.split(',').map(o => o.trim());
+    
+    if (allowedOrigins.includes(origin) || allowedOrigins.includes('*')) {
       return callback(null, true);
     }
 
