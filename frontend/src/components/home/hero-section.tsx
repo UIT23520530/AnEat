@@ -167,12 +167,8 @@ export function HeroSection() {
     openBranchSelector();
   };
 
-  // Handle Delivery - Navigate to menu and set order type
+  // Handle Delivery - Navigate to menu
   const handleDelivery = () => {
-    // Save order type to localStorage for menu page
-    if (typeof window !== "undefined") {
-      localStorage.setItem("orderType", "DELIVERY");
-    }
     router.push("/customer/menu");
   };
 

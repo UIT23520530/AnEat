@@ -240,8 +240,47 @@ export default function MenuPage() {
   const [productsLoading, setProductsLoading] = useState(false);
   const [productsError, setProductsError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [addressLoaded, setAddressLoaded] = useState(false);
   const { addToCart } = useCart();
   const { toast } = useToast();
+
+  // Load customer address from API/localStorage on mount
+  useEffect(() => {
+    const loadCustomerAddress = async () => {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        setAddressLoaded(true);
+        return;
+      }
+
+      try {
+        const response = await apiClient.get("/auth/me");
+        if (response.data.status === "success" && response.data.data?.user) {
+          const user = response.data.data.user;
+          
+          // Load address from API first, fallback to localStorage
+          if (user.address) {
+            setDeliveryAddress(user.address);
+          } else {
+            const savedAddress = localStorage.getItem("customerDefaultAddress");
+            if (savedAddress) {
+              setDeliveryAddress(savedAddress);
+            }
+          }
+        }
+      } catch (error) {
+        // If API fails, try localStorage
+        const savedAddress = localStorage.getItem("customerDefaultAddress");
+        if (savedAddress) {
+          setDeliveryAddress(savedAddress);
+        }
+      } finally {
+        setAddressLoaded(true);
+      }
+    };
+
+    loadCustomerAddress();
+  }, []);
 
   // Load order type from localStorage on mount
   useEffect(() => {
@@ -249,21 +288,11 @@ export default function MenuPage() {
       const savedOrderType = localStorage.getItem("orderType") as "DELIVERY" | "PICKUP" | null;
       if (savedOrderType) {
         setOrderType(savedOrderType);
-        // Show address prompt for delivery
-        if (savedOrderType === "DELIVERY" && !deliveryAddress) {
-          setShowAddressPrompt(true);
-          // Show toast to remind user to enter address
-          toast({
-            title: "Vui lòng nhập địa chỉ giao hàng",
-            description: "Nhập địa chỉ để chúng tôi giao hàng đến bạn",
-            className: "bg-blue-50 border-blue-200",
-          });
-        }
         // Clear from localStorage after reading
         localStorage.removeItem("orderType");
       }
     }
-  }, [toast]);
+  }, []);
 
   // Auto-refresh when user returns to tab
   useEffect(() => {

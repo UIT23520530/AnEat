@@ -125,9 +125,6 @@ export default function ProfilePage() {
       try {
         setLoading(true)
         
-        // Lấy địa chỉ đã lưu từ localStorage
-        const savedAddress = localStorage.getItem("customerDefaultAddress") || ""
-        
         // 1. Thử lấy từ local storage trước để hiển thị ngay
         const localUser = getCurrentUser()
         if (localUser) {
@@ -136,7 +133,7 @@ export default function ProfilePage() {
             name: localUser.name,
             email: localUser.email,
             phone: localUser.phone || "",
-            address: savedAddress,
+            address: localUser.address || "",
           })
         }
 
@@ -149,12 +146,24 @@ export default function ProfilePage() {
           // Cập nhật lại local storage
           setCurrentUser(userData)
           
+          // Ưu tiên địa chỉ từ API, nếu không có thì lấy từ localStorage
+          const apiAddress = userData.address || ""
+          const savedAddress = localStorage.getItem("customerDefaultAddress") || ""
+          
           setFormData({
             name: userData.name,
             email: userData.email,
             phone: userData.phone || "",
-            address: savedAddress,
+            address: apiAddress || savedAddress,
           })
+          
+          // Đồng bộ localStorage với API
+          if (apiAddress) {
+            localStorage.setItem("customerDefaultAddress", apiAddress)
+          } else if (!apiAddress && savedAddress) {
+            // Nếu API không có address nhưng localStorage có, xóa localStorage
+            localStorage.removeItem("customerDefaultAddress")
+          }
         }
       } catch (error) {
         console.error("Failed to fetch profile:", error)
@@ -199,9 +208,12 @@ export default function ProfilePage() {
         setCurrentUser(updatedUser)
         setUser(updatedUser)
         
-        // Cũng lưu vào localStorage để checkout sử dụng
+        // Đồng bộ localStorage với address mới
         if (formData.address) {
           localStorage.setItem("customerDefaultAddress", formData.address)
+        } else {
+          // Nếu xóa địa chỉ, xóa luôn khỏi localStorage
+          localStorage.removeItem("customerDefaultAddress")
         }
         
         // Hiển thị thông báo thành công
