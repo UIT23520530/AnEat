@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { AdminLayout } from "@/components/layouts/admin-layout"
 import { Card, CardHeader } from "@/components/ui/card"
 import ProductsForm from "@/components/forms/admin/products/ProductsForm"
+import { ImageUpload } from "@/components/forms/admin/settings/image-upload"
 import {
   Table,
   Button,
@@ -38,6 +39,7 @@ import {
   StopOutlined,
   CheckCircleOutlined,
   ArrowRightOutlined,
+  PictureOutlined,
 } from "@ant-design/icons"
 import type { TableColumnsType } from "antd"
 import {
@@ -101,12 +103,14 @@ function ProductsContent() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
   const [isViewModalOpen, setIsViewModalOpen] = useState(false)
+  const [isBulkImageModalOpen, setIsBulkImageModalOpen] = useState(false)
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
   const [viewProduct, setViewProduct] = useState<Product | null>(null)
 
   // Forms
   const [editForm] = Form.useForm()
   const [addForm] = Form.useForm()
+  const [bulkImageForm] = Form.useForm()
 
   // Handle query params on mount (for navigation from categories/branches page)
   useEffect(() => {
@@ -344,13 +348,40 @@ function ProductsContent() {
     }
   }
 
+  // Open bulk image update modal
+  const handleBulkImageUpdate = (product: Product) => {
+    setSelectedProduct(product)
+    bulkImageForm.setFieldsValue({
+      image: product.image || "",
+    })
+    setIsBulkImageModalOpen(true)
+  }
+
+  // Submit bulk image update
+  const handleSubmitBulkImageUpdate = async (values: any) => {
+    if (!selectedProduct) return
+
+    try {
+      const result = await adminProductService.bulkUpdateProductImage(
+        selectedProduct.code,
+        values.image
+      )
+      message.success(result.message || "Đã cập nhật ảnh cho tất cả chi nhánh")
+      setIsBulkImageModalOpen(false)
+      loadProducts()
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.message || "Không thể cập nhật ảnh"
+      message.error(errorMessage)
+    }
+  }
+
   // Table columns
   const columns: TableColumnsType<Product> = [
     {
       title: "Sản phẩm",
       key: "product",
       fixed: "left",
-      width: 100,
+      width: 50,
       render: (_, record: Product) => (
         <div style={{ display: "flex", alignItems: "center", gap: "12px", opacity: record.isAvailable ? 1 : 0.5 }}>
           <div style={{ flex: 1 }}>
@@ -370,7 +401,7 @@ function ProductsContent() {
       title: "Danh mục",
       dataIndex: ["category", "name"],
       key: "category",
-      width: 40,
+      width: 30,
       render: (categoryName: string, record: Product) => {
         const categoryCode = record.category?.code || categoryName
         const color = stringToColor(categoryCode)
@@ -457,6 +488,14 @@ function ProductsContent() {
               type="text"
               icon={<EyeOutlined />}
               onClick={() => handleViewClick(record)}
+            />
+          </Tooltip>
+          <Tooltip title="Cập nhật ảnh cho tất cả chi nhánh">
+            <Button
+              type="text"
+              icon={<PictureOutlined />}
+              onClick={() => handleBulkImageUpdate(record)}
+              className="text-blue-600 hover:text-blue-700"
             />
           </Tooltip>
           <Tooltip title="Sửa">
@@ -743,6 +782,59 @@ function ProductsContent() {
                 {viewProduct.description || "Chưa có mô tả"}
               </Descriptions.Item>
             </Descriptions>
+          </div>
+        )}
+      </Modal>
+
+      {/* Bulk Image Update Modal */}
+      <Modal
+        title={
+          <div className="flex items-center gap-2">
+            <PictureOutlined className="text-blue-600" />
+            <span>Cập nhật ảnh cho tất cả chi nhánh</span>
+          </div>
+        }
+        open={isBulkImageModalOpen}
+        onCancel={() => setIsBulkImageModalOpen(false)}
+        onOk={() => bulkImageForm.submit()}
+        width={700}
+        okText="Cập nhật"
+        cancelText="Hủy"
+      >
+        {selectedProduct && (
+          <div className="space-y-4">
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <p className="text-sm text-blue-900 font-medium">
+                <strong>Sản phẩm:</strong> {selectedProduct.name}
+              </p>
+              <p className="text-sm text-blue-700 mt-1">
+                <strong>Mã:</strong> {selectedProduct.code}
+              </p>
+              <p className="text-sm text-blue-600 mt-2">
+                ⚠️ Ảnh sẽ được cập nhật cho <strong>TẤT CẢ</strong> sản phẩm có mã <strong>{selectedProduct.code}</strong> ở mọi chi nhánh.
+              </p>
+            </div>
+            
+            <Form
+              form={bulkImageForm}
+              layout="vertical"
+              onFinish={handleSubmitBulkImageUpdate}
+            >
+              <Form.Item
+                name="image"
+                label="Ảnh sản phẩm"
+                rules={[{ required: true, message: "Vui lòng chọn ảnh" }]}
+              >
+                <Input style={{ display: 'none' }} />
+              </Form.Item>
+              
+              <ImageUpload
+                value={bulkImageForm.getFieldValue('image') || ''}
+                onChange={(url) => bulkImageForm.setFieldsValue({ image: url })}
+                label="Ảnh sản phẩm mới"
+                required
+              />
+            </Form>
           </div>
         )}
       </Modal>

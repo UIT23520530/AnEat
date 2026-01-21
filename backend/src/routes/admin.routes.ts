@@ -46,6 +46,7 @@ import {
   updateProduct,
   deleteProduct,
   getProductStats,
+  bulkUpdateProductImage,
 } from '../controllers/admin/product.controller';
 import {
   getAllCustomers as getAdminCustomers,
@@ -477,6 +478,19 @@ router.put(
   param('id').notEmpty().withMessage('ID sản phẩm không được bỏ trống'),
   validate,
   updateProduct
+);
+
+/**
+ * @route   PUT /api/v1/admin/products/bulk-update-image/:code
+ * @desc    Cập nhật ảnh cho tất cả sản phẩm có cùng code
+ * @access  Admin only
+ */
+router.put(
+  '/products/bulk-update-image/:code',
+  param('code').notEmpty().withMessage('Mã sản phẩm không được bỏ trống'),
+  body('image').notEmpty().withMessage('URL ảnh không được bỏ trống'),
+  validate,
+  bulkUpdateProductImage
 );
 
 /**

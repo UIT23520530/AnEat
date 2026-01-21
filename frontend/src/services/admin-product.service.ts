@@ -124,6 +124,14 @@ class AdminProductService {
     const response = await apiClient.delete(`/admin/products/${id}`)
     return response.data
   }
+
+  /**
+   * Bulk update product image for all branches with same code
+   */
+  async bulkUpdateProductImage(code: string, image: string) {
+    const response = await apiClient.put(`/admin/products/bulk-update-image/${code}`, { image })
+    return response.data
+  }
 }
 
 export const adminProductService = new AdminProductService()

@@ -625,6 +625,86 @@ export const updateProduct = async (req: Request, res: Response): Promise<void> 
 };
 
 /**
+ * Update product image for all branches with same code
+ */
+export const bulkUpdateProductImage = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { code } = req.params;
+    const { image } = req.body;
+
+    console.log('🔄 Bulk update product image request:', {
+      code,
+      image,
+    });
+
+    // Validate image URL
+    if (!image || image.trim().length === 0) {
+      res.status(400).json({
+        status: 'error',
+        message: 'URL ảnh không được để trống',
+      });
+      return;
+    }
+
+    // Find all products with this code
+    const products = await prisma.product.findMany({
+      where: { code },
+      select: {
+        id: true,
+        code: true,
+        name: true,
+        branchId: true,
+        branch: {
+          select: {
+            name: true,
+          },
+        },
+      },
+    });
+
+    if (products.length === 0) {
+      console.log('❌ No products found with code:', { code });
+      res.status(404).json({
+        status: 'error',
+        message: 'Không tìm thấy sản phẩm nào với mã này',
+      });
+      return;
+    }
+
+    // Update all products
+    const updateResult = await prisma.product.updateMany({
+      where: { code },
+      data: { image: image.trim() },
+    });
+
+    console.log('✅ Products images updated:', { 
+      code, 
+      count: updateResult.count,
+      branches: products.map(p => p.branch?.name).join(', ')
+    });
+
+    res.status(200).json({
+      status: 'success',
+      message: `Đã cập nhật ảnh cho ${updateResult.count} sản phẩm`,
+      data: {
+        count: updateResult.count,
+        products: products.map(p => ({
+          id: p.id,
+          name: p.name,
+          branchName: p.branch?.name,
+        })),
+      },
+    });
+  } catch (error) {
+    console.error('❌ Bulk update product image error:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Không thể cập nhật ảnh sản phẩm',
+    });
+  }
+};
+
+/**
  * Delete product (soft delete)
  */
 export const deleteProduct = async (req: Request, res: Response): Promise<void> => {
