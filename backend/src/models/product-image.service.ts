@@ -177,10 +177,10 @@ export async function checkImageUpdateImpact(productId: string) {
   return {
     baseCode,
     affectedBranchesCount: affectedProducts.length,
-    affectedBranches: affectedProducts.map((p) => ({
-      branchId: p.branch.id,
-      branchName: p.branch.name,
-      branchCode: p.branch.code,
+    affectedBranches: affectedProducts.filter(p => p.branch).map((p) => ({
+      branchId: p.branch!.id,
+      branchName: p.branch!.name,
+      branchCode: p.branch!.code,
       productId: p.id,
       productCode: p.code,
       currentImage: p.image,

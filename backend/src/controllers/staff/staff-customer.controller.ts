@@ -81,7 +81,7 @@ export const searchCustomerByPhone = async (req: Request, res: Response) => {
     }
 
     // Return customer info (excluding sensitive data)
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       code: 200,
       message: 'Tìm thấy khách hàng',
@@ -97,7 +97,7 @@ export const searchCustomerByPhone = async (req: Request, res: Response) => {
       },
     });
   } catch (error: any) {
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       code: 500,
       message: 'Lỗi khi tìm kiếm khách hàng',
@@ -135,7 +135,7 @@ export const createCustomer = async (req: Request, res: Response) => {
       tier: 'BRONZE', // Default tier for new customers
     });
 
-    res.status(201).json({
+    return res.status(201).json({
       success: true,
       code: 201,
       message: 'Tạo khách hàng thành công',
@@ -152,7 +152,7 @@ export const createCustomer = async (req: Request, res: Response) => {
       });
     }
 
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       code: 500,
       message: 'Lỗi khi tạo khách hàng',
@@ -181,14 +181,14 @@ export const getCustomerById = async (req: Request, res: Response) => {
       });
     }
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       code: 200,
       message: 'Lấy thông tin khách hàng thành công',
       data: customer,
     });
   } catch (error: any) {
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       code: 500,
       message: 'Lỗi khi lấy thông tin khách hàng',
@@ -226,14 +226,14 @@ export const updateCustomer = async (req: Request, res: Response) => {
       avatar,
     });
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       code: 200,
       message: 'Cập nhật thông tin khách hàng thành công',
       data: updatedCustomer,
     });
   } catch (error: any) {
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       code: 500,
       message: 'Lỗi khi cập nhật thông tin khách hàng',
@@ -277,14 +277,14 @@ export const deleteCustomer = async (req: Request, res: Response) => {
     await CustomerService.delete(id);
 
     // Standard success response
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       code: 200,
       message: 'Xóa khách hàng thành công',
       data: null,
     });
   } catch (error: any) {
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       code: 500,
       message: 'Lỗi khi xóa khách hàng',

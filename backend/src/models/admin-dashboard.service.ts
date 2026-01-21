@@ -511,7 +511,7 @@ export class AdminDashboardService {
         return {
           id: product?.id || '',
           name: product?.name || 'Unknown',
-          branchName: product?.branch.name || 'Unknown',
+          branchName: product?.branch?.name || 'Unknown',
           image: product?.image || null,
           unitsSold: item._sum.quantity || 0,
           revenue,

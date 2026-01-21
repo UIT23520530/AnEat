@@ -40,7 +40,7 @@ export const getInventoryList = async (req: Request, res: Response) => {
     const totalPages = Math.ceil(total / limit);
 
     // Standard response format (API_GUIDELINES Level 3)
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       code: 200,
       message: 'Lấy danh sách kho thành công',
@@ -53,7 +53,7 @@ export const getInventoryList = async (req: Request, res: Response) => {
       },
     });
   } catch (error: any) {
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       code: 500,
       message: 'Lỗi khi lấy danh sách kho',
@@ -82,14 +82,14 @@ export const getInventoryStats = async (req: Request, res: Response) => {
 
     const stats = await WarehouseService.getInventoryStats(branchId);
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       code: 200,
       message: 'Lấy thống kê kho thành công',
       data: stats,
     });
   } catch (error: any) {
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       code: 500,
       message: 'Lỗi khi lấy thống kê kho',

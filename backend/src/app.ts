@@ -192,7 +192,7 @@ app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
   }
 
   // Handle System Errors (5xx)
-  res.status(500).json({
+  return res.status(500).json({
     success: false,
     code: 500,
     message: process.env.NODE_ENV === 'production'

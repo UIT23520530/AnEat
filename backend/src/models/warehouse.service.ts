@@ -123,21 +123,23 @@ export class WarehouseService {
       prisma.product.count({ where }),
     ]);
 
-    // Map to DTO with alert flag
-    const inventoryItems: InventoryItemDTO[] = products.map((product) => ({
-      id: product.id,
-      code: product.code,
-      name: product.name,
-      description: product.description,
-      price: product.price,
-      image: product.image,
-      quantity: product.quantity,
-      costPrice: product.costPrice,
-      prepTime: product.prepTime,
-      isAvailable: product.isAvailable,
-      hasAlert: product.quantity < 50, // Alert flag
-      category: product.category,
-      branch: product.branch,
+    // Map to DTO with alert flag (filter out products without branch)
+    const inventoryItems: InventoryItemDTO[] = products
+      .filter(product => product.branch !== null)
+      .map((product) => ({
+        id: product.id,
+        code: product.code,
+        name: product.name,
+        description: product.description,
+        price: product.price,
+        image: product.image,
+        quantity: product.quantity,
+        costPrice: product.costPrice,
+        prepTime: product.prepTime,
+        isAvailable: product.isAvailable,
+        hasAlert: product.quantity < 50, // Alert flag
+        category: product.category,
+        branch: product.branch!,
       createdAt: product.createdAt,
       updatedAt: product.updatedAt,
     }));
