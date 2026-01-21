@@ -4,8 +4,8 @@ import { useState, useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { ManagerLayout } from "@/components/layouts/manager-layout"
 import { Card, CardHeader } from "@/components/ui/card"
-import ProductsForm from "@/components/forms/admin/ProductsForm"
-import ProductsDetailModal from "@/components/forms/admin/ProductsDetailModal"
+import ProductsForm from "@/components/forms/admin/products/ProductsForm"
+import ProductsDetailModal from "@/components/forms/admin/products/ProductsDetailModal"
 import {
   Table,
   Button,

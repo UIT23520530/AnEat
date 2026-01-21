@@ -40,8 +40,8 @@ import {
   type Customer,
   type CustomerTier,
 } from "@/services/manager-customer.service"
-import CustomersForm from "@/components/forms/admin/CustomersForm"
-import CustomersDetailModal from "@/components/forms/admin/CustomersDetailModal"
+import CustomersForm from "@/components/forms/admin/customers/CustomersForm"
+import CustomersDetailModal from "@/components/forms/admin/customers/CustomersDetailModal"
 
 function CustomersContent() {
   const { message, modal } = App.useApp()

@@ -20,8 +20,8 @@ import {
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { managerTemplateService } from "@/services/manager-template.service";
 import { TemplateDTO, TemplateCategory, TemplateStatus, CreateTemplateDto, UpdateTemplateDto } from "@/services/admin-template.service";
-import { TemplateForm } from "@/components/forms/admin/TemplateForm";
-import { TemplateDetailModal } from "@/components/forms/admin/TemplateDetailModal";
+import { TemplateForm } from "@/components/forms/admin/templates/TemplateForm";
+import { TemplateDetailModal } from "@/components/forms/admin/templates/TemplateDetailModal";
 import { InvoicePrintModal } from "@/components/forms/admin/invoices/InvoicePrintModal";
 import dayjs from "dayjs";
 
