@@ -4,6 +4,8 @@ import { createContext, useContext, useState, ReactNode, useEffect } from "react
 import { useRouter } from "next/navigation";
 import { getTempOrderFromCookie, saveTempOrderToCookie } from "@/lib/temp-order-cookie";
 import { useCart } from "./cart-context";
+import apiClient from "@/lib/api-client";
+import { useToast } from "@/hooks/use-toast";
 
 interface CartItemOption {
   id: string;
@@ -51,6 +53,8 @@ interface CheckoutContextType {
   setDiscountCode: (code: string) => void;
   appliedDiscount: number;
   setAppliedDiscount: (discount: number) => void;
+  appliedPromotionId: string | null;
+  setAppliedPromotionId: (id: string | null) => void;
   
   // Calculations
   subtotal: number;
@@ -59,7 +63,7 @@ interface CheckoutContextType {
   // Actions
   handleItemQuantityChange: (cartItemId: string, quantity: number) => void;
   handleItemRemove: (cartItemId: string) => void;
-  handleApplyDiscount: () => void;
+  handleApplyDiscount: () => Promise<void>;
 }
 
 const CheckoutContext = createContext<CheckoutContextType | undefined>(undefined);
@@ -73,6 +77,7 @@ export const useCheckout = () => {
 };
 
 export const CheckoutProvider = ({ children }: { children: ReactNode }) => {
+  const { toast } = useToast();
   const [items, setItems] = useState<CartItem[]>([]);
   const [store, setStore] = useState("");
   const [deliveryAddress, setDeliveryAddress] = useState("");
@@ -87,6 +92,7 @@ export const CheckoutProvider = ({ children }: { children: ReactNode }) => {
   const [paymentMethod, setPaymentMethod] = useState<"cash" | "card" | "e-wallet">("cash");
   const [discountCode, setDiscountCode] = useState("");
   const [appliedDiscount, setAppliedDiscount] = useState(0);
+  const [appliedPromotionId, setAppliedPromotionId] = useState<string | null>(null);
 
   // Restore state from cookie on mount
   useEffect(() => {
@@ -150,11 +156,87 @@ export const CheckoutProvider = ({ children }: { children: ReactNode }) => {
     removeFromCart(cartItemId);
   };
 
-  const handleApplyDiscount = () => {
-    if (discountCode.toUpperCase() === "ANEAT10") {
-      setAppliedDiscount(subtotal * 0.1);
-    } else if (discountCode) {
-      alert("Mã khuyến mãi không hợp lệ");
+  const handleApplyDiscount = async () => {
+    if (!discountCode.trim()) {
+      toast({
+        title: "Vui lòng nhập mã khuyến mãi",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const response = await apiClient.get(`/promotions/validate/${discountCode.trim()}`);
+      
+      if (response.data.success && response.data.data) {
+        const promotion = response.data.data;
+        
+        // Check if promotion is active
+        if (!promotion.isActive) {
+          toast({
+            title: "Mã khuyến mãi đã hết hiệu lực",
+            variant: "destructive",
+          });
+          setAppliedDiscount(0);
+          return;
+        }
+
+        // Check expiry date
+        if (promotion.expiryDate && new Date(promotion.expiryDate) < new Date()) {
+          toast({
+            title: "Mã khuyến mãi đã hết hạn",
+            variant: "destructive",
+          });
+          setAppliedDiscount(0);
+          return;
+        }
+
+        // Check minimum order amount
+        if (promotion.minOrderAmount && subtotal < promotion.minOrderAmount) {
+          toast({
+            title: "Không đủ điều kiện",
+            description: `Đơn hàng tối thiểu ${promotion.minOrderAmount.toLocaleString('vi-VN')}đ để áp dụng mã này`,
+            variant: "destructive",
+          });
+          setAppliedDiscount(0);
+          return;
+        }
+
+        // Calculate discount
+        let discount = 0;
+        if (promotion.type === "PERCENTAGE") {
+          discount = (subtotal * promotion.value) / 100;
+        } else if (promotion.type === "FIXED") {
+          discount = promotion.value;
+        }
+
+        const finalDiscount = Math.min(discount, subtotal);
+        setAppliedDiscount(finalDiscount);
+        setAppliedPromotionId(promotion.id);
+        
+        toast({
+          title: "Áp dụng mã thành công!",
+          description: `Giảm ${finalDiscount.toLocaleString('vi-VN')}đ`,
+          className: "bg-green-50 border-green-200",
+        });
+      }
+    } catch (error: any) {
+      console.error("Apply discount error:", error);
+      
+      if (error.response?.status === 404) {
+        toast({
+          title: "Mã khuyến mãi không tồn tại",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Mã khuyến mãi không hợp lệ",
+          description: error.response?.data?.message,
+          variant: "destructive",
+        });
+      }
+      setAppliedDiscount(0);
+      setAppliedPromotionId(null);
     }
   };
 
@@ -181,6 +263,8 @@ export const CheckoutProvider = ({ children }: { children: ReactNode }) => {
         setDiscountCode,
         appliedDiscount,
         setAppliedDiscount,
+        appliedPromotionId,
+        setAppliedPromotionId,
         subtotal,
         total,
         handleItemQuantityChange,

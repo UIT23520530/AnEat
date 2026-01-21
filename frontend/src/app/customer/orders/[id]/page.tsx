@@ -119,6 +119,12 @@ interface OrderTrackingResponse {
     estimatedTime: string | null;
     paymentStatus: string;
     paymentMethod: string | null;
+    promotion?: {
+      id: string;
+      code: string;
+      type: "PERCENTAGE" | "FIXED";
+      value: number;
+    } | null;
   };
 }
 
@@ -145,6 +151,14 @@ export default function OrderDetailPage({
         if (response.data.success && response.data.data) {
           const orderData = response.data.data;
           
+          // Calculate subtotal from items
+          const subtotal = orderData.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+          
+          // Calculate discount from the difference between subtotal and total
+          // Backend already calculated and saved the final total after discount
+          const discount = subtotal - orderData.total;
+          const promotionCode = orderData.promotion?.code || "";
+          
           const mappedOrder = {
             id: orderData.orderNumber,
             date: new Date(orderData.createdAt).toLocaleDateString("vi-VN", {
@@ -161,9 +175,10 @@ export default function OrderDetailPage({
             statusText: mapStatusText(orderData.status),
             currentStep: getStatusStep(orderData.status),
             total: orderData.total,
-            subtotal: orderData.total,
+            subtotal: subtotal,
             tax: 0,
-            discount: 0,
+            discount: discount,
+            promotionCode: promotionCode,
             items: orderData.items.map((item) => ({
               name: item.product.name,
               quantity: item.quantity,
@@ -477,12 +492,16 @@ export default function OrderDetailPage({
                         {order.subtotal.toLocaleString("vi-VN")}₫
                       </span>
                     </div>
-                    <div className="flex justify-between items-center pb-3 border-b border-gray-50">
-                      <span className="text-gray-500 font-medium">Giảm giá:</span>
-                      <span className="font-bold text-green-600">
-                        -{order.discount.toLocaleString("vi-VN")}₫
-                      </span>
-                    </div>
+                    {order.discount > 0 && (
+                      <div className="flex justify-between items-center pb-3 border-b border-gray-50">
+                        <span className="text-gray-500 font-medium">
+                          Giảm giá {order.promotionCode && <span className="text-xs font-semibold text-green-600">({order.promotionCode})</span>}:
+                        </span>
+                        <span className="font-bold text-green-600">
+                          -{order.discount.toLocaleString("vi-VN")}₫
+                        </span>
+                      </div>
+                    )}
                     <div className="flex justify-between items-center text-lg">
                       <span className="font-extrabold text-gray-900">TỔNG CỘNG:</span>
                       <span className="text-orange-500 text-2xl font-black">

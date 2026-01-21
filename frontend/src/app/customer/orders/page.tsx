@@ -64,6 +64,12 @@ interface OrderResponse {
     phone: string;
     email: string | null;
   } | null;
+  promotion?: {
+    id: string;
+    code: string;
+    type: "PERCENTAGE" | "FIXED";
+    value: number;
+  } | null;
 }
 
 interface OrdersResponse {
@@ -91,6 +97,9 @@ interface Order {
   status: "pending" | "preparing" | "delivering" | "completed" | "cancelled";
   statusText: string;
   total: number;
+  subtotal?: number;
+  discount?: number;
+  promotionCode?: string;
   items: Array<{
     name: string;
     quantity: number;
@@ -181,13 +190,23 @@ const mapToOrder = (apiOrder: OrderResponse): Order => {
   // Lấy phone từ deliveryPhone hoặc customer hoặc branch
   const phone = apiOrder.deliveryPhone || apiOrder.customer?.phone || apiOrder.branch.phone;
 
+  // Calculate subtotal from items
+  const subtotal = apiOrder.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+
+  // Calculate discount from the difference between subtotal and total
+  // Backend already calculated and saved the final total after discount
+  const discount = subtotal - apiOrder.total;
+
   return {
     id: apiOrder.orderNumber,
     date: formatDate(apiOrder.createdAt),
     time: formatTime(apiOrder.createdAt),
     status: status,
     statusText: statusText,
-    total: apiOrder.total, // Giá đã là VND
+    total: apiOrder.total, // Giá đã trừ discount
+    subtotal: subtotal,
+    discount: discount,
+    promotionCode: apiOrder.promotion?.code,
     items: items,
     address: address,
     phone: phone,
@@ -376,8 +395,24 @@ export default function OrdersPage() {
                           ))}
                         </TableBody>
                       </Table>
-                      <div className="mt-4 pt-4 border-t">
-                        <div className="flex justify-between items-center font-bold text-lg">
+                      
+                      {/* Order Summary */}
+                      <div className="mt-4 pt-4 border-t space-y-2">
+                        {order.subtotal !== undefined && (
+                          <div className="flex justify-between items-center">
+                            <span className="text-gray-600">Tạm tính:</span>
+                            <span>{order.subtotal.toLocaleString("vi-VN")}₫</span>
+                          </div>
+                        )}
+                        
+                        <div className="flex justify-between items-center text-green-600">
+                          <span>
+                            Giảm giá{order.promotionCode ? ` (${order.promotionCode})` : ""}:
+                          </span>
+                          <span>-{(order.discount || 0).toLocaleString("vi-VN")}₫</span>
+                        </div>
+                        
+                        <div className="flex justify-between items-center font-bold text-lg pt-2 border-t">
                           <span>Tổng cộng:</span>
                           <span className="text-red-600">
                             {order.total.toLocaleString("vi-VN")}₫

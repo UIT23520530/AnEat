@@ -32,6 +32,7 @@ export default function CheckoutPaymentPage() {
     discountCode,
     setDiscountCode,
     appliedDiscount,
+    appliedPromotionId,
     subtotal,
     total,
     handleApplyDiscount,
@@ -111,7 +112,7 @@ export default function CheckoutPaymentPage() {
 
     setIsLoading(true);
     try {
-      const orderData = {
+      const orderData: any = {
         branchId: store,
         items: items.map((item) => {
           // item đã có options từ checkout context (sync từ cart)
@@ -132,6 +133,11 @@ export default function CheckoutPaymentPage() {
         paymentMethod,
         notes: notes || undefined,
       };
+
+      // Add promotionId if discount is applied
+      if (appliedPromotionId && appliedDiscount > 0) {
+        orderData.promotionId = appliedPromotionId;
+      }
 
       if (paymentMethod === "e-wallet") {
         // MoMo: Lưu thông tin đơn hàng vào sessionStorage, chưa tạo đơn
@@ -349,7 +355,10 @@ export default function CheckoutPaymentPage() {
             {/* Mã khuyến mãi */}
             <Card>
               <CardContent className="p-4">
-                <h3 className="font-bold mb-4">Mã khuyến mãi</h3>
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-bold">Mã khuyến mãi</h3>
+                  <p className="text-xs text-gray-500">Chỉ áp dụng 1 mã giảm giá cho mỗi đơn</p>
+                </div>
                 <div className="flex gap-2">
                   <Input
                     placeholder="Nhập mã khuyến mãi (nếu có)"
@@ -361,9 +370,6 @@ export default function CheckoutPaymentPage() {
                     Áp dụng
                   </Button>
                 </div>
-                {appliedDiscount > 0 && (
-                  <p className="text-xs text-green-600 mt-2">✓ Đã áp dụng mã giảm giá {discountCode.toUpperCase()}</p>
-                )}
               </CardContent>
             </Card>
 

@@ -809,6 +809,14 @@ export const trackOrder = async (req: Request, res: Response, next: NextFunction
             phone: true,
           },
         },
+        promotion: {
+          select: {
+            id: true,
+            code: true,
+            type: true,
+            value: true,
+          },
+        },
       },
     });
 
@@ -846,6 +854,7 @@ export const trackOrder = async (req: Request, res: Response, next: NextFunction
         estimatedTime,
         paymentStatus: order.paymentStatus,
         paymentMethod: order.paymentMethod,
+        promotion: order.promotion,
       },
     });
   } catch (error) {

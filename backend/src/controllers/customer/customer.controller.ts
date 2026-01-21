@@ -285,6 +285,14 @@ export const getOrderHistory = async (req: Request, res: Response): Promise<void
             address: true,
           },
         },
+        promotion: {
+          select: {
+            id: true,
+            code: true,
+            type: true,
+            value: true,
+          },
+        },
       },
       orderBy: {
         createdAt: 'desc',
@@ -371,7 +379,7 @@ export const createOrder = async (req: Request, res: Response): Promise<void> =>
       return;
     }
 
-    const { branchId, items, tableId, notes, deliveryAddress, deliveryPhone, orderType, paymentMethod, momoPaymentStatus } = req.body;
+    const { branchId, items, tableId, notes, deliveryAddress, deliveryPhone, orderType, paymentMethod, momoPaymentStatus, promotionId } = req.body;
 
     // Validate branchId
     if (!branchId) {
@@ -434,6 +442,35 @@ export const createOrder = async (req: Request, res: Response): Promise<void> =>
       totalAmount += item.price * item.quantity; // price đã là cent
     }
 
+    // Calculate discount if promotionId is provided
+    let discountAmount = 0;
+    if (promotionId) {
+      const promotion = await prisma.promotion.findUnique({
+        where: { id: promotionId },
+      });
+
+      if (promotion && promotion.isActive) {
+        // Check expiry date
+        if (!promotion.expiryDate || new Date(promotion.expiryDate) >= new Date()) {
+          // Check minimum order amount
+          if (!promotion.minOrderAmount || totalAmount >= promotion.minOrderAmount) {
+            // Calculate discount
+            if (promotion.type === 'PERCENTAGE') {
+              discountAmount = Math.floor((totalAmount * promotion.value) / 100);
+            } else if (promotion.type === 'FIXED') {
+              discountAmount = promotion.value;
+            }
+            
+            // Ensure discount doesn't exceed total
+            discountAmount = Math.min(discountAmount, totalAmount);
+          }
+        }
+      }
+    }
+
+    // Calculate final total after discount
+    const finalTotal = totalAmount - discountAmount;
+
     // Generate unique order number
     let orderNumber: string = '';
     let isUnique = false;
@@ -465,14 +502,6 @@ export const createOrder = async (req: Request, res: Response): Promise<void> =>
       return;
     }
 
-    console.log('Creating order with:', {
-      customerId,
-      branchId,
-      orderNumber,
-      totalAmount,
-      itemsCount: items.length,
-    });
-
     // Create order
     const order = await prisma.order.create({
       data: {
@@ -480,12 +509,13 @@ export const createOrder = async (req: Request, res: Response): Promise<void> =>
         branchId,
         notes: notes || null,
         orderNumber,
-        total: totalAmount,
+        total: finalTotal,
         paymentMethod: paymentMethod ? (paymentMethod.toUpperCase().replace('-', '_') as any) : 'CASH',
         paymentStatus: momoPaymentStatus === 'PAID' ? 'PAID' : 'PENDING',
         orderType: orderType || 'DELIVERY',
         deliveryAddress: deliveryAddress || null,
         deliveryPhone: deliveryPhone || null,
+        promotionId: promotionId || null,
         items: {
           create: items.map((item: any) => {
             const orderItemData: any = {
