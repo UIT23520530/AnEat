@@ -233,7 +233,7 @@ function DashboardContent() {
               <div className="flex items-center justify-between">
                 <div>
                   <CardTitle className="text-4xl font-bold text-slate-900">
-                    Dashboard Quản lý
+                    Dashboard quản lý
                   </CardTitle>
                 </div>
                 <Space>

@@ -149,7 +149,7 @@ export default function DashboardPage() {
                 {/* Recent Orders Table */}
                 <Card className="lg:col-span-2 bg-white border border-gray-200">
                   <div className="p-6">
-                    <h2 className="text-lg font-bold text-gray-900 mb-4">Đơn Hàng Gần Đây</h2>
+                    <h2 className="text-lg font-bold text-gray-900 mb-4">ĐƠN HÀNG GẦN ĐÂY</h2>
                     {recentOrders.length === 0 ? (
                       <div className="text-center py-8 text-gray-500">
                         <p>Chưa có đơn hàng nào</p>
@@ -183,12 +183,15 @@ export default function DashboardPage() {
                                         ? "bg-yellow-100 text-yellow-700"
                                         : order.status === "PREPARING"
                                         ? "bg-blue-100 text-blue-700"
+                                        : order.status === "CANCELLED"
+                                        ? "bg-red-100 text-red-700"
                                         : "bg-gray-100 text-gray-700"
                                     )}
                                   >
                                     {order.status === "COMPLETED" ? "Hoàn thành" 
                                       : order.status === "PENDING" ? "Chờ xử lý"
                                       : order.status === "PREPARING" ? "Đang chuẩn bị"
+                                      : order.status === "CANCELLED" ? "Đã hủy"
                                       : order.status}
                                   </span>
                                 </td>

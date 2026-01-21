@@ -305,54 +305,71 @@ export class DashboardService {
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-    // Get order items with product info
-    const topProducts = await prisma.orderItem.groupBy({
-      by: ['productId'],
+    // Get all order items in the period with product details
+    const orderItems = await prisma.orderItem.findMany({
       where: {
         order: {
           branchId,
           createdAt: { gte: thirtyDaysAgo },
         },
       },
-      _sum: {
-        quantity: true,
-        price: true,
-      },
-      orderBy: {
-        _sum: {
-          quantity: 'desc',
-        },
-      },
-      take: limit,
-    });
-
-    // Get product details
-    const productsWithDetails = await Promise.all(
-      topProducts.map(async (item) => {
-        const product = await prisma.product.findUnique({
-          where: { id: item.productId },
+      include: {
+        product: {
           select: {
             id: true,
             name: true,
             image: true,
+            price: true,
+            costPrice: true,
           },
-        });
+        },
+      },
+    });
 
-        const revenue = item._sum.price || 0;
-        const profit = revenue * 0.3;
+    // Group by product and calculate stats
+    const productMap = new Map<string, {
+      id: string;
+      name: string;
+      image: string | null;
+      unitsSold: number;
+      revenue: number;
+      profit: number;
+    }>();
 
-        return {
-          id: product?.id || '',
-          name: product?.name || 'Unknown',
-          image: product?.image || null,
-          unitsSold: item._sum.quantity || 0,
-          revenue,
-          profit,
-        };
-      })
-    );
+    orderItems.forEach((item) => {
+      if (!item.product) return;
 
-    return productsWithDetails.filter((p) => p.id);
+      const existing = productMap.get(item.productId) || {
+        id: item.product.id,
+        name: item.product.name,
+        image: item.product.image,
+        unitsSold: 0,
+        revenue: 0,
+        profit: 0,
+      };
+
+      // Calculate revenue and profit for this order item
+      // Example: 7 Up - costPrice: 7k, sellingPrice: 17k, quantity: 4
+      // - Revenue: 17k × 4 = 68k
+      // - Profit: (17k - 7k) × 4 = 40k
+      
+      const sellingPricePerUnit = item.product.price; // Original selling price from Product table (e.g., 17k)
+      const costPricePerUnit = item.product.costPrice || 0; // Cost price from Product table (e.g., 7k)
+      const itemRevenue = sellingPricePerUnit * item.quantity; // 17k × 4 = 68k
+      const itemProfit = (sellingPricePerUnit - costPricePerUnit) * item.quantity; // (17k - 7k) × 4 = 40k
+
+      productMap.set(item.productId, {
+        ...existing,
+        unitsSold: existing.unitsSold + item.quantity, // Add 4 cans
+        revenue: existing.revenue + itemRevenue, // Add 68k
+        profit: existing.profit + itemProfit, // Add 40k
+      });
+    });
+
+    // Convert to array, sort by units sold, and take top N
+    return Array.from(productMap.values())
+      .sort((a, b) => b.unitsSold - a.unitsSold)
+      .slice(0, limit);
   }
 
   /**
