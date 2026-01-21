@@ -232,10 +232,7 @@ export const InvoiceDetailModal: React.FC<InvoiceDetailModalProps> = ({
                 <span style={{ marginRight: 16 }}>Tạm tính:</span>
                 <strong>{invoice.subtotal.toLocaleString()}đ</strong>
               </div>
-              <div>
-                <span style={{ marginRight: 16 }}>VAT (10%):</span>
-                <strong>{invoice.tax.toLocaleString()}đ</strong>
-              </div>
+              
               {invoice.discount > 0 && (
                 <div>
                   <span style={{ marginRight: 16 }}>Giảm giá:</span>

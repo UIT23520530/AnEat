@@ -14,6 +14,7 @@ import { InvoiceEditForm } from "@/components/forms/admin/invoices/InvoiceEditFo
 import { InvoiceHistoryModal } from "@/components/forms/admin/invoices/InvoiceHistoryModal"; import { InvoiceDetailModal } from "@/components/forms/admin/invoices/InvoiceDetailModal";
 import { InvoicePrintModal } from "@/components/forms/admin/invoices/InvoicePrintModal";
 import { ManagerLayout } from "@/components/layouts/manager-layout";
+import { getCurrentUser } from "@/lib/auth";
 const { Option } = Select;
 
 // Search normalization helper
@@ -160,6 +161,7 @@ function InvoicesContent() {
   const [searchText, setSearchText] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [branches, setBranches] = useState<any[]>([]);
+  const [managerBranchId, setManagerBranchId] = useState<string | null>(null);
   const [stats, setStats] = useState({
     totalBills: 0,
     paidBills: 0,
@@ -195,8 +197,13 @@ function InvoicesContent() {
         sort: "-createdAt",
       };
 
-      // We still send basic filters to the backend to reduce payload
-      if (branchFilter) params.branchId = branchFilter;
+      // CRITICAL: Manager can only see bills from their branch
+      // Always filter by manager's branchId
+      if (managerBranchId) {
+        params.branchId = managerBranchId;
+      } else if (branchFilter) {
+        params.branchId = branchFilter;
+      }
 
       const response = await adminBillService.getBills(params);
 
@@ -264,19 +271,30 @@ function InvoicesContent() {
     }
   };
 
-  // Initial load
+  // Initial load - get manager's branch
   useEffect(() => {
+    const currentUser = getCurrentUser();
+    if (currentUser?.branchId) {
+      setManagerBranchId(currentUser.branchId);
+      // Auto-set branch filter to manager's branch
+      setBranchFilter(currentUser.branchId);
+    }
     loadBranches();
   }, []);
 
   useEffect(() => {
-    fetchBills(1, pagination.pageSize);
-  }, [statusFilter, paymentMethodFilter, branchFilter, searchText]);
+    // Only fetch bills after we have manager's branchId
+    if (managerBranchId) {
+      fetchBills(1, pagination.pageSize);
+    }
+  }, [statusFilter, paymentMethodFilter, branchFilter, searchText, managerBranchId]);
 
   // Reload stats when branch filter changes
   useEffect(() => {
-    fetchStats();
-  }, [branchFilter]);
+    if (managerBranchId) {
+      fetchStats();
+    }
+  }, [branchFilter, managerBranchId]);
 
   const handleViewDetails = async (record: Invoice) => {
     setLoading(true);
@@ -663,7 +681,7 @@ function InvoicesContent() {
       ),
     },
     {
-      title: "Trạng thái",
+      title: "Trạng thái thanh toán",
       dataIndex: "paymentStatus",
       key: "paymentStatus",
       align: "center",
