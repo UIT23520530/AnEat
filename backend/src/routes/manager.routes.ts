@@ -126,6 +126,10 @@ router.put(
       .trim()
       .matches(/^[0-9]{10,11}$/)
       .withMessage('Phone must be 10-11 digits'),
+    body('password')
+      .optional()
+      .isLength({ min: 6 })
+      .withMessage('Password must be at least 6 characters'),
     body('isActive')
       .optional()
       .isBoolean()

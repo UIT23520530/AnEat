@@ -31,6 +31,7 @@ export interface StaffUpdateData {
   phone?: string;
   role?: UserRole;
   isActive?: boolean;
+  password?: string;
 }
 
 /**
@@ -205,6 +206,7 @@ export class StaffService {
         ...(data.phone !== undefined && { phone: data.phone }),
         ...(data.role && { role: data.role }),
         ...(data.isActive !== undefined && { isActive: data.isActive }),
+        ...(data.password && { password: data.password }),
       },
       select: {
         id: true,

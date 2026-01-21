@@ -308,7 +308,14 @@ export const systemLogin = async (req: Request, res: Response): Promise<void> =>
     }
 
     // Verify password
+    console.log('🔐 Verifying password for:', { 
+      email, 
+      passwordLength: password.length,
+      hashedPasswordLength: user.password.length,
+      hashedStart: user.password.substring(0, 10)
+    });
     const isPasswordValid = await bcrypt.compare(password, user.password);
+    console.log('🔐 Password verification result:', isPasswordValid);
 
     if (!isPasswordValid) {
       res.status(401).json({

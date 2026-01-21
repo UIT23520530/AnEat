@@ -370,9 +370,9 @@ function StaffContent() {
                   size="middle"
                   style={{ width: 250 }}
                   options={[
-                    { value: "all", label: `Tất cả trạng thái (${stats.total})` },
-                    { value: "active", label: `Đang hoạt động (${stats.active})` },
-                    { value: "inactive", label: `Vô hiệu hóa (${stats.inactive})` },
+                    { value: "all", label: `Tất cả trạng thái` },
+                    { value: "active", label: `Đang hoạt động` },
+                    { value: "inactive", label: `Vô hiệu hóa` },
                   ]}
                 />
               </div>

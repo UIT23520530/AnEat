@@ -167,7 +167,9 @@ export const getBranchOrders = async (req: Request, res: Response): Promise<void
  */
 export const getStaffById = async (req: Request, res: Response): Promise<void> => {
   try {
-    if (!req.user?.branchId) {
+    // Only ADMIN_BRAND needs branchId check
+    // ADMIN_SYSTEM can access any staff
+    if (req.user?.role === UserRole.ADMIN_BRAND && !req.user?.branchId) {
       res.status(400).json({
         success: false,
         code: 400,
@@ -189,8 +191,8 @@ export const getStaffById = async (req: Request, res: Response): Promise<void> =
       return;
     }
 
-    // Check if staff belongs to manager's branch
-    if (req.user.role === UserRole.ADMIN_BRAND && staff.branch?.id !== req.user.branchId) {
+    // Check if staff belongs to manager's branch (only for ADMIN_BRAND)
+    if (req.user?.role === UserRole.ADMIN_BRAND && staff.branch?.id !== req.user.branchId) {
       res.status(403).json({
         success: false,
         code: 403,
@@ -220,7 +222,9 @@ export const getStaffById = async (req: Request, res: Response): Promise<void> =
  */
 export const createStaff = async (req: Request, res: Response): Promise<void> => {
   try {
-    if (!req.user?.branchId) {
+    // Only ADMIN_BRAND needs branchId check
+    // ADMIN_SYSTEM can create staff for any branch if branchId is provided
+    if (req.user?.role === UserRole.ADMIN_BRAND && !req.user?.branchId) {
       res.status(400).json({
         success: false,
         code: 400,
@@ -229,7 +233,29 @@ export const createStaff = async (req: Request, res: Response): Promise<void> =>
       return;
     }
 
-    const { email, password, name, phone } = req.body;
+    const { email, password, name, phone, branchId } = req.body;
+
+    // Debug logging
+    console.log('🔐 Creating staff with password:', { 
+      email, 
+      passwordLength: password?.length,
+      passwordPreview: password?.substring(0, 3) + '***'
+    });
+
+    // Determine which branchId to use
+    // ADMIN_SYSTEM can specify branchId, ADMIN_BRAND uses their own branchId
+    const finalBranchId = req.user?.role === UserRole.ADMIN_SYSTEM 
+      ? (branchId || req.user?.branchId) 
+      : req.user?.branchId;
+
+    if (!finalBranchId) {
+      res.status(400).json({
+        success: false,
+        code: 400,
+        message: 'Branch ID is required',
+      });
+      return;
+    }
 
     // Check if email already exists
     const existingUser = await StaffService.findByEmail(email);
@@ -245,6 +271,11 @@ export const createStaff = async (req: Request, res: Response): Promise<void> =>
 
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
+    console.log('🔐 Password hashed successfully:', {
+      originalLength: password.length,
+      hashedLength: hashedPassword.length,
+      hashedStart: hashedPassword.substring(0, 10)
+    });
 
     // Create staff
     const staff = await StaffService.create({
@@ -253,7 +284,7 @@ export const createStaff = async (req: Request, res: Response): Promise<void> =>
       name,
       phone,
       role: UserRole.STAFF,
-      branchId: req.user.branchId,
+      branchId: finalBranchId,
       isActive: true,
     });
 
@@ -261,7 +292,10 @@ export const createStaff = async (req: Request, res: Response): Promise<void> =>
       success: true,
       code: 201,
       message: 'Staff created successfully',
-      data: staff,
+      data: {
+        ...staff,
+        password: password, // Return plain password only once for display
+      },
     });
   } catch (error) {
     console.error('Create staff error:', error);
@@ -288,7 +322,7 @@ export const updateStaff = async (req: Request, res: Response): Promise<void> =>
     }
 
     const { id } = req.params;
-    const { name, email, phone, role, isActive } = req.body;
+    const { name, email, phone, role, isActive, password } = req.body;
 
     // Check if staff exists
     const existingStaff = await StaffService.findById(id);
@@ -312,6 +346,12 @@ export const updateStaff = async (req: Request, res: Response): Promise<void> =>
       return;
     }
 
+    // Hash password if provided
+    let hashedPassword: string | undefined;
+    if (password) {
+      hashedPassword = await bcrypt.hash(password, 10);
+    }
+
     try {
       // Update staff
       const staff = await StaffService.update(id, {
@@ -320,6 +360,7 @@ export const updateStaff = async (req: Request, res: Response): Promise<void> =>
         phone,
         role,
         isActive,
+        password: hashedPassword,
       });
 
       res.status(200).json({
@@ -355,7 +396,9 @@ export const updateStaff = async (req: Request, res: Response): Promise<void> =>
  */
 export const deleteStaff = async (req: Request, res: Response): Promise<void> => {
   try {
-    if (!req.user?.branchId) {
+    // Only ADMIN_BRAND needs branchId check
+    // ADMIN_SYSTEM can delete any staff
+    if (req.user?.role === UserRole.ADMIN_BRAND && !req.user?.branchId) {
       res.status(400).json({
         success: false,
         code: 400,
@@ -378,8 +421,8 @@ export const deleteStaff = async (req: Request, res: Response): Promise<void> =>
       return;
     }
 
-    // Check if staff belongs to manager's branch
-    if (req.user.role === UserRole.ADMIN_BRAND && existingStaff.branch?.id !== req.user.branchId) {
+    // Check if staff belongs to manager's branch (only for ADMIN_BRAND)
+    if (req.user?.role === UserRole.ADMIN_BRAND && existingStaff.branch?.id !== req.user.branchId) {
       res.status(403).json({
         success: false,
         code: 403,

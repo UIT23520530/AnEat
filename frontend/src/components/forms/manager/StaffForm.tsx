@@ -44,7 +44,10 @@ export function StaffForm({ staff, onSuccess, onSubmit }: StaffFormProps) {
     setLoading(true)
     try {
       const currentUser = getCurrentUser()
-      const randomPassword = Math.random().toString(36).slice(-8)
+      
+      // Generate a stronger random password (at least 8 characters)
+      const randomPassword = Math.random().toString(36).substring(2, 10) + 
+                            Math.random().toString(36).substring(2, 4)
       const finalPassword = values.password || (isEditing ? undefined : randomPassword)
 
       const submitData: any = {
@@ -60,6 +63,12 @@ export function StaffForm({ staff, onSuccess, onSubmit }: StaffFormProps) {
       if (finalPassword) {
         submitData.password = finalPassword
       }
+
+      console.log('📤 Submitting staff data:', {
+        email: submitData.email,
+        hasPassword: !!submitData.password,
+        passwordLength: submitData.password?.length
+      })
 
       const result = await onSubmit(submitData)
 
