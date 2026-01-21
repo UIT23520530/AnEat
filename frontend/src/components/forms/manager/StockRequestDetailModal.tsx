@@ -124,6 +124,22 @@ export default function StockRequestDetailModal({
                         </Descriptions.Item>
                     )}
 
+                    {request.status === "CANCELLED" && request.rejectedReason && (
+                        <Descriptions.Item label="Lý do hủy" span={2}>
+                            <Text type="warning">{request.rejectedReason}</Text>
+                        </Descriptions.Item>
+                    )}
+
+                    {request.status === "CANCELLED" && request.approvedBy && (
+                        <Descriptions.Item label="Người hủy" span={2}>
+                            <Space>
+                                <UserOutlined className="text-gray-400" />
+                                <Text>{request.approvedBy.name}</Text>
+                                <Tag color="red">{request.approvedBy.role === 'ADMIN_BRAND' ? 'Quản lý' : 'Admin'}</Tag>
+                            </Space>
+                        </Descriptions.Item>
+                    )}
+
                     <Descriptions.Item label="Ghi chú" span={2}>
                         {request.notes || "Không có ghi chú"}
                     </Descriptions.Item>
@@ -172,7 +188,18 @@ export default function StockRequestDetailModal({
                                     color: 'gray',
                                     children: (
                                         <div>
-                                            <Text strong>Đã hủy bởi người yêu cầu</Text>
+                                            <Text strong>Đã hủy</Text>
+                                            {request.approvedBy && (
+                                                <div className="text-xs text-gray-500">
+                                                    Bởi: {request.approvedBy.name} ({request.approvedBy.role === 'ADMIN_BRAND' ? 'Quản lý' : 'Admin'})
+                                                </div>
+                                            )}
+                                            {request.rejectedReason && (
+                                                <div className="text-xs text-orange-500 mt-1">
+                                                    Lý do: {request.rejectedReason}
+                                                </div>
+                                            )}
+                                            <div className="text-xs text-gray-400">{dayjs(request.updatedAt).format("DD/MM/YYYY HH:mm")}</div>
                                         </div>
                                     ),
                                 }

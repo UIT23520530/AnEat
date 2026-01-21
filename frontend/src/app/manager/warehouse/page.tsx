@@ -18,6 +18,7 @@ import {
   Tabs,
   App,
   Typography,
+  Modal
 } from "antd";
 import {
   PlusOutlined,
@@ -167,14 +168,42 @@ function WarehouseContent() {
   };
 
   const handleCancelRequest = async (id: string) => {
-    try {
-      await stockRequestService.cancelStockRequest(id);
-      message.success("Hủy yêu cầu thành công");
-      loadStockRequests();
-      loadStatistics();
-    } catch (error: any) {
-      message.error(error.response?.data?.message || "Không thể hủy yêu cầu");
-    }
+    Modal.confirm({
+      title: "Xác nhận hủy yêu cầu",
+      content: (
+        <div>
+          <p className="mb-2">Bạn có chắc chắn muốn hủy yêu cầu này?</p>
+          <Input.TextArea
+            id="cancel-reason-input"
+            placeholder="Nhập lý do hủy yêu cầu (bắt buộc)"
+            rows={3}
+            maxLength={200}
+          />
+        </div>
+      ),
+      okText: "Xác nhận hủy",
+      cancelText: "Đóng",
+      okType: "danger",
+      onOk: async () => {
+        const reasonInput = document.getElementById("cancel-reason-input") as HTMLTextAreaElement;
+        const reason = reasonInput?.value?.trim();
+        
+        if (!reason) {
+          message.error("Vui lòng nhập lý do hủy");
+          return Promise.reject();
+        }
+
+        try {
+          await stockRequestService.cancelStockRequest(id, reason);
+          message.success("Hủy yêu cầu thành công");
+          loadStockRequests();
+          loadStatistics();
+        } catch (error: any) {
+          message.error(error.response?.data?.message || "Không thể hủy yêu cầu");
+          return Promise.reject();
+        }
+      },
+    });
   };
 
   // Status and Style helpers
@@ -488,8 +517,8 @@ function WarehouseContent() {
                 size="middle"
                 className="font-medium"
               >
-                <Select.Option value="inventory">Tồn kho ({products.length})</Select.Option>
-                <Select.Option value="requests">Yêu cầu ({stockRequests.length})</Select.Option>
+                <Select.Option value="inventory">Tồn kho</Select.Option>
+                <Select.Option value="requests">Yêu cầu</Select.Option>
               </Select>
 
               {activeTab === "inventory" ? (

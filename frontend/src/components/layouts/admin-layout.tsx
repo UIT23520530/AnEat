@@ -38,7 +38,7 @@ const adminNavItems: NavItem[] = [
   { href: "/admin/categories", icon: FolderOpen, label: "Quản lý danh mục" },
   { href: "/admin/products", icon: ShoppingBag, label: "Quản lý sản phẩm" },
   { href: "/admin/promotions", icon: Ticket, label: "Quản lý khuyến mãi" },
-  { href: "/admin/warehouses", icon: Warehouse, label: "Quản lý kho hàng"},
+  { href: "/admin/warehouses", icon: Warehouse, label: "Quản lý kho vận"},
   { href: "/admin/invoices", icon: FileText, label: "Quản lý hóa đơn" },
   { href: "/admin/templates", icon: FileCode, label: "Quản lý mẫu" },
   { href: "/admin/settings", icon: Settings, label: "Cài đặt chung" },

@@ -1,4 +1,5 @@
-import { Modal, Form, Input, Space, Button, Select } from "antd";
+import { Modal, Form, Input, Space, Button, Select, Alert } from "antd";
+import { useEffect } from "react";
 import type { LogisticsStaff } from "@/services/admin-warehouse.service";
 
 const { TextArea } = Input;
@@ -12,6 +13,7 @@ interface AssignLogisticsModalProps {
     onAssign: (values: { logisticsStaffId: string; notes?: string }) => void;
     title?: string;
     submitText?: string;
+    initialAssignedStaffId?: string | null; // Nhân viên đã được phân công trước đó
 }
 
 export const AssignLogisticsModal = ({
@@ -21,9 +23,26 @@ export const AssignLogisticsModal = ({
     onCancel,
     onAssign,
     title = "Giao cho nhân viên Logistics",
-    submitText = "Giao cho Logistics"
+    submitText = "Giao cho Logistics",
+    initialAssignedStaffId
 }: AssignLogisticsModalProps) => {
     const [form] = Form.useForm();
+
+    // Set initial value when modal opens
+    useEffect(() => {
+        if (open && initialAssignedStaffId) {
+            form.setFieldsValue({
+                logisticsStaffId: initialAssignedStaffId
+            });
+        } else if (open) {
+            form.resetFields();
+        }
+    }, [open, initialAssignedStaffId, form]);
+
+    // Find assigned staff info for display
+    const assignedStaff = initialAssignedStaffId 
+        ? logisticsStaff.find(staff => staff.id === initialAssignedStaffId)
+        : null;
 
     return (
         <Modal
@@ -32,13 +51,22 @@ export const AssignLogisticsModal = ({
             onCancel={onCancel}
             footer={null}
             width={500}
-            destroyOnHidden
+            destroyOnClose
         >
             <Form
                 form={form}
                 layout="vertical"
                 onFinish={onAssign}
             >
+                {assignedStaff && (
+                    <Alert
+                        message="Nhân viên đã được phân công"
+                        description={`${assignedStaff.name} (${assignedStaff.email}) đã được phân công trước đó. Bạn có thể giữ nguyên hoặc chọn người khác.`}
+                        type="info"
+                        showIcon
+                        className="mb-4"
+                    />
+                )}
                 <Form.Item
                     label="Nhân viên Logistics"
                     name="logisticsStaffId"

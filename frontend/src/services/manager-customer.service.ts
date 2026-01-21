@@ -2,6 +2,21 @@ import apiClient from '@/lib/api-client';
 
 export type CustomerTier = 'BRONZE' | 'SILVER' | 'GOLD' | 'VIP';
 
+/**
+ * Calculate customer tier based on points
+ * Tier thresholds:
+ * - BRONZE: 0-99 points (default)
+ * - SILVER: 100-499 points
+ * - GOLD: 500-999 points
+ * - VIP: 1000+ points
+ */
+export function calculateTierFromPoints(points: number): CustomerTier {
+  if (points >= 1000) return 'VIP';
+  if (points >= 500) return 'GOLD';
+  if (points >= 100) return 'SILVER';
+  return 'BRONZE';
+}
+
 export interface Customer {
   id: string;
   phone: string;

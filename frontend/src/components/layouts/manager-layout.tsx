@@ -27,10 +27,10 @@ const managerNavItems: NavItem[] = [
   { href: "/manager/customers", icon: Users, label: "Quản lý khách hàng" },
   { href: "/manager/categories", icon: FolderOpen, label: "Danh mục sản phẩm" },
   { href: "/manager/products", icon: ShoppingBag, label: "Danh sách sản phẩm" },
-  { href: "/manager/warehouse", icon: Warehouse, label: "Quản lý kho hàng" },
+  { href: "/manager/warehouse", icon: Warehouse, label: "Quản lý kho vận" },
   { href: "/manager/promotions", icon: Ticket, label: "Chương trình khuyến mãi" },
   { href: "/manager/invoices", icon: FileText, label: "Quản lý hóa đơn" },
-  { href: "/manager/templates", icon: FileCode, label: "Quản lý mẫu in hoá đơn" },
+  { href: "/manager/templates", icon: FileCode, label: "Quản lý mẫu" },
   { href: "/manager/settings", icon: Settings, label: "Thiết lập cửa hàng" },
 ]
 

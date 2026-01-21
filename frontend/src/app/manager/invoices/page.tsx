@@ -818,21 +818,6 @@ function InvoicesContent() {
                     <Select.Option value="E_WALLET">Ví điện tử</Select.Option>
                   </Select>
 
-                  {/* Branch Filter */}
-                  <Select
-                    placeholder="Lọc theo chi nhánh"
-                    allowClear
-                    style={{ width: 240 }}
-                    value={branchFilter}
-                    onChange={setBranchFilter}
-                    className={branchFilter ? "[&>.ant-select-selector]:!bg-blue-50 [&>.ant-select-selector]:!border-blue-500" : ""}
-                  >
-                    {branches.map((branch) => (
-                      <Option key={branch.id} value={branch.id}>
-                        {branch.code} # {branch.name}
-                      </Option>
-                    ))}
-                  </Select>
                 </Space>
               </div>
             </div>

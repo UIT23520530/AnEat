@@ -524,7 +524,14 @@ export default function WarehousePage() {
                                 )}
                                 {request.status === "REJECTED" && request.rejectedReason && (
                                   <div className="text-xs text-red-600">
-                                    {request.rejectedReason}
+                                    <div className="font-medium">Lý do từ chối:</div>
+                                    <div>{request.rejectedReason}</div>
+                                  </div>
+                                )}
+                                {request.status === "CANCELLED" && request.rejectedReason && (
+                                  <div className="text-xs text-orange-600">
+                                    <div className="font-medium">Lý do hủy:</div>
+                                    <div>{request.rejectedReason}</div>
                                   </div>
                                 )}
                               </td>

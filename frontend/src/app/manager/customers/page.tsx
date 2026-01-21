@@ -39,6 +39,7 @@ import {
   managerCustomerService,
   type Customer,
   type CustomerTier,
+  calculateTierFromPoints,
 } from "@/services/manager-customer.service"
 import CustomersForm from "@/components/forms/admin/customers/CustomersForm"
 import CustomersDetailModal from "@/components/forms/admin/customers/CustomersDetailModal"
@@ -327,59 +328,89 @@ function CustomersContent() {
         <Card className="border-0 shadow-sm">
           <CardHeader>
             <div className="flex flex-col gap-4">
-              <div>
-                <CardTitle className="text-2xl font-bold text-slate-900">
-                  Quản lý Khách hàng
-                </CardTitle>
-              </div>
 
               {/* Stats Cards */}
               {statistics && (
-                <Row gutter={16}>
-                  <Col span={6}>
-                    <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
-                      <Statistic
-                        title="Tổng khách hàng"
-                        value={statistics.totalCustomers}
-                        prefix={<UserOutlined />}
-                        valueStyle={{ color: "#1890ff" }}
-                      />
+                <>
+                  <Row gutter={16}>
+                    <Col span={6}>
+                      <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
+                        <Statistic
+                          title="Tổng khách hàng"
+                          value={statistics.totalCustomers}
+                          prefix={<UserOutlined />}
+                          valueStyle={{ color: "#1890ff" }}
+                        />
+                      </div>
+                    </Col>
+                    <Col span={6}>
+                      <div className="bg-green-50 p-4 rounded-lg border border-green-100">
+                        <Statistic
+                          title="Chi tiêu trung bình"
+                          value={statistics.averageSpent}
+                          prefix="₫"
+                          valueStyle={{ color: "#52c41a" }}
+                          formatter={(value) =>
+                            new Intl.NumberFormat("vi-VN").format(value as number)
+                          }
+                        />
+                      </div>
+                    </Col>
+                    <Col span={6}>
+                      <div className="bg-orange-50 p-4 rounded-lg border border-orange-100">
+                        <Statistic
+                          title="Khách Gold"
+                          value={statistics.tierDistribution?.GOLD || 0}
+                          prefix={<TrophyOutlined />}
+                          valueStyle={{ color: "#faad14" }}
+                        />
+                      </div>
+                    </Col>
+                    <Col span={6}>
+                      <div className="bg-purple-50 p-4 rounded-lg border border-purple-100">
+                        <Statistic
+                          title="Khách VIP"
+                          value={statistics.tierDistribution?.VIP || 0}
+                          prefix={<CrownOutlined />}
+                          valueStyle={{ color: "#9333ea" }}
+                        />
+                      </div>
+                    </Col>
+                  </Row>
+
+                  {/* Tier Rules Info */}
+                  <div className="bg-gradient-to-r from-blue-50 to-purple-50 p-4 rounded-lg border border-blue-100">
+                    <div className="flex items-start gap-3">
+                      <div className="text-blue-600 text-lg mt-1">
+                        <StarOutlined />
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="font-semibold text-slate-800 mb-2">Quy tắc tự động tăng hạng</h3>
+                        <div className="flex gap-6 text-sm">
+                          <div className="flex items-center gap-2">
+                            <UserOutlined className="text-slate-600" />
+                            <span className="text-slate-700"><strong>BRONZE:</strong> 0-99 điểm</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <StarOutlined className="text-blue-600" />
+                            <span className="text-slate-700"><strong>SILVER:</strong> 100-499 điểm</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <TrophyOutlined className="text-orange-600" />
+                            <span className="text-slate-700"><strong>GOLD:</strong> 500-999 điểm</span>
+                          </div>
+                          <div className="flex items-center gap-2 mb-3">
+                            <CrownOutlined className="text-purple-600" />
+                            <span className="text-slate-700"><strong>VIP:</strong> 1000+ điểm</span>
+                          </div>
+                        </div>
+                        <p className="text-xs text-slate-500 text-yellow-600 mt-3">
+                          Hạng thành viên sẽ tự động cập nhật khi điểm tích lũy thay đổi
+                        </p>
+                      </div>
                     </div>
-                  </Col>
-                  <Col span={6}>
-                    <div className="bg-green-50 p-4 rounded-lg border border-green-100">
-                      <Statistic
-                        title="Chi tiêu trung bình"
-                        value={statistics.averageSpent}
-                        prefix="₫"
-                        valueStyle={{ color: "#52c41a" }}
-                        formatter={(value) =>
-                          new Intl.NumberFormat("vi-VN").format(value as number)
-                        }
-                      />
-                    </div>
-                  </Col>
-                  <Col span={6}>
-                    <div className="bg-orange-50 p-4 rounded-lg border border-orange-100">
-                      <Statistic
-                        title="Khách Gold"
-                        value={statistics.tierDistribution?.GOLD || 0}
-                        prefix={<TrophyOutlined />}
-                        valueStyle={{ color: "#faad14" }}
-                      />
-                    </div>
-                  </Col>
-                  <Col span={6}>
-                    <div className="bg-purple-50 p-4 rounded-lg border border-purple-100">
-                      <Statistic
-                        title="Khách VIP"
-                        value={statistics.tierDistribution?.VIP || 0}
-                        prefix={<CrownOutlined />}
-                        valueStyle={{ color: "#9333ea" }}
-                      />
-                    </div>
-                  </Col>
-                </Row>
+                  </div>
+                </>
               )}
 
               {/* Filters */}

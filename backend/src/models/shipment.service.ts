@@ -171,25 +171,124 @@ export class ShipmentService {
 
   // Cập nhật trạng thái shipment
   static async updateStatus(id: string, status: ShipmentStatus, userId: string) {
-    const updateData: any = { status };
-    
-    if (status === 'IN_TRANSIT') {
-      updateData.startedAt = new Date();
-    } else if (status === 'DELIVERED') {
-      updateData.deliveredAt = new Date();
-    } else if (status === 'COMPLETED') {
-      updateData.completedAt = new Date();
-    }
-
-    return prisma.shipment.update({
-      where: { id },
-      data: updateData,
-      include: {
-        branch: true,
-        assignedTo: {
-          select: { id: true, name: true },
+    return prisma.$transaction(async (tx) => {
+      // Get shipment details first
+      const shipment = await tx.shipment.findUnique({
+        where: { id },
+        include: {
+          stockRequest: {
+            include: {
+              product: true,
+            },
+          },
         },
-      },
+      });
+
+      if (!shipment) {
+        throw new Error('Shipment not found');
+      }
+
+      const updateData: any = { status };
+      
+      if (status === 'IN_TRANSIT') {
+        updateData.startedAt = new Date();
+      } else if (status === 'DELIVERED') {
+        updateData.deliveredAt = new Date();
+        
+        // ✅ CRITICAL: Update product quantity when delivered
+        if (shipment.stockRequest?.product) {
+          const productId = shipment.stockRequest.product.id;
+          const quantityToAdd = shipment.quantity;
+
+          console.log(`[Shipment ${shipment.shipmentNumber}] Updating product quantity:`, {
+            productId,
+            productName: shipment.productName,
+            currentQuantity: shipment.stockRequest.product.quantity,
+            addingQuantity: quantityToAdd,
+            newQuantity: shipment.stockRequest.product.quantity + quantityToAdd,
+          });
+
+          // Update product quantity
+          await tx.product.update({
+            where: { id: productId },
+            data: {
+              quantity: {
+                increment: quantityToAdd,
+              },
+            },
+          });
+
+          // Update or create inventory record
+          const existingInventory = await tx.inventory.findUnique({
+            where: { productId },
+          });
+
+          if (existingInventory) {
+            await tx.inventory.update({
+              where: { productId },
+              data: {
+                quantity: {
+                  increment: quantityToAdd,
+                },
+                lastRestocked: new Date(),
+              },
+            });
+          } else {
+            // Create inventory if not exists
+            await tx.inventory.create({
+              data: {
+                productId,
+                quantity: quantityToAdd,
+                lastRestocked: new Date(),
+              },
+            });
+          }
+
+          // Create stock transaction record for audit trail
+          await tx.stockTransaction.create({
+            data: {
+              transactionNumber: `TXN-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`,
+              type: 'RESTOCK',
+              quantity: quantityToAdd,
+              previousQuantity: shipment.stockRequest.product.quantity,
+              newQuantity: shipment.stockRequest.product.quantity + quantityToAdd,
+              reason: `Nhập hàng từ shipment ${shipment.shipmentNumber}`,
+              reference: shipment.shipmentNumber,
+              productId,
+              branchId: shipment.branchId,
+              performedById: userId,
+              stockRequestId: shipment.stockRequestId || undefined,
+            },
+          });
+
+          console.log(`[Shipment ${shipment.shipmentNumber}] ✅ Product quantity updated successfully`);
+        }
+      } else if (status === 'COMPLETED') {
+        updateData.completedAt = new Date();
+      }
+
+      // Update shipment status
+      return tx.shipment.update({
+        where: { id },
+        data: updateData,
+        include: {
+          branch: true,
+          assignedTo: {
+            select: { id: true, name: true },
+          },
+          stockRequest: {
+            include: {
+              product: {
+                select: {
+                  id: true,
+                  name: true,
+                  quantity: true,
+                },
+              },
+            },
+          },
+        },
+      });
     });
   }
 

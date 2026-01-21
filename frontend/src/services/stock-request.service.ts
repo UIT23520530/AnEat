@@ -121,8 +121,10 @@ export const stockRequestService = {
   },
 
   // Cancel stock request
-  cancelStockRequest: async (id: string): Promise<{ success: boolean; message: string }> => {
-    const response = await apiClient.put(`${MANAGER_STOCK_REQUEST_BASE_URL}/${id}/cancel`);
+  cancelStockRequest: async (id: string, reason?: string): Promise<{ success: boolean; message: string }> => {
+    const response = await apiClient.put(`${MANAGER_STOCK_REQUEST_BASE_URL}/${id}/cancel`, {
+      reason: reason || 'Đã hủy bởi quản lý'
+    });
     return response.data;
   },
 

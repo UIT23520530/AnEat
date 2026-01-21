@@ -70,6 +70,11 @@ export default function StaffDetailModal({ staff, open, onCancel }: StaffDetailM
         </div>
 
         <Descriptions bordered column={2} className="overflow-hidden rounded-2xl border-slate-100 shadow-sm">
+
+          <Descriptions.Item label={<div className="flex items-center gap-2"><UserOutlined className="text-slate-400"/> ID Hệ thống</div>} span={2}>
+            <span className="font-mono text-xs text-slate-400 uppercase tracking-tighter">{staff.id}</span>
+          </Descriptions.Item>
+
           <Descriptions.Item label={<div className="flex items-center gap-2"><MailOutlined className="text-blue-500"/> Email</div>}>
             <span className="font-medium text-slate-700">{staff.email}</span>
           </Descriptions.Item>
@@ -85,23 +90,6 @@ export default function StaffDetailModal({ staff, open, onCancel }: StaffDetailM
                 ({dayjs(staff.createdAt).fromNow()})
               </span>
             </span>
-          </Descriptions.Item>
-
-          <Descriptions.Item label={<div className="flex items-center gap-2"><LoginOutlined className="text-amber-500"/> Hoạt động cuối</div>} span={2}>
-            <span className="font-medium text-slate-700">
-              {staff.lastLogin 
-                ? dayjs(staff.lastLogin).format("HH:mm DD/MM/YYYY") 
-                : "Chưa bao giờ đăng nhập"}
-              {staff.lastLogin && (
-                <span className="text-slate-400 text-xs ml-2">
-                   ({dayjs(staff.lastLogin).fromNow()})
-                </span>
-              )}
-            </span>
-          </Descriptions.Item>
-
-          <Descriptions.Item label={<div className="flex items-center gap-2"><UserOutlined className="text-slate-400"/> ID Hệ thống</div>} span={2}>
-            <span className="font-mono text-xs text-slate-400 uppercase tracking-tighter">{staff.id}</span>
           </Descriptions.Item>
         </Descriptions>
 

@@ -174,6 +174,7 @@ export const createStockRequest = async (req: Request, res: Response): Promise<v
 export const cancelStockRequest = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
+    const { reason } = req.body; // Get cancellation reason from request body
 
     const request = await StockRequestService.findById(id);
 
@@ -206,7 +207,13 @@ export const cancelStockRequest = async (req: Request, res: Response): Promise<v
       return;
     }
 
-    const updatedRequest = await StockRequestService.cancel(id, req.user.id, req.user.branchId || undefined);
+    // Pass user ID and reason to service
+    const updatedRequest = await StockRequestService.cancel(
+      id, 
+      req.user.id, 
+      req.user.branchId || undefined,
+      reason // Pass the cancellation reason
+    );
 
     res.status(200).json({
       success: true,

@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { CustomerService } from '../../models/customer.service';
+import { CustomerService, calculateTierFromPoints } from '../../models/customer.service';
 import { CustomerTier, Prisma } from '@prisma/client';
 
 /**
@@ -195,6 +195,11 @@ export const updateCustomer = async (req: Request, res: Response): Promise<void>
       const parsedPoints = typeof points === 'string' ? parseInt(points, 10) : points;
       if (!isNaN(parsedPoints)) {
         updateData.points = parsedPoints;
+        // Auto-calculate tier based on new points (unless tier is explicitly provided)
+        if (tier === undefined) {
+          updateData.tier = calculateTierFromPoints(parsedPoints);
+          console.log('[DEBUG] Auto-calculated tier from points:', parsedPoints, '->', updateData.tier);
+        }
       } else {
         console.log('[DEBUG] points is NaN', points);
       }
@@ -524,13 +529,21 @@ export const createCustomer = async (req: Request, res: Response): Promise<void>
     }
 
     // Prepare create data with sanitized email
+    const initialPoints = points || 0;
     const createData: any = {
       phone,
       name,
       avatar,
-      tier: tier || 'BRONZE',
-      points: points || 0,
+      // Auto-calculate tier from points (unless tier is explicitly provided)
+      tier: tier || calculateTierFromPoints(initialPoints),
+      points: initialPoints,
     };
+
+    console.log('[DEBUG] Creating customer with auto-calculated tier:', {
+      points: initialPoints,
+      tier: createData.tier,
+      wasExplicitlyProvided: !!tier
+    });
 
     // Only add email if it's a valid string (convert empty string to null/undefined behavior by omission or explicit null)
     // Prisma create usually takes optional fields. If we pass "", it saves "". We want null.

@@ -681,6 +681,7 @@ function WarehouseContent() {
         onCancel={() => setIsAssignModalOpen(false)}
         onAssign={handleAssign}
         title="Giao cho nhân viên Logistics"
+        initialAssignedStaffId={selectedRequest?.shipments?.[0]?.assignedTo?.id}
       />
 
       <AssignLogisticsModal
@@ -691,6 +692,7 @@ function WarehouseContent() {
         onAssign={handleAssign}
         title="Thay đổi nhân viên vận chuyển"
         submitText="Cập nhật"
+        initialAssignedStaffId={selectedRequest?.shipments?.[0]?.assignedTo?.id}
       />
 
       <CancelRequestModal

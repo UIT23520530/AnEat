@@ -241,7 +241,7 @@ export class StockRequestService {
   }
 
   // Cancel request
-  static async cancel(id: string, userId: string, branchId?: string) {
+  static async cancel(id: string, userId: string, branchId?: string, reason?: string) {
     const request = await prisma.stockRequest.findUnique({
       where: { id },
     });
@@ -259,10 +259,47 @@ export class StockRequestService {
       throw new Error('Chỉ có thể hủy yêu cầu đang chờ hoặc đã duyệt');
     }
 
+    // Update status to CANCELLED and store who cancelled it + reason
     return prisma.stockRequest.update({
       where: { id },
       data: {
         status: StockRequestStatus.CANCELLED,
+        approvedById: userId, // Store the user who cancelled (reuse approvedById field)
+        rejectedReason: reason || 'Đã hủy bởi quản lý', // Store cancellation reason
+      },
+      include: {
+        approvedBy: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            role: true,
+          },
+        },
+        requestedBy: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            role: true,
+          },
+        },
+        product: {
+          select: {
+            id: true,
+            code: true,
+            name: true,
+            image: true,
+          },
+        },
+        branch: {
+          select: {
+            id: true,
+            code: true,
+            name: true,
+            address: true,
+          },
+        },
       },
     });
   }

@@ -306,10 +306,14 @@ export const assignToLogistics = async (req: Request, res: Response): Promise<vo
     });
 
     // Update stock request status to COMPLETED
+    // NOTE: Inventory is NOT updated here. It will be updated when shipment status changes to DELIVERED
+    // This ensures proper flow: APPROVED → ASSIGNED → IN_TRANSIT → DELIVERED (inventory update)
     const updatedRequest = await StockRequestService.update(id, {
       status: StockRequestStatus.COMPLETED,
       completedDate: new Date(),
     });
+
+    console.log(`[Stock Request ${existingRequest.requestNumber}] Assigned to logistics. Shipment ${shipment.shipmentNumber} created. Inventory will be updated upon delivery.`);
 
     res.status(201).json({
       success: true,
@@ -510,19 +514,49 @@ export const cancelWarehouseRequest = async (req: Request, res: Response): Promi
       return;
     }
 
-    const request = await StockRequestService.update(id, {
-      status: StockRequestStatus.CANCELLED,
-    });
-
-    // Add cancel reason to notes if provided
-    if (cancelReason) {
-      await prisma.stockRequest.update({
-        where: { id },
-        data: {
-          notes: `${existingRequest.notes || ''}\n[Admin cancelled] ${cancelReason}`.trim()
+    // Update status to CANCELLED and store who cancelled it + reason
+    const request = await prisma.stockRequest.update({
+      where: { id },
+      data: {
+        status: StockRequestStatus.CANCELLED,
+        approvedById: req.user.id, // Store the admin who cancelled
+        rejectedReason: cancelReason || 'Đã hủy bởi admin', // Store cancellation reason
+      },
+      include: {
+        approvedBy: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            role: true,
+          },
         },
-      });
-    }
+        requestedBy: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            role: true,
+          },
+        },
+        product: {
+          select: {
+            id: true,
+            code: true,
+            name: true,
+            image: true,
+          },
+        },
+        branch: {
+          select: {
+            id: true,
+            code: true,
+            name: true,
+            address: true,
+          },
+        },
+      },
+    });
 
     res.status(200).json({
       success: true,
