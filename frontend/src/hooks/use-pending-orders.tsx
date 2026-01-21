@@ -33,6 +33,8 @@ export function usePendingOrders(autoRefresh = false, refreshInterval = 30000) {
           
           // Play sound
           if (soundRef.current) {
+            // Reset audio to start before playing
+            soundRef.current.currentTime = 0;
             soundRef.current.play().catch(err => console.log("Audio play failed:", err));
           }
 
