@@ -24,6 +24,7 @@ import { useToast } from "@/hooks/use-toast";
 import { bannerService, type Banner } from "@/services/banner.service";
 import { systemSettingService, type SystemSetting } from "@/services/system-setting.service";
 import Image from "next/image";
+import { ImageUpload } from "@/components/forms/admin/settings/image-upload";
 
 interface BannerFormData {
   imageUrl: string;
@@ -112,7 +113,7 @@ export default function AdminSettingsPage() {
     if (!bannerForm.imageUrl) {
       toast({
         title: "Thiếu thông tin",
-        description: "Vui lòng nhập URL ảnh",
+        description: "Vui lòng chọn ảnh",
         variant: "destructive",
       });
       return;
@@ -275,15 +276,12 @@ export default function AdminSettingsPage() {
                 <CardDescription className="text-gray-600">Quản lý banner hiển thị trên trang chủ</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="imageUrl" className="text-gray-700">URL Ảnh *</Label>
-                  <Input
-                    id="imageUrl"
-                    placeholder="Link ảnh (JPG, PNG...)"
-                    value={bannerForm.imageUrl}
-                    onChange={(e) => setBannerForm({ ...bannerForm, imageUrl: e.target.value })}
-                  />
-                </div>
+                <ImageUpload
+                  value={bannerForm.imageUrl}
+                  onChange={(url) => setBannerForm({ ...bannerForm, imageUrl: url })}
+                  label="Ảnh Banner"
+                  required
+                />
                 <div className="space-y-2">
                   <Label htmlFor="title" className="text-gray-700">Tiêu đề</Label>
                   <Input
@@ -479,14 +477,65 @@ export default function AdminSettingsPage() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="about_us" className="text-gray-700">Nội dung giới thiệu</Label>
-                  <Textarea
-                    id="about_us"
-                    rows={4}
-                    value={aboutSettings.about_us || ""}
-                    onChange={(e) => setAboutSettings({ ...aboutSettings, about_us: e.target.value })}
+                  <Label htmlFor="about_title" className="text-gray-700">Tiêu đề</Label>
+                  <Input
+                    id="about_title"
+                    placeholder="Về chúng tôi"
+                    value={aboutSettings.about_title || ""}
+                    onChange={(e) => setAboutSettings({ ...aboutSettings, about_title: e.target.value })}
                   />
                 </div>
+
+                <ImageUpload
+                  value={aboutSettings.about_image || ""}
+                  onChange={(url) => setAboutSettings({ ...aboutSettings, about_image: url })}
+                  label="Ảnh giới thiệu"
+                />
+
+                <div className="space-y-2">
+                  <Label htmlFor="about_content" className="text-gray-700">Nội dung giới thiệu</Label>
+                  <Textarea
+                    id="about_content"
+                    rows={4}
+                    placeholder="Mô tả về công ty, lịch sử hình thành..."
+                    value={aboutSettings.about_content || ""}
+                    onChange={(e) => setAboutSettings({ ...aboutSettings, about_content: e.target.value })}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="about_mission" className="text-gray-700">Sứ mệnh (Mission)</Label>
+                  <Textarea
+                    id="about_mission"
+                    rows={3}
+                    placeholder="Sứ mệnh của công ty..."
+                    value={aboutSettings.about_mission || ""}
+                    onChange={(e) => setAboutSettings({ ...aboutSettings, about_mission: e.target.value })}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="about_vision" className="text-gray-700">Tầm nhìn (Vision)</Label>
+                  <Textarea
+                    id="about_vision"
+                    rows={3}
+                    placeholder="Tầm nhìn của công ty..."
+                    value={aboutSettings.about_vision || ""}
+                    onChange={(e) => setAboutSettings({ ...aboutSettings, about_vision: e.target.value })}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="about_values" className="text-gray-700">Giá trị cốt lõi (Values)</Label>
+                  <Textarea
+                    id="about_values"
+                    rows={3}
+                    placeholder="Các giá trị cốt lõi của công ty..."
+                    value={aboutSettings.about_values || ""}
+                    onChange={(e) => setAboutSettings({ ...aboutSettings, about_values: e.target.value })}
+                  />
+                </div>
+
                 <Button onClick={() => handleUpdateSettings("about", aboutSettings)} className="bg-green-600 hover:bg-green-700 !text-white">
                   <Save className="w-4 h-4 mr-2" />
                   Lưu thay đổi
@@ -494,46 +543,7 @@ export default function AdminSettingsPage() {
               </CardContent>
             </Card>
 
-            {/* Business Settings */}
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-gray-800">Cài đặt kinh doanh</CardTitle>
-                <CardDescription className="text-gray-600">Các thông số kinh doanh</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="tax_rate" className="text-gray-700">Thuế VAT (%)</Label>
-                  <Input
-                    id="tax_rate"
-                    type="number"
-                    value={businessSettings.tax_rate || ""}
-                    onChange={(e) => setBusinessSettings({ ...businessSettings, tax_rate: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="delivery_fee" className="text-gray-700">Phí giao hàng (VND)</Label>
-                  <Input
-                    id="delivery_fee"
-                    type="number"
-                    value={businessSettings.delivery_fee || ""}
-                    onChange={(e) => setBusinessSettings({ ...businessSettings, delivery_fee: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="min_order_amount" className="text-gray-700">Đơn hàng tối thiểu (VND)</Label>
-                  <Input
-                    id="min_order_amount"
-                    type="number"
-                    value={businessSettings.min_order_amount || ""}
-                    onChange={(e) => setBusinessSettings({ ...businessSettings, min_order_amount: e.target.value })}
-                  />
-                </div>
-                <Button onClick={() => handleUpdateSettings("business", businessSettings)} className="bg-green-600 hover:bg-green-700 !text-white">
-                  <Save className="w-4 h-4 mr-2" />
-                  Lưu thay đổi
-                </Button>
-              </CardContent>
-            </Card>
+
 
             {/* Initialize Defaults */}
             <Card>
