@@ -16,6 +16,7 @@ import {
   getPublicBranches,
   getPublicBranchById,
 } from '../controllers/shared/home.controller';
+import { getPublicSettings } from '../controllers/admin/system-setting.controller';
 
 const router = Router();
 
@@ -203,6 +204,13 @@ router.get(
   validate,
   trackOrder
 );
+
+/**
+ * @route   GET /api/v1/home/settings
+ * @desc    Get public system settings
+ * @access  Public
+ */
+router.get('/settings', getPublicSettings);
 
 /**
  * @route   GET /api/v1/home/about-us

@@ -39,11 +39,16 @@ export function ImageUpload({ value, onChange, label = "Ảnh", required = false
             return;
         }
 
-        // Validate file size (max 5MB)
-        if (file.size > 5 * 1024 * 1024) {
+        // Validate file size (max 50MB for SVG, 5MB for others)
+        const maxSize = file.type === 'image/svg+xml' || file.name.toLowerCase().endsWith('.svg') 
+            ? 50 * 1024 * 1024  // 50MB for SVG
+            : 5 * 1024 * 1024;   // 5MB for other formats
+        
+        if (file.size > maxSize) {
+            const maxSizeMB = maxSize / (1024 * 1024);
             toast({
                 title: "Lỗi",
-                description: "Kích thước file không được vượt quá 5MB",
+                description: `Kích thước file không được vượt quá ${maxSizeMB}MB`,
                 variant: "destructive",
             });
             return;
