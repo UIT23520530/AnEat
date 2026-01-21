@@ -326,8 +326,6 @@ function WarehouseContent() {
   const getTypeText = (type: string) => {
     const types: Record<string, string> = {
       RESTOCK: "Nhập hàng",
-      ADJUSTMENT: "Điều chỉnh",
-      RETURN: "Trả hàng",
     };
     return types[type] || type;
   };
@@ -608,8 +606,6 @@ function WarehouseContent() {
               >
                 <Option value="all">Tất cả loại</Option>
                 <Option value="RESTOCK">Nhập hàng</Option>
-                <Option value="ADJUSTMENT">Điều chỉnh</Option>
-                <Option value="RETURN">Trả hàng</Option>
               </Select>
               <Select
                 showSearch

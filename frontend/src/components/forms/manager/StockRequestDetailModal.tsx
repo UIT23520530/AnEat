@@ -48,8 +48,6 @@ export default function StockRequestDetailModal({
     const getTypeLabel = (type: string) => {
         const types: Record<string, string> = {
             RESTOCK: "Nhập hàng",
-            ADJUSTMENT: "Điều chỉnh",
-            RETURN: "Trả hàng",
         }
         return types[type] || type
     }
@@ -124,25 +122,24 @@ export default function StockRequestDetailModal({
                         </Descriptions.Item>
                     )}
 
-                    {request.status === "CANCELLED" && request.rejectedReason && (
-                        <Descriptions.Item label="Lý do hủy" span={2}>
-                            <Text type="warning">{request.rejectedReason}</Text>
-                        </Descriptions.Item>
+                    {request.status === "CANCELLED" && (
+                        <>
+                            {request.approvedBy && (
+                                <Descriptions.Item label="Đã hủy bởi" span={2}>
+                                    <Space>
+                                        <UserOutlined className="text-gray-400" />
+                                        <Text strong className="text-orange-600">{request.approvedBy.name}</Text>
+                                        <Text type="secondary" className="text-xs">({request.approvedBy.email})</Text>
+                                    </Space>
+                                </Descriptions.Item>
+                            )}
+                            {request.rejectedReason && (
+                                <Descriptions.Item label="Lý do hủy" span={2}>
+                                    <Text type="warning">{request.rejectedReason}</Text>
+                                </Descriptions.Item>
+                            )}
+                        </>
                     )}
-
-                    {request.status === "CANCELLED" && request.approvedBy && (
-                        <Descriptions.Item label="Người hủy" span={2}>
-                            <Space>
-                                <UserOutlined className="text-gray-400" />
-                                <Text>{request.approvedBy.name}</Text>
-                                <Tag color="red">{request.approvedBy.role === 'ADMIN_BRAND' ? 'Quản lý' : 'Admin'}</Tag>
-                            </Space>
-                        </Descriptions.Item>
-                    )}
-
-                    <Descriptions.Item label="Ghi chú" span={2}>
-                        {request.notes || "Không có ghi chú"}
-                    </Descriptions.Item>
                 </Descriptions>
 
                 <Divider orientation="left" plain>
@@ -191,7 +188,7 @@ export default function StockRequestDetailModal({
                                             <Text strong>Đã hủy</Text>
                                             {request.approvedBy && (
                                                 <div className="text-xs text-gray-500">
-                                                    Bởi: {request.approvedBy.name} ({request.approvedBy.role === 'ADMIN_BRAND' ? 'Quản lý' : 'Admin'})
+                                                    Bởi: {request.approvedBy.name}
                                                 </div>
                                             )}
                                             {request.rejectedReason && (

@@ -42,7 +42,7 @@ const { Search } = Input;
 const { Text } = Typography;
 
 function WarehouseContent() {
-  const { message } = App.useApp();
+  const { message, modal } = App.useApp();
 
   // States
   const [activeTab, setActiveTab] = useState("inventory");
@@ -162,13 +162,23 @@ function WarehouseContent() {
     setIsRequestFormOpen(true);
   };
 
-  const handleViewRequest = (request: StockRequest) => {
-    setSelectedRequest(request);
-    setIsDetailModalOpen(true);
+  const handleViewRequest = async (request: StockRequest) => {
+    try {
+      // Fetch latest data from server to ensure we have the most up-to-date info
+      const response = await stockRequestService.getStockRequestById(request.id);
+      setSelectedRequest(response.data);
+      setIsDetailModalOpen(true);
+    } catch (error: any) {
+      console.error("Failed to load request details:", error);
+      // Fallback to using the request from list if API fails
+      setSelectedRequest(request);
+      setIsDetailModalOpen(true);
+      message.warning("Không thể tải dữ liệu mới nhất, đang hiển thị dữ liệu cache");
+    }
   };
 
   const handleCancelRequest = async (id: string) => {
-    Modal.confirm({
+    modal.confirm({
       title: "Xác nhận hủy yêu cầu",
       content: (
         <div>
@@ -330,7 +340,6 @@ function WarehouseContent() {
         const types: Record<string, string> = {
           RESTOCK: "Nhập hàng",
           ADJUSTMENT: "Điều chỉnh",
-          RETURN: "Trả hàng",
         };
         return <Tag>{types[type] || type}</Tag>;
       },

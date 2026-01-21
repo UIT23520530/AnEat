@@ -158,8 +158,6 @@ export default function StockRequestFormModal({
                     >
                         <Select>
                             <Select.Option value="RESTOCK">Nhập hàng</Select.Option>
-                            <Select.Option value="ADJUSTMENT">Điều chỉnh</Select.Option>
-                            <Select.Option value="RETURN">Trả hàng</Select.Option>
                         </Select>
                     </Form.Item>
 
