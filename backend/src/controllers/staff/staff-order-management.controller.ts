@@ -393,7 +393,7 @@ export const validatePromotionCode = async (
     }
 
     // Find promotion with branch awareness
-    const promotion = await PromotionService.findByCode(code, branchId);
+    const promotion = await PromotionService.findByCode(code, branchId || undefined);
 
     if (!promotion) {
       res.status(404).json({
