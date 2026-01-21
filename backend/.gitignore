@@ -29,7 +29,5 @@ build/
 # Postman collections (exclude from version control)
 postman/
 
-/docs
-
+# Package files (managed separately)
 /package-lock.json
-/package.json
