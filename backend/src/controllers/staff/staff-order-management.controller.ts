@@ -379,6 +379,9 @@ export const validatePromotionCode = async (
 ): Promise<void> => {
   try {
     const { code, subtotal } = req.body;
+    const branchId = req.user?.branchId;
+
+    console.log('[Staff Validate Promotion] Code:', code, 'BranchId:', branchId, 'Subtotal:', subtotal);
 
     if (!code) {
       res.status(400).json({
@@ -389,7 +392,8 @@ export const validatePromotionCode = async (
       return;
     }
 
-    const promotion = await PromotionService.findByCode(code);
+    // Find promotion with branch awareness
+    const promotion = await PromotionService.findByCode(code, branchId);
 
     if (!promotion) {
       res.status(404).json({

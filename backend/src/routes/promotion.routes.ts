@@ -6,7 +6,14 @@ import * as promotionController from '../controllers/shared/promotion.controller
 
 const router = Router();
 
-// All routes require authentication
+// Validate promotion code - PUBLIC route (no auth required for customers)
+router.get(
+  '/validate/:code',
+  param('code').notEmpty().withMessage('Mã khuyến mãi không được để trống'),
+  promotionController.validatePromotionCode
+);
+
+// All routes below require authentication
 router.use(authenticate);
 
 // Statistics - must be before /:id route
@@ -28,13 +35,6 @@ router.get(
     query('search').optional().isString(),
   ],
   promotionController.getPromotions
-);
-
-// Validate promotion code (available for customers)
-router.get(
-  '/validate/:code',
-  param('code').notEmpty().withMessage('Mã khuyến mãi không được để trống'),
-  promotionController.validatePromotionCode
 );
 
 // Get promotion by ID

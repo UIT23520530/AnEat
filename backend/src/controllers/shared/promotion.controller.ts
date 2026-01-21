@@ -88,8 +88,11 @@ export const getPromotionById = async (req: Request, res: Response): Promise<Res
 export const validatePromotionCode = async (req: Request, res: Response): Promise<Response | void> => {
   try {
     const { code } = req.params;
+    const branchId = req.query.branchId as string | undefined;
 
-    const promotion = await PromotionService.findByCode(code);
+    console.log('[Validate Promotion] Code:', code, 'BranchId:', branchId);
+
+    const promotion = await PromotionService.findByCode(code, branchId);
 
     if (!promotion) {
       return res.status(404).json({
@@ -97,6 +100,8 @@ export const validatePromotionCode = async (req: Request, res: Response): Promis
         message: 'Mã khuyến mãi không tồn tại',
       });
     }
+
+    console.log('[Validate Promotion] Found:', promotion.code, 'Branch:', promotion.branchId || 'Global');
 
     res.status(200).json({
       success: true,

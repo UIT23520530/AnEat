@@ -165,8 +165,19 @@ export const CheckoutProvider = ({ children }: { children: ReactNode }) => {
       return;
     }
 
+    if (!store) {
+      toast({
+        title: "Vui lòng chọn cửa hàng trước",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
-      const response = await apiClient.get(`/promotions/validate/${discountCode.trim()}`);
+      // Truyền branchId để validate promotion có thể tìm cả promotion của chi nhánh
+      const response = await apiClient.get(`/promotions/validate/${discountCode.trim()}`, {
+        params: { branchId: store }
+      });
       
       if (response.data.success && response.data.data) {
         const promotion = response.data.data;
