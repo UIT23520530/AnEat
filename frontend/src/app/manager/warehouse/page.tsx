@@ -304,29 +304,20 @@ function WarehouseContent() {
   // Stock requests columns
   const requestsColumns: ColumnsType<StockRequest> = [
     {
-      title: "Mã YC",
+      title: "Mã yêu cầu",
       dataIndex: "requestNumber",
       key: "requestNumber",
-      width: 130,
+      width: 200,
       render: (text: string) => <Tag color="blue">{text}</Tag>,
     },
     {
       title: "Sản phẩm",
       key: "product",
-      width: 200,
+      width: 180,
       render: (_, record) => (
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded bg-gray-50 flex items-center justify-center overflow-hidden border border-gray-100 flex-shrink-0">
-            {record.product.image ? (
-              <img src={record.product.image} alt={record.product.name} className="w-full h-full object-cover" />
-            ) : (
-              <InboxOutlined className="text-gray-300" />
-            )}
-          </div>
-          <div>
-            <div className="font-medium">{record.product.name}</div>
-            <div className="text-xs text-gray-500 font-mono">SKU: {record.product.code}</div>
-          </div>
+        <div>
+          <div className="font-medium">{record.product.name}</div>
+          <div className="text-xs text-gray-500 font-mono">SKU: {record.product.code}</div>
         </div>
       ),
     },
@@ -334,7 +325,7 @@ function WarehouseContent() {
       title: "Loại",
       dataIndex: "type",
       key: "type",
-      width: 120,
+      width: 100,
       render: (type: string) => {
         const types: Record<string, string> = {
           RESTOCK: "Nhập hàng",
@@ -348,7 +339,7 @@ function WarehouseContent() {
       title: "SL yêu cầu",
       dataIndex: "requestedQuantity",
       key: "requestedQuantity",
-      width: 100,
+      width: 80,
       align: "center",
       render: (q: number) => <Text strong>{q}</Text>
     },

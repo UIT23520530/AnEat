@@ -78,6 +78,23 @@ export const authenticate = async (
       return;
     }
 
+    // Check if user's branch is active (for non-admin users)
+    if (user.branchId && user.role !== UserRole.ADMIN_SYSTEM && user.role !== UserRole.ADMIN_BRAND) {
+      const branch = await prisma.branch.findUnique({
+        where: { id: user.branchId },
+        select: { isActive: true },
+      });
+
+      if (!branch || !branch.isActive) {
+        console.log('[AUTH DEBUG] Branch validation failed - branch inactive or not found');
+        res.status(403).json({
+          status: 'error',
+          message: 'Your branch is currently inactive. Please contact administrator.',
+        });
+        return;
+      }
+    }
+
     // Attach user to request object
     req.user = {
       id: user.id,

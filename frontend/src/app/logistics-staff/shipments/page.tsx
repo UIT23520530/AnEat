@@ -127,7 +127,7 @@ export default function ShipmentDashboardPage() {
     if (tab === "Tất cả") return ["READY", "IN_TRANSIT", "DELIVERED"].includes(s.status);
     if (tab === "Chờ giao") return s.status === "READY";
     if (tab === "Đang giao") return s.status === "IN_TRANSIT";
-    if (tab === "Đã giao") return s.status === "DELIVERED";
+    if (tab === "Đã giao") return s.status === "DELIVERED" || s.status === "COMPLETED";
     // Lịch sử: Hoàn thành hoặc Hủy
     if (tab === "Hoàn thành") return ["COMPLETED", "CANCELLED"].includes(s.status);
     return true;
@@ -148,9 +148,6 @@ export default function ShipmentDashboardPage() {
     }
     if (shipment.status === "IN_TRANSIT") {
       items.push({ key: "finish", label: "Xác nhận giao", onClick: () => handleStatusAction(shipment.id, "DELIVERED") });
-    }
-    if (shipment.status === "DELIVERED") {
-      items.push({ key: "complete", label: "Hoàn thành", onClick: () => handleStatusAction(shipment.id, "COMPLETED") });
     }
     return { items };
   };
@@ -335,11 +332,6 @@ export default function ShipmentDashboardPage() {
               Xác nhận đã giao
             </Button>
           ),
-          detail?.status === 'DELIVERED' && (
-            <Button key="complete" type="primary" className="bg-green-600" onClick={() => handleStatusAction(detail.id, 'COMPLETED')}>
-              Hoàn thành
-            </Button>
-          )
         ]}
         width={600}
         centered

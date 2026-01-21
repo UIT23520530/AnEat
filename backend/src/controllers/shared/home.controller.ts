@@ -904,6 +904,8 @@ export const getPublicBranches = async (req: Request, res: Response, next: NextF
     const where: any = {
       // Soft delete: Only get non-deleted branches
       deletedAt: null,
+      // Only show active branches to public
+      isActive: true,
     } as any;
 
     if (search) {

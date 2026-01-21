@@ -262,6 +262,18 @@ export class ShipmentService {
           });
 
           console.log(`[Shipment ${shipment.shipmentNumber}] ✅ Product quantity updated successfully`);
+
+          // ✅ NEW: Automatically mark stock request as COMPLETED when shipment is delivered
+          if (shipment.stockRequestId) {
+            await tx.stockRequest.update({
+              where: { id: shipment.stockRequestId },
+              data: {
+                status: 'COMPLETED',
+                completedDate: new Date(),
+              },
+            });
+            console.log(`[Shipment ${shipment.shipmentNumber}] ✅ Stock request ${shipment.stockRequest.requestNumber} marked as COMPLETED`);
+          }
         }
       } else if (status === 'COMPLETED') {
         updateData.completedAt = new Date();

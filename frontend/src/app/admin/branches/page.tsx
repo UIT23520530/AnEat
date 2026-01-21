@@ -224,62 +224,42 @@ function BranchesContent() {
     setIsAddModalOpen(true)
   }
 
-  // Handle delete
+  // Handle delete (soft delete - disable branch)
   const handleDelete = (record: Branch) => {
-    const staffCount = record._count?.staff || 0
-    const hasStaff = staffCount > 0
-
-    if (hasStaff) {
-      // Chỉ show thông báo, không có nút xóa
-      modal.warning({
-        title: "Không thể xóa chi nhánh",
-        content: (
-          <div>
-            <p className="mb-3">Chi nhánh <strong>"{record.name}"</strong> hiện có <strong>{staffCount} nhân viên</strong>.</p>
-            <p className="text-sm text-slate-600">
-              Vui lòng chuyển nhân viên sang chi nhánh khác trước khi xóa.
-            </p>
-          </div>
-        ),
-        okText: "Đã hiểu",
-      })
+    if (!record.isActive) {
+      message.warning("Chi nhánh này đã bị vô hiệu hóa")
       return
     }
 
-    // Cho phép xóa khi không có nhân viên
     modal.confirm({
-      title: "Xóa chi nhánh",
+      title: "Vô hiệu hóa chi nhánh",
       content: (
         <div>
-          <p className="mb-2">Bạn có chắc chắn muốn xóa chi nhánh <strong>"{record.name}"</strong>?</p>
+          <p className="mb-2">Bạn có chắc chắn muốn vô hiệu hóa chi nhánh <strong>"{record.name}"</strong>?</p>
           <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded">
             <p className="text-sm text-slate-600">
-              <strong>Lưu ý:</strong> Thao tác này sẽ xóa vĩnh viễn:
+              <strong>Lưu ý:</strong> Khi vô hiệu hóa:
             </p>
             <ul className="text-sm text-slate-600 mt-2 ml-4 list-disc">
-              <li>Tất cả sản phẩm của chi nhánh</li>
-              <li>Tất cả bàn ăn</li>
-              <li>Tất cả đơn hàng</li>
-              <li>Tất cả yêu cầu kho, giao dịch kho</li>
-              <li>Tất cả hóa đơn và mẫu in</li>
+              <li>Nhân viên, quản lý và khách hàng sẽ không truy cập được chi nhánh này</li>
+              <li>Chi nhánh sẽ không hiển thị trong danh sách chọn chi nhánh</li>
+              <li>Tất cả dữ liệu vẫn được giữ nguyên</li>
+              <li>Có thể khôi phục bằng cách chỉnh sửa và bật lại trạng thái</li>
             </ul>
-            <p className="text-sm text-green-600 mt-2">
-              Nhân viên sẽ KHÔNG bị xóa (chỉ bị hủy gán chi nhánh)
-            </p>
           </div>
         </div>
       ),
-      okText: "Xác nhận xóa",
+      okText: "Xác nhận vô hiệu hóa",
       cancelText: "Hủy",
       okButtonProps: { danger: true },
       onOk: async () => {
         try {
-          await adminBranchService.deleteBranch(record.id)
-          message.success("Đã xóa chi nhánh thành công")
+          await adminBranchService.updateBranch(record.id, { isActive: false })
+          message.success("Đã vô hiệu hóa chi nhánh thành công")
           loadBranches()
           loadStatistics()
         } catch (error: any) {
-          message.error(error.response?.data?.message || "Không thể xóa chi nhánh")
+          message.error(error.response?.data?.message || "Không thể vô hiệu hóa chi nhánh")
         }
       },
     })
@@ -400,13 +380,14 @@ function BranchesContent() {
               size="small"
             />
           </Tooltip>
-          <Tooltip title="Xóa">
+          <Tooltip title={record.isActive ? "Vô hiệu hóa" : "Đã bị vô hiệu hóa"}>
             <Button
               type="text"
-              danger
+              danger={record.isActive}
               icon={<DeleteOutlined />}
               onClick={() => handleDelete(record)}
               size="small"
+              disabled={!record.isActive}
             />
           </Tooltip>
         </Space>
@@ -447,7 +428,7 @@ function BranchesContent() {
                   <Col span={6}>
                     <div className="bg-orange-50 p-4 rounded-lg border border-orange-100">
                       <Statistic
-                        title="Số lượng nhân viên trung bình"
+                        title="Số lượng nhân viên"
                         value={statistics.averageStaff}
                         prefix={<TeamOutlined />}
                         valueStyle={{ color: "#faad14" }}
@@ -526,6 +507,7 @@ function BranchesContent() {
               bordered={false}
               className="ant-table-custom"
               scroll={{ x: 1400 }}
+              rowClassName={(record) => !record.isActive ? 'opacity-40 bg-gray-50' : ''}
             />
           </CardContent>
         </Card>
