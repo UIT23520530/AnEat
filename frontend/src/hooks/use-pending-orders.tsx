@@ -8,15 +8,18 @@ export function usePendingOrders(autoRefresh = false, refreshInterval = 30000) {
   const [pendingCount, setPendingCount] = useState<number>(0);
   const [loading, setLoading] = useState(false);
   const previousCountRef = useRef<number | null>(null);
-  const soundRef = useRef<HTMLAudioElement | null>(null);
 
-  // Initialize notification sound
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      soundRef.current = new Audio("/sounds/notification.mp3");
-      soundRef.current.volume = 0.5;
+  // Helper function to play notification sound
+  const playNotificationSound = () => {
+    try {
+      // Create a new audio instance each time to avoid playback issues
+      const audio = new Audio("/sounds/notification.mp3");
+      audio.volume = 0.5;
+      audio.play().catch(err => console.log("Audio play failed:", err));
+    } catch (error) {
+      console.error("Error playing notification sound:", error);
     }
-  }, []);
+  };
 
   const fetchPendingCount = useCallback(async () => {
     try {
@@ -31,12 +34,8 @@ export function usePendingOrders(autoRefresh = false, refreshInterval = 30000) {
         if (previousCountRef.current !== null && newCount > previousCountRef.current) {
           const newOrdersCount = newCount - previousCountRef.current;
           
-          // Play sound
-          if (soundRef.current) {
-            // Reset audio to start before playing
-            soundRef.current.currentTime = 0;
-            soundRef.current.play().catch(err => console.log("Audio play failed:", err));
-          }
+          // Play sound for new orders
+          playNotificationSound();
 
           // Show toast notification with action
           toast.success(

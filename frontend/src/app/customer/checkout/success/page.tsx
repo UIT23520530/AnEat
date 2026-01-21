@@ -172,8 +172,7 @@ function CheckoutSuccessPage() {
                   </div>
 
                   <p className="text-gray-600 mb-6">
-                    Đơn hàng của bạn đã được xác nhận. Bạn sẽ nhận được thông báo
-                    cập nhật trạng thái.
+                    Đơn hàng của bạn đã được xác nhận. Hãy chọn xem đơn hàng để theo dõi trạng thái!
                   </p>
                   
                   <div className="flex justify-center gap-4"> 
