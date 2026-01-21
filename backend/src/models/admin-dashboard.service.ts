@@ -283,21 +283,19 @@ export class AdminDashboardService {
         manager: {
           select: { name: true },
         },
-        bills: {
-          where: { status: 'PAID' },
+        orders: {
+          where: { 
+            status: 'COMPLETED'
+          },
           select: { 
             total: true,
-            order: {
+            items: {
               select: {
-                items: {
+                quantity: true,
+                price: true,
+                product: {
                   select: {
-                    quantity: true,
-                    price: true,
-                    product: {
-                      select: {
-                        costPrice: true,
-                      },
-                    },
+                    costPrice: true,
                   },
                 },
               },
@@ -313,11 +311,14 @@ export class AdminDashboardService {
       ...(limit && { take: limit }),
     });
 
-    // Get customer count per branch (via orders)
+    // Get customer count per branch (via completed orders)
     const branchCustomerCounts = await Promise.all(
       branches.map(async (branch) => {
         const customerCount = await prisma.order.findMany({
-          where: { branchId: branch.id },
+          where: { 
+            branchId: branch.id,
+            status: 'COMPLETED'
+          },
           distinct: ['customerId'],
           select: { customerId: true },
         });
@@ -328,18 +329,18 @@ export class AdminDashboardService {
     const customerMap = new Map(branchCustomerCounts.map((item) => [item.branchId, item.customerCount]));
 
     return branches.map((branch) => {
-      const revenue = branch.bills.reduce((sum, bill) => sum + bill.total, 0);
+      const revenue = branch.orders.reduce((sum: number, order: any) => sum + order.total, 0);
       
       // Calculate profit: revenue - total cost
-      const profit = branch.bills.reduce((sum, bill) => {
-        const billCost = bill.order?.items.reduce((itemSum, item) => {
+      const profit = branch.orders.reduce((sum: number, order: any) => {
+        const orderCost = order.items.reduce((itemSum: number, item: any) => {
           const itemCost = item.quantity * item.product.costPrice;
           return itemSum + itemCost;
-        }, 0) || 0;
-        return sum + (bill.total - billCost);
+        }, 0);
+        return sum + (order.total - orderCost);
       }, 0);
       
-      const orders = branch.bills.length;
+      const orders = branch.orders.length;
       const staff = branch.staff.length;
       const products = branch.products.length;
       const customers = customerMap.get(branch.id) || 0;
@@ -721,9 +722,9 @@ export class AdminDashboardService {
     // Get all branches with their stats (including inactive)
     const branches = await prisma.branch.findMany({
       include: {
-        bills: {
+        orders: {
           where: {
-            status: 'PAID',
+            status: 'COMPLETED',
             createdAt: { gte: monthAgo },
           },
           select: { total: true },
@@ -745,13 +746,13 @@ export class AdminDashboardService {
     });
 
     // Calculate average revenue from all branches
-    const totalRevenue = branches.reduce((sum, b) => sum + b.bills.reduce((s, bill) => s + bill.total, 0), 0);
+    const totalRevenue = branches.reduce((sum, b) => sum + b.orders.reduce((s: number, order: any) => s + order.total, 0), 0);
     const avgRevenue = totalRevenue / branches.length;
     const revenueThreshold = avgRevenue * (revenuePercentThreshold / 100);
 
     // Check each branch for issues (including inactive)
     branches.forEach((branch) => {
-      const revenue = branch.bills.reduce((sum, bill) => sum + bill.total, 0);
+      const revenue = branch.orders.reduce((sum: number, order: any) => sum + order.total, 0);
 
       // Revenue alert: below configured % of average
       if (revenue < revenueThreshold) {
@@ -798,7 +799,6 @@ export class AdminDashboardService {
       }
 
       // Inventory alerts: check stock levels
-      const minStockThreshold = 10;
       const lowStockProducts = branch.products.filter((p) => p.quantity <= minStockThreshold && p.quantity > 0);
       const outOfStockProducts = branch.products.filter((p) => p.quantity === 0);
 

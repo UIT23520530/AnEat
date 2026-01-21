@@ -139,23 +139,41 @@ function DashboardContent() {
 
   // Calculate branch score
   const calculateBranchScore = (branch: BranchPerformance, avgRevenue: number, avgAOV: number): number => {
-    // Revenue score (configurable %)
-    const revenueScore = (branch.revenue / avgRevenue) * thresholds.revenueWeight
+    // Revenue score (configurable %) - handle division by zero
+    const revenueScore = avgRevenue > 0 
+      ? (branch.revenue / avgRevenue) * thresholds.revenueWeight 
+      : 0
 
-    // AOV score (configurable %)
-    const aovScore = (branch.averageOrderValue / avgAOV) * thresholds.aovWeight
+    // AOV score (configurable %) - handle division by zero
+    const aovScore = avgAOV > 0 
+      ? (branch.averageOrderValue / avgAOV) * thresholds.aovWeight 
+      : 0
 
     // Efficiency score (configurable %) - orders per staff
     const ordersPerStaff = branch.staff > 0 ? branch.orders / branch.staff : 0
-    const avgOrdersPerStaff = branchPerformance.reduce((sum, b) => sum + (b.staff > 0 ? b.orders / b.staff : 0), 0) / branchPerformance.length
-    const efficiencyScore = avgOrdersPerStaff > 0 ? (ordersPerStaff / avgOrdersPerStaff) * thresholds.efficiencyWeight : 0
+    const avgOrdersPerStaff = branchPerformance.length > 0
+      ? branchPerformance.reduce((sum, b) => sum + (b.staff > 0 ? b.orders / b.staff : 0), 0) / branchPerformance.length
+      : 0
+    const efficiencyScore = avgOrdersPerStaff > 0 
+      ? (ordersPerStaff / avgOrdersPerStaff) * thresholds.efficiencyWeight 
+      : 0
 
     // Retention score (configurable %) - customers per order ratio
     const retentionRatio = branch.orders > 0 ? branch.customers / branch.orders : 0
-    const avgRetentionRatio = branchPerformance.reduce((sum, b) => sum + (b.orders > 0 ? b.customers / b.orders : 0), 0) / branchPerformance.length
-    const retentionScore = avgRetentionRatio > 0 ? (retentionRatio / avgRetentionRatio) * thresholds.retentionWeight : 0
+    const avgRetentionRatio = branchPerformance.length > 0
+      ? branchPerformance.reduce((sum, b) => sum + (b.orders > 0 ? b.customers / b.orders : 0), 0) / branchPerformance.length
+      : 0
+    const retentionScore = avgRetentionRatio > 0 
+      ? (retentionRatio / avgRetentionRatio) * thresholds.retentionWeight 
+      : 0
 
     const totalScore = revenueScore + aovScore + efficiencyScore + retentionScore
+    
+    // Return 0 if all metrics are zero (no meaningful data), otherwise clamp between 0-100
+    if (totalScore === 0 && avgRevenue === 0 && avgAOV === 0) {
+      return 0
+    }
+    
     return Math.min(Math.max(totalScore, 0), 100) // Clamp between 0-100
   }
 
@@ -279,8 +297,13 @@ function DashboardContent() {
   }
 
   // Calculate average metrics for scoring
-  const avgRevenue = branchPerformance.length > 0 ? branchPerformance.reduce((sum, b) => sum + b.revenue, 0) / branchPerformance.length : 1
-  const avgAOV = branchPerformance.length > 0 ? branchPerformance.reduce((sum, b) => sum + b.averageOrderValue, 0) / branchPerformance.length : 1
+  // Don't use fallback of 1, use 0 to properly handle edge cases in calculateBranchScore
+  const avgRevenue = branchPerformance.length > 0 
+    ? branchPerformance.reduce((sum, b) => sum + b.revenue, 0) / branchPerformance.length 
+    : 0
+  const avgAOV = branchPerformance.length > 0 
+    ? branchPerformance.reduce((sum, b) => sum + b.averageOrderValue, 0) / branchPerformance.length 
+    : 0
 
   // Handle settings modal
   const handleSettingsApply = () => {
@@ -481,7 +504,7 @@ function DashboardContent() {
 
               {/* System Alerts */}
               {visibleAlerts.length > 0 && (
-                <div className="space-y-2">
+                <div className="space-y-4">
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-sm font-semibold text-gray-700">Cảnh báo hệ thống ({visibleAlerts.length})</span>
                     {dismissedAlerts.size > 0 && (
@@ -502,7 +525,7 @@ function DashboardContent() {
                     <Alert
                       key={alert.id}
                       message={
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-3">
                           <AlertOutlined />
                           <span className="font-semibold">{alert.title}</span>
                         </div>
@@ -512,6 +535,7 @@ function DashboardContent() {
                       showIcon
                       closable
                       onClose={() => handleAlertClose(alert.id)}
+                      className="shadow-sm"
                     />
                   ))}
                 </div>
@@ -643,7 +667,7 @@ function DashboardContent() {
                         <div>
                           <p className="text-sm text-slate-600">Doanh thu toàn thời gian</p>
                           <p className="text-2xl font-bold text-slate-900">
-                            {(stats.totalRevenue.allTime / 1000000).toFixed(1)}M
+                            {(stats.totalRevenue.allTime).toLocaleString("vi-VN")}đ
                           </p>
                           <p className="text-xs text-slate-500 mt-1">
                             {stats.totalOrders.total} đơn hàng
