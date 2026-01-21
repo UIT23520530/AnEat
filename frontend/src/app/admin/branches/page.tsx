@@ -428,8 +428,8 @@ function BranchesContent() {
                   <Col span={6}>
                     <div className="bg-orange-50 p-4 rounded-lg border border-orange-100">
                       <Statistic
-                        title="Số lượng nhân viên"
-                        value={statistics.averageStaff}
+                        title="Tổng số nhân viên"
+                        value={statistics.totalStaff}
                         prefix={<TeamOutlined />}
                         valueStyle={{ color: "#faad14" }}
                       />

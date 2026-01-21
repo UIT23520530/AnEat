@@ -482,9 +482,8 @@ export const getBranchesOverviewStats = async (req: Request, res: Response): Pro
       }),
     ]);
 
-    // Calculate average staff per branch
+    // Calculate total staff across all branches
     const totalStaff = allBranches.reduce((sum, b) => sum + b._count.staff, 0);
-    const averageStaff = totalBranches > 0 ? totalStaff / totalBranches : 0;
 
     // Calculate average revenue per branch
     const totalRevenue = allOrders.reduce((sum, order) => sum + (order._sum.total || 0), 0);
@@ -495,7 +494,7 @@ export const getBranchesOverviewStats = async (req: Request, res: Response): Pro
       data: {
         totalBranches,
         activeBranches,
-        averageStaff: Math.round(averageStaff * 10) / 10,
+        totalStaff,
         averageRevenue: Math.round(averageRevenue),
       },
     });
