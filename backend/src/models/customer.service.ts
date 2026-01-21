@@ -1,6 +1,21 @@
 import { prisma } from '../db';
 import { Prisma, CustomerTier } from '@prisma/client';
 
+/**
+ * Calculate customer tier based on points
+ * Tier thresholds:
+ * - BRONZE: 0-99 points (default)
+ * - SILVER: 100-499 points
+ * - GOLD: 500-999 points
+ * - VIP: 1000+ points
+ */
+export function calculateTierFromPoints(points: number): CustomerTier {
+  if (points >= 1000) return CustomerTier.VIP;
+  if (points >= 500) return CustomerTier.GOLD;
+  if (points >= 100) return CustomerTier.SILVER;
+  return CustomerTier.BRONZE;
+}
+
 interface CustomerQueryParams {
   page: number;
   limit: number;

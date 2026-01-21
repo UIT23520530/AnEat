@@ -298,7 +298,6 @@ export default function MenuPage() {
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (!document.hidden && selectedBranch?.id) {
-        console.log("Tab visible again, refreshing products...");
         setRefreshKey(prev => prev + 1);
       }
     };

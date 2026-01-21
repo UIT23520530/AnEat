@@ -168,11 +168,14 @@ const logisticsData = [
 ];
 
 const customersData = [
-  { email: 'customer01@gmail.com', name: 'Khách Hàng A', phone: '0921111111' },
-  { email: 'customer02@gmail.com', name: 'Khách Hàng B', phone: '0922222222' },
-  { email: 'customer03@gmail.com', name: 'Khách Hàng C', phone: '0923333333' },
-  { email: 'customer04@gmail.com', name: 'Khách Hàng D', phone: '0924444444' },
-  { email: 'customer05@gmail.com', name: 'Khách Hàng E', phone: '0925555555' },
+  { email: 'customer01@gmail.com', name: 'Khách Hàng A', phone: '0921111111', tier: 'BRONZE' as const, points: 50, totalSpent: 500000 },
+  { email: 'customer02@gmail.com', name: 'Khách Hàng B', phone: '0922222222', tier: 'SILVER' as const, points: 250, totalSpent: 2500000 },
+  { email: 'customer03@gmail.com', name: 'Khách Hàng C', phone: '0923333333', tier: 'GOLD' as const, points: 700, totalSpent: 7000000 },
+  { email: 'customer04@gmail.com', name: 'Khách Hàng D', phone: '0924444444', tier: 'VIP' as const, points: 1500, totalSpent: 15000000 },
+  { email: 'customer05@gmail.com', name: 'Khách Hàng E', phone: '0925555555', tier: 'BRONZE' as const, points: 20, totalSpent: 200000 },
+  { email: 'customer06@gmail.com', name: 'Khách Hàng F', phone: '0926666666', tier: 'SILVER' as const, points: 180, totalSpent: 1800000 },
+  { email: 'customer07@gmail.com', name: 'Khách Hàng G', phone: '0927777777', tier: 'GOLD' as const, points: 600, totalSpent: 6000000 },
+  { email: 'customer08@gmail.com', name: 'Khách Hàng H', phone: '0928888888', tier: 'VIP' as const, points: 2000, totalSpent: 20000000 },
 ];
 
 // Categories từ newdata.md
@@ -887,14 +890,14 @@ async function seedCustomers() {
         email: customerData.email,
         name: customerData.name,
         phone: customerData.phone,
-        tier: 'BRONZE',
-        totalSpent: 0,
-        points: 0,
+        tier: customerData.tier,
+        totalSpent: customerData.totalSpent,
+        points: customerData.points,
       },
     });
 
     customers.push(customer);
-    console.log(`  ✅ ${customer.name} (${customer.email})`);
+    console.log(`  ✅ ${customer.name} (${customer.tier} - ${customer.points} điểm)`);
   }
 
   return customers;

@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { prisma } from '../../db';
 import { OrderStatus, PaymentStatus, PaymentMethod } from '@prisma/client';
+import { calculateTierFromPoints } from '../../models/customer.service';
 
 /**
  * @desc    Get pending orders waiting for staff confirmation (from customer web orders)
@@ -970,6 +971,35 @@ export const completeOrder = async (
           },
         },
       });
+
+      // 5. Update customer points and totalSpent if customer exists
+      if (order.customerId) {
+        // Calculate points: 1 point for every 10,000 VND spent
+        const pointsEarned = Math.floor(order.total / 10000);
+        
+        // Get current customer to calculate new tier
+        const currentCustomer = await tx.customer.findUnique({
+          where: { id: order.customerId },
+          select: { points: true },
+        });
+        
+        if (currentCustomer) {
+          const newPoints = currentCustomer.points + pointsEarned;
+          const newTier = calculateTierFromPoints(newPoints);
+          
+          await tx.customer.update({
+            where: { id: order.customerId },
+            data: {
+              points: newPoints,
+              tier: newTier,
+              totalSpent: {
+                increment: order.total,
+              },
+              lastOrderDate: new Date(),
+            },
+          });
+        }
+      }
 
       return { completedOrder, bill };
     });

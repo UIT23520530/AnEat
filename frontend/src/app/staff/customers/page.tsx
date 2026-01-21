@@ -19,6 +19,17 @@ interface CustomerWithCount extends CustomerDTO {
   }
 }
 
+// Tier display configuration
+const getTierBadge = (tier: string) => {
+  const configs: Record<string, { label: string; bgColor: string; textColor: string }> = {
+    BRONZE: { label: 'Đồng', bgColor: 'bg-orange-100', textColor: 'text-orange-700' },
+    SILVER: { label: 'Bạc', bgColor: 'bg-gray-100', textColor: 'text-gray-700' },
+    GOLD: { label: 'Vàng', bgColor: 'bg-yellow-100', textColor: 'text-yellow-700' },
+    VIP: { label: 'VIP', bgColor: 'bg-purple-100', textColor: 'text-purple-700' },
+  }
+  return configs[tier] || configs.BRONZE
+}
+
 export default function CustomersPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -181,6 +192,7 @@ export default function CustomersPage() {
                   <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Tên Khách Hàng</th>
                   <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Số Điện Thoại</th>
                   <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Email</th>
+                  <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Hạng Thành Viên</th>
                   <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Điểm Tích Lũy</th>
                   <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Tổng Đơn</th>
                   <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Ngày Tạo</th>
@@ -188,13 +200,24 @@ export default function CustomersPage() {
                 </tr>
               </thead>
               <tbody>
-                {!loading && customers.map((customer) => (
+                {!loading && customers.map((customer) => {
+                  const tierBadge = getTierBadge(customer.tier)
+                  return (
                   <tr key={customer.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
                     <td className="py-3 px-4 text-sm font-medium text-gray-900">{customer.name}</td>
                     <td className="py-3 px-4 text-sm text-gray-600">{customer.phone}</td>
                     <td className="py-3 px-4 text-sm text-gray-600">{customer.email || '-'}</td>
                     <td className="py-3 px-4">
-                      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700">
+                      <span className={cn(
+                        "inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium",
+                        tierBadge.bgColor,
+                        tierBadge.textColor
+                      )}>
+                        {tierBadge.label}
+                      </span>
+                    </td>
+                    <td className="py-3 px-4">
+                      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
                         {customer.points} điểm
                       </span>
                     </td>
@@ -218,7 +241,8 @@ export default function CustomersPage() {
                       </div>
                     </td>
                   </tr>
-                ))}
+                  )
+                })}
               </tbody>
             </table>
             

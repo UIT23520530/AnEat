@@ -91,9 +91,6 @@ export default function StaffOrdersPage() {
         ])
         setCategories(Array.isArray(categoriesRes.data) ? categoriesRes.data : [])
         const products = Array.isArray(productsRes.data?.products) ? productsRes.data.products : []
-        console.log('📦 Loaded products:', products.length)
-        console.log('🎯 Products with options:', products.filter(p => p.options && p.options.length > 0).length)
-        console.log('📝 Sample product with options:', products.find(p => p.options && p.options.length > 0))
         setProducts(products)
       } catch (error) {
         console.error('Load data error:', error)
@@ -147,16 +144,11 @@ export default function StaffOrdersPage() {
   })
 
   const handleProductClick = (product: OrderProduct) => {
-    console.log('🖱️ Product clicked:', product.name)
-    console.log('📋 Has options:', product.options?.length || 0)
-    
     // If product has options, show the modal
     if (product.options && product.options.length > 0) {
-      console.log('✅ Opening options modal...')
       setSelectedProduct(product)
       setIsProductOptionsOpen(true)
     } else {
-      console.log('⚡ Adding directly to cart (no options)')
       // Add directly to cart
       addToCart({
         id: `${product.id}-${Date.now()}`,
@@ -204,7 +196,6 @@ export default function StaffOrdersPage() {
       setEditingCartItem(null)
     } else {
       // Otherwise add new item
-      console.log('➕ Adding new item to cart')
       addToCart({
         id: `${product.id}-${Date.now()}`,
         productId: product.id,
