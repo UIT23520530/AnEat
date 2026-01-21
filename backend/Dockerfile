@@ -1,6 +1,9 @@
 # Use Node.js LTS version
 FROM node:20-alpine AS builder
 
+# Install OpenSSL for Prisma
+RUN apk add --no-cache openssl
+
 # Set working directory
 WORKDIR /app
 
@@ -23,6 +26,9 @@ COPY src ./src
 
 # Build TypeScript
 RUN npm run build
+
+# Install OpenSSL for Prisma
+RUN apk add --no-cache openssl
 
 # Production stage
 FROM node:20-alpine AS production
