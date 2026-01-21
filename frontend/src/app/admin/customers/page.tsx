@@ -299,6 +299,7 @@ function CustomersContent() {
     {
       title: "Khách hàng",
       dataIndex: "name",
+      fixed: "left",
       key: "name",
       render: (text, record) => (
         <Space>
@@ -358,6 +359,7 @@ function CustomersContent() {
     {
       title: "Thao tác",
       key: "actions",
+      fixed: "right",
       render: (_, record) => (
         <Space>
           <Tooltip title="Xem chi tiết">

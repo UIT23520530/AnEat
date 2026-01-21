@@ -334,6 +334,13 @@ function DashboardContent() {
       render: (value) => <span className="text-green-600 font-semibold">{formatCurrency(value)}</span>,
     },
     {
+      title: "Lợi nhuận",
+      dataIndex: "profit",
+      key: "profit",
+      sorter: (a, b) => a.profit - b.profit,
+      render: (value) => <span className="text-blue-600 font-semibold">{formatCurrency(value)}</span>,
+    },
+    {
       title: "Đơn hàng",
       dataIndex: "orders",
       key: "orders",
@@ -417,6 +424,12 @@ function DashboardContent() {
       dataIndex: "revenue",
       key: "revenue",
       render: (value) => <span className="text-green-600 font-semibold">{formatCurrency(value)}</span>,
+    },
+    {
+      title: "Lợi nhuận",
+      dataIndex: "profit",
+      key: "profit",
+      render: (value) => <span className="text-blue-600 font-semibold">{formatCurrency(value)}</span>,
     },
   ]
 

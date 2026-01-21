@@ -9,38 +9,60 @@ export function AntdProvider({ children }: { children: React.ReactNode }) {
     const originalWarn = console.warn;
     const originalError = console.error;
     
-    console.warn = (...args) => {
-      const message = args[0]?.toString() || '';
-      if (
-        message.includes('antd v5 support React is 16 ~ 18') || 
-        message.includes('[antd: compatible]') ||
-        message.includes('u.ant.design/v5-for-19') ||
-        message.includes('useForm') ||
-        message.includes('not connected to any Form element') ||
-        message.includes('Static function can not consume context')
-      ) {
-        return;
+    // Helper to safely check message without circular reference issues
+    const safeGetMessage = (arg: any): string => {
+      try {
+        if (typeof arg === 'string') return arg;
+        if (arg && typeof arg === 'object' && 'message' in arg) {
+          return String(arg.message);
+        }
+        return String(arg);
+      } catch {
+        return '';
       }
-      originalWarn(...args);
+    };
+    
+    console.warn = (...args) => {
+      try {
+        const message = safeGetMessage(args[0]);
+        if (
+          message.includes('antd v5 support React is 16 ~ 18') || 
+          message.includes('[antd: compatible]') ||
+          message.includes('u.ant.design/v5-for-19') ||
+          message.includes('useForm') ||
+          message.includes('not connected to any Form element') ||
+          message.includes('Static function can not consume context')
+        ) {
+          return;
+        }
+        originalWarn(...args);
+      } catch {
+        // Silently ignore errors in warning handler
+      }
     };
 
     console.error = (...args) => {
-      const message = args[0]?.toString() || '';
-      if (
-        message.includes('antd v5 support React is 16 ~ 18') || 
-        message.includes('[antd: compatible]') ||
-        message.includes('u.ant.design/v5-for-19') ||
-        message.includes('useForm') ||
-        message.includes('not connected to any Form element') ||
-        message.includes('Delete failed') ||
-        message.includes('Update failed') ||
-        message.includes('Failed to update bill') ||
-        message.includes('AxiosError') ||
-        message.includes('Request failed')
-      ) {
-        return;
+      try {
+        const message = safeGetMessage(args[0]);
+        if (
+          message.includes('antd v5 support React is 16 ~ 18') || 
+          message.includes('[antd: compatible]') ||
+          message.includes('u.ant.design/v5-for-19') ||
+          message.includes('useForm') ||
+          message.includes('not connected to any Form element') ||
+          message.includes('Delete failed') ||
+          message.includes('Update failed') ||
+          message.includes('Failed to update bill') ||
+          message.includes('AxiosError') ||
+          message.includes('Request failed') ||
+          message.includes('circular reference')
+        ) {
+          return;
+        }
+        originalError(...args);
+      } catch {
+        // Silently ignore errors in error handler
       }
-      originalError(...args);
     };
     
     return () => {

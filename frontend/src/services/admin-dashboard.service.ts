@@ -56,6 +56,7 @@ export interface BranchPerformance {
   name: string;
   managerName: string | null;
   revenue: number;
+  profit: number;
   orders: number;
   staff: number;
   products: number;

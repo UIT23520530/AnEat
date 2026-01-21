@@ -58,6 +58,7 @@ export interface BranchPerformance {
   name: string;
   managerName: string | null;
   revenue: number;
+  profit: number;
   orders: number;
   staff: number;
   products: number;
@@ -284,7 +285,24 @@ export class AdminDashboardService {
         },
         bills: {
           where: { status: 'PAID' },
-          select: { total: true },
+          select: { 
+            total: true,
+            order: {
+              select: {
+                items: {
+                  select: {
+                    quantity: true,
+                    price: true,
+                    product: {
+                      select: {
+                        costPrice: true,
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
         },
         staff: {
           where: { deletedAt: null },
@@ -311,6 +329,16 @@ export class AdminDashboardService {
 
     return branches.map((branch) => {
       const revenue = branch.bills.reduce((sum, bill) => sum + bill.total, 0);
+      
+      // Calculate profit: revenue - total cost
+      const profit = branch.bills.reduce((sum, bill) => {
+        const billCost = bill.order?.items.reduce((itemSum, item) => {
+          const itemCost = item.quantity * item.product.costPrice;
+          return itemSum + itemCost;
+        }, 0) || 0;
+        return sum + (bill.total - billCost);
+      }, 0);
+      
       const orders = branch.bills.length;
       const staff = branch.staff.length;
       const products = branch.products.length;
@@ -323,6 +351,7 @@ export class AdminDashboardService {
         name: branch.name,
         managerName: branch.manager?.name || null,
         revenue,
+        profit,
         orders,
         staff,
         products,
@@ -478,7 +507,6 @@ export class AdminDashboardService {
       },
       _sum: {
         quantity: true,
-        price: true,
       },
       orderBy: {
         _sum: {
@@ -491,12 +519,27 @@ export class AdminDashboardService {
     // Get product details with branch info
     const productsWithDetails = await Promise.all(
       topProducts.map(async (item) => {
+        // Get all order items for this product to calculate revenue correctly
+        const orderItems = await prisma.orderItem.findMany({
+          where: {
+            productId: item.productId,
+            order: {
+              createdAt: { gte: thirtyDaysAgo },
+            },
+          },
+          select: {
+            quantity: true,
+            price: true,
+          },
+        });
+
         const product = await prisma.product.findUnique({
           where: { id: item.productId },
           select: {
             id: true,
             name: true,
             image: true,
+            costPrice: true,
             branch: {
               select: {
                 name: true,
@@ -505,15 +548,22 @@ export class AdminDashboardService {
           },
         });
 
-        const revenue = item._sum.price || 0;
-        const profit = revenue * 0.3; // 30% profit margin
+        // Calculate revenue: sum of (quantity × price) for each order item
+        const revenue = orderItems.reduce((sum, orderItem) => {
+          return sum + (orderItem.quantity * orderItem.price);
+        }, 0);
+
+        // Calculate profit: revenue - (quantity × costPrice)
+        const totalQuantity = item._sum.quantity || 0;
+        const costPrice = product?.costPrice || 0;
+        const profit = revenue - (totalQuantity * costPrice);
 
         return {
           id: product?.id || '',
           name: product?.name || 'Unknown',
           branchName: product?.branch?.name || 'Unknown',
           image: product?.image || null,
-          unitsSold: item._sum.quantity || 0,
+          unitsSold: totalQuantity,
           revenue,
           profit,
         };
