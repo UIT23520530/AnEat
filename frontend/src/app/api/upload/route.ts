@@ -13,13 +13,29 @@ export async function POST(request: Request) {
         const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
         const uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
 
-        if (!cloudName || !uploadPreset) {
-            console.error('Cloudinary configuration missing. Please set NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME and NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET');
+        console.log('[Upload API] Checking Cloudinary config:', {
+            cloudName: cloudName ? 'SET' : 'NOT SET',
+            uploadPreset: uploadPreset ? 'SET' : 'NOT SET',
+            cloudNameValue: cloudName,
+            uploadPresetValue: uploadPreset,
+        });
+
+        if (!cloudName || !uploadPreset || cloudName === '' || uploadPreset === '') {
+            console.error('[Upload API] Cloudinary configuration missing!');
+            console.error('[Upload API] Please set NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME and NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET');
+            console.error('[Upload API] Current values:', { cloudName, uploadPreset });
+            
             return NextResponse.json({ 
                 success: false, 
-                message: 'Cloud storage not configured. Please contact administrator.' 
+                message: `Cloudinary chưa được cấu hình. Vui lòng thêm NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME và NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET vào Environment Variables. Current: cloudName=${cloudName || 'empty'}, preset=${uploadPreset || 'empty'}` 
             }, { status: 500 });
         }
+
+        console.log('[Upload API] Uploading to Cloudinary...', {
+            fileName: file.name,
+            fileSize: file.size,
+            fileType: file.type,
+        });
 
         // Upload to Cloudinary
         const formData = new FormData();
@@ -29,24 +45,27 @@ export async function POST(request: Request) {
         // Optional: Add folder organization
         formData.append('folder', 'aneat-products');
 
-        const cloudinaryResponse = await fetch(
-            `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
-            {
-                method: 'POST',
-                body: formData,
-            }
-        );
+        const cloudinaryUrl = `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`;
+        console.log('[Upload API] Cloudinary URL:', cloudinaryUrl);
+
+        const cloudinaryResponse = await fetch(cloudinaryUrl, {
+            method: 'POST',
+            body: formData,
+        });
+
+        console.log('[Upload API] Cloudinary response status:', cloudinaryResponse.status);
 
         if (!cloudinaryResponse.ok) {
             const errorText = await cloudinaryResponse.text();
-            console.error('Cloudinary upload failed:', errorText);
+            console.error('[Upload API] Cloudinary upload failed:', errorText);
             return NextResponse.json({ 
                 success: false, 
-                message: 'Failed to upload to cloud storage' 
+                message: `Failed to upload to Cloudinary: ${cloudinaryResponse.status} - ${errorText}` 
             }, { status: cloudinaryResponse.status });
         }
 
         const result = await cloudinaryResponse.json();
+        console.log('[Upload API] Upload successful:', result.secure_url);
         
         return NextResponse.json({
             success: true,
@@ -55,7 +74,7 @@ export async function POST(request: Request) {
         });
         
     } catch (error) {
-        console.error('Error uploading file:', error);
+        console.error('[Upload API] Error uploading file:', error);
         return NextResponse.json({ 
             success: false, 
             message: 'Upload failed: ' + (error instanceof Error ? error.message : 'Unknown error')

@@ -18,6 +18,60 @@ export function ImageUpload({ value, onChange, label = "Ảnh", required = false
     const [uploading, setUploading] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
+    // Compress image before upload
+    const compressImage = async (file: File): Promise<File> => {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = (event) => {
+                const img = new window.Image();
+                img.src = event.target?.result as string;
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    let width = img.width;
+                    let height = img.height;
+                    
+                    // Resize if too large (max 1920x1920)
+                    const maxDimension = 1920;
+                    if (width > maxDimension || height > maxDimension) {
+                        if (width > height) {
+                            height = (height / width) * maxDimension;
+                            width = maxDimension;
+                        } else {
+                            width = (width / height) * maxDimension;
+                            height = maxDimension;
+                        }
+                    }
+                    
+                    canvas.width = width;
+                    canvas.height = height;
+                    
+                    const ctx = canvas.getContext('2d');
+                    ctx?.drawImage(img, 0, 0, width, height);
+                    
+                    // Convert to blob with quality compression
+                    canvas.toBlob(
+                        (blob) => {
+                            if (blob) {
+                                const compressedFile = new File([blob], file.name, {
+                                    type: 'image/jpeg',
+                                    lastModified: Date.now(),
+                                });
+                                resolve(compressedFile);
+                            } else {
+                                reject(new Error('Canvas to Blob conversion failed'));
+                            }
+                        },
+                        'image/jpeg',
+                        0.8 // Quality 80%
+                    );
+                };
+                img.onerror = reject;
+            };
+            reader.onerror = reject;
+        });
+    };
+
     const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
@@ -39,25 +93,55 @@ export function ImageUpload({ value, onChange, label = "Ảnh", required = false
             return;
         }
 
-        // Validate file size (max 50MB for SVG, 5MB for others)
-        const maxSize = file.type === 'image/svg+xml' || file.name.toLowerCase().endsWith('.svg') 
-            ? 50 * 1024 * 1024  // 50MB for SVG
-            : 5 * 1024 * 1024;   // 5MB for other formats
-        
-        if (file.size > maxSize) {
-            const maxSizeMB = maxSize / (1024 * 1024);
-            toast({
-                title: "Lỗi",
-                description: `Kích thước file không được vượt quá ${maxSizeMB}MB`,
-                variant: "destructive",
-            });
-            return;
-        }
-
         setUploading(true);
         try {
+            let fileToUpload = file;
+            
+            // Compress image if it's not SVG and larger than 2MB
+            if (file.type !== 'image/svg+xml' && !file.name.toLowerCase().endsWith('.svg')) {
+                if (file.size > 2 * 1024 * 1024) {
+                    toast({
+                        title: "Đang nén ảnh...",
+                        description: "Ảnh của bạn đang được tối ưu hóa",
+                    });
+                    
+                    try {
+                        fileToUpload = await compressImage(file);
+                        console.log("[ImageUpload] Image compressed:", {
+                            originalSize: file.size,
+                            compressedSize: fileToUpload.size,
+                            reduction: `${((1 - fileToUpload.size / file.size) * 100).toFixed(1)}%`,
+                        });
+                    } catch (compressError) {
+                        console.error("[ImageUpload] Compression failed, using original:", compressError);
+                    }
+                }
+                
+                // Final size check (Cloudinary free tier limit: 10MB)
+                if (fileToUpload.size > 10 * 1024 * 1024) {
+                    toast({
+                        title: "Lỗi",
+                        description: `Ảnh quá lớn (${(fileToUpload.size / 1024 / 1024).toFixed(1)}MB). Vui lòng chọn ảnh nhỏ hơn 10MB.`,
+                        variant: "destructive",
+                    });
+                    setUploading(false);
+                    return;
+                }
+            } else {
+                // SVG size limit
+                if (file.size > 5 * 1024 * 1024) {
+                    toast({
+                        title: "Lỗi",
+                        description: `File SVG quá lớn. Vui lòng chọn file nhỏ hơn 5MB.`,
+                        variant: "destructive",
+                    });
+                    setUploading(false);
+                    return;
+                }
+            }
+
             const formData = new FormData();
-            formData.append("file", file);
+            formData.append("file", fileToUpload);
 
             console.log("[ImageUpload] Uploading file:", file.name, "Size:", file.size, "Type:", file.type);
 
