@@ -188,8 +188,16 @@ export function ImageUpload({ value, onChange, label = "Ảnh", required = false
             const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
             const uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
 
-            if (!cloudName || !uploadPreset) {
-                throw new Error('Cloudinary chưa được cấu hình. Vui lòng kiểm tra biến môi trường.');
+            console.log("[ImageUpload] Environment check:", {
+                cloudName: cloudName || 'NOT SET',
+                uploadPreset: uploadPreset || 'NOT SET',
+                allEnvVars: Object.keys(process.env).filter(k => k.includes('CLOUDINARY'))
+            });
+
+            if (!cloudName || !uploadPreset || cloudName === '' || uploadPreset === '') {
+                const errorMsg = `Cloudinary chưa được cấu hình. cloudName=${cloudName || 'empty'}, uploadPreset=${uploadPreset || 'empty'}. Vui lòng kiểm tra biến môi trường NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME và NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET.`;
+                console.error('[ImageUpload]', errorMsg);
+                throw new Error(errorMsg);
             }
 
             const formData = new FormData();
