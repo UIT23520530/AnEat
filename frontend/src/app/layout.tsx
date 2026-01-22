@@ -23,9 +23,6 @@ export const metadata: Metadata = {
   authors: [{ name: 'AnEat' }],
   manifest: "/manifest.json",
   metadataBase: new URL('https://aneat.shop'),
-  alternates: {
-    canonical: 'https://aneat.shop',
-  },
   openGraph: {
     type: 'website',
     locale: 'vi_VN',

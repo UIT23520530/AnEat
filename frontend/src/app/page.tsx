@@ -7,6 +7,7 @@ import { useCart } from "@/contexts/cart-context";
 import { useToast } from "@/hooks/use-toast";
 import { Product } from "@/types";
 import { CheckCircle2 } from "lucide-react";
+import Head from "next/head";
 
 export default function Home() {
   const { addToCart } = useCart();
@@ -29,11 +30,18 @@ export default function Home() {
   };
 
   return (
-    <PublicLayout>
-      <div className="min-h-screen bg-orange-50">
-        <HeroSection />
-        <HotDealsSection onAddToCart={handleAddToCart} />
-      </div>
-    </PublicLayout>
+    <>
+      <Head>
+        <link rel="canonical" href="https://aneat.shop" />
+      </Head>
+      <PublicLayout>
+        <div className="min-h-screen bg-orange-50">
+          {/* SEO H1 - Hidden but crawlable */}
+          <h1 className="sr-only">AnEat - Đặt Đồ Ăn Nhanh Online, Giao Hàng Tận Nơi Nhanh Chóng</h1>
+          <HeroSection />
+          <HotDealsSection onAddToCart={handleAddToCart} />
+        </div>
+      </PublicLayout>
+    </>
   );
 }
