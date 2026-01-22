@@ -18,7 +18,7 @@ if (process.env.NODE_ENV === 'development') {
 
 export const metadata: Metadata = {
   title: 'AnEat',
-  description: 'FastFood Delivery Website',
+  description: 'Chuỗi cửa hàng cung cấp dịch vụ thức ăn nhanh, hỗ trợ khách hàng đặt món trực tuyến và tại cửa hàng.',
   manifest: "/manifest.json",
 }
 
@@ -34,6 +34,7 @@ export default function RootLayout({
   return (
     <html lang="vi">
       <head>
+        <meta name="google-site-verification" content="iekqPbnYI--fjKXItssiTj_EMr5YTxJvLjp5a990YDI" />
         <link rel="icon" href="/icons/AnEat.svg" type="image/svg+xml" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
