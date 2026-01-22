@@ -184,49 +184,47 @@ export function ImageUpload({ value, onChange, label = "Ảnh", required = false
                 }
             }
 
+            // Upload directly to Cloudinary (bypass Vercel limits)
+            const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
+            const uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
+
+            if (!cloudName || !uploadPreset) {
+                throw new Error('Cloudinary chưa được cấu hình. Vui lòng kiểm tra biến môi trường.');
+            }
+
             const formData = new FormData();
             formData.append("file", fileToUpload);
+            formData.append("upload_preset", uploadPreset);
+            formData.append("folder", "aneat-products");
 
-            console.log("[ImageUpload] Uploading file:", file.name, "Size:", file.size, "Type:", file.type);
+            console.log("[ImageUpload] Uploading directly to Cloudinary:", {
+                fileName: file.name,
+                originalSize: `${(file.size / 1024 / 1024).toFixed(2)}MB`,
+                compressedSize: `${(fileToUpload.size / 1024 / 1024).toFixed(2)}MB`,
+            });
 
-            const response = await fetch("/api/upload", {
+            const cloudinaryUrl = `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`;
+            const response = await fetch(cloudinaryUrl, {
                 method: "POST",
                 body: formData,
             });
 
             console.log("[ImageUpload] Response status:", response.status);
-            console.log("[ImageUpload] Response headers:", Object.fromEntries(response.headers.entries()));
-
-            // Get response text first to see what we're getting
-            const responseText = await response.text();
-            console.log("[ImageUpload] Response text:", responseText);
 
             if (!response.ok) {
-                console.error("❌ [ImageUpload] Upload failed with status:", response.status, responseText);
-                throw new Error(`Upload failed: ${response.status} - ${responseText}`);
+                const errorText = await response.text();
+                console.error("❌ [ImageUpload] Cloudinary upload failed:", response.status, errorText);
+                throw new Error(`Upload failed: ${response.status} - ${errorText}`);
             }
 
-            // Try to parse JSON
-            let data;
-            try {
-                data = JSON.parse(responseText);
-                console.log("[ImageUpload] Parsed response data:", data);
-            } catch (parseError) {
-                console.error("❌ [ImageUpload] Failed to parse JSON:", parseError);
-                throw new Error("Server returned invalid JSON: " + responseText);
-            }
-
-            if (data.success) {
-                console.log("✅ [ImageUpload] Upload successful! URL:", data.url);
-                onChange(data.url);
-                toast({
-                    title: "Thành công",
-                    description: "Tải ảnh lên thành công",
-                });
-            } else {
-                console.error("❌ [ImageUpload] Upload failed:", data.message);
-                throw new Error(data.message || "Upload failed");
-            }
+            const data = await response.json();
+            console.log("✅ [ImageUpload] Upload successful! URL:", data.secure_url);
+            
+            onChange(data.secure_url);
+            toast({
+                title: "Thành công",
+                description: "Tải ảnh lên thành công",
+            });
         } catch (error: any) {
             console.error("❌ [ImageUpload] Upload error:", error);
             console.error("❌ [ImageUpload] Error stack:", error.stack);
