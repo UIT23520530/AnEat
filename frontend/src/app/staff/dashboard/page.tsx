@@ -14,6 +14,7 @@ interface Order {
   id: string
   orderNumber: string
   createdAt: string
+  updatedAt?: string
   items: { id: string; quantity: number }[]
   total: number
   status: string
@@ -44,7 +45,15 @@ export default function DashboardPage() {
       ])
 
       setStats(statsResponse.data)
-      setRecentOrders(ordersResponse.data)
+      
+      // Sort orders by updatedAt or createdAt (most recent first)
+      const sortedOrders = ordersResponse.data.sort((a: Order, b: Order) => {
+        const dateA = new Date(a.updatedAt || a.createdAt).getTime()
+        const dateB = new Date(b.updatedAt || b.createdAt).getTime()
+        return dateB - dateA // Most recent first
+      })
+      
+      setRecentOrders(sortedOrders)
       setLastUpdate(new Date())
     } catch (err: any) {
       console.error('Load dashboard error:', err)
@@ -79,13 +88,15 @@ export default function DashboardPage() {
     return new Intl.NumberFormat('vi-VN', {
       style: 'currency',
       currency: 'VND'
-    }).format(amount) // Backend stores in VND
+    }).format(amount)
   }
 
-  // Format time
-  const formatTime = (dateString: string) => {
-    const date = new Date(dateString)
-    return date.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
+  // Format time - show update time if available, otherwise creation time
+  const formatTime = (order: Order) => {
+    const date = new Date(order.updatedAt || order.createdAt)
+    const time = date.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
+    const isUpdated = order.updatedAt && order.updatedAt !== order.createdAt
+    return isUpdated ? `${time} (CN)` : time // CN = Cập nhật
   }
 
   // Calculate total items
@@ -220,7 +231,7 @@ export default function DashboardPage() {
                             {recentOrders.map((order) => (
                               <tr key={order.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
                                 <td className="py-3 px-4 text-sm font-medium text-gray-900">{order.orderNumber}</td>
-                                <td className="py-3 px-4 text-sm text-gray-600">{formatTime(order.createdAt)}</td>
+                                <td className="py-3 px-4 text-sm text-gray-600">{formatTime(order)}</td>
                                 <td className="py-3 px-4 text-sm text-gray-600">{getTotalItems(order.items)}</td>
                                 <td className="py-3 px-4 text-sm font-medium text-gray-900">{formatCurrency(order.total)}</td>
                                 <td className="py-3 px-4">
