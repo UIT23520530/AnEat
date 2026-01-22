@@ -4,10 +4,11 @@ import { useEffect, useState } from "react"
 import { StaffLayout } from "@/components/layouts/staff-layout"
 import { StaffHeader } from "@/components/layouts/staff-header"
 import { Card } from "@/components/ui/card"
-import { DollarSign, ShoppingBag, Package as PackageIcon, TrendingUp, ShoppingCart, Loader2, CheckCircle, AlertCircle } from "lucide-react"
+import { DollarSign, ShoppingBag, Package as PackageIcon, TrendingUp, ShoppingCart, Loader2, CheckCircle, AlertCircle, RefreshCw } from "lucide-react"
 import { cn } from "@/lib/utils"
 import Link from "next/link"
 import { dashboardService, DashboardStats } from "@/services/dashboard.service"
+import { Button } from "@/components/ui/button"
 
 interface Order {
   id: string
@@ -22,32 +23,56 @@ export default function DashboardPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [recentOrders, setRecentOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [lastUpdate, setLastUpdate] = useState<Date>(new Date())
 
-  useEffect(() => {
-    async function loadDashboard() {
-      try {
+  // Load dashboard data
+  async function loadDashboard(isRefresh = false) {
+    try {
+      if (isRefresh) {
+        setRefreshing(true)
+      } else {
         setLoading(true)
-        setError(null)
-
-        // Fetch dashboard stats and recent orders
-        const [statsResponse, ordersResponse] = await Promise.all([
-          dashboardService.getStaffStats(),
-          dashboardService.getStaffRecentOrders({ page: 1, limit: 5 })
-        ])
-
-        setStats(statsResponse.data)
-        setRecentOrders(ordersResponse.data)
-      } catch (err: any) {
-        console.error('Load dashboard error:', err)
-        setError(err.message || 'Không thể tải dữ liệu dashboard')
-      } finally {
-        setLoading(false)
       }
-    }
+      setError(null)
 
+      // Fetch dashboard stats and recent orders
+      const [statsResponse, ordersResponse] = await Promise.all([
+        dashboardService.getStaffStats(),
+        dashboardService.getStaffRecentOrders({ page: 1, limit: 5 })
+      ])
+
+      setStats(statsResponse.data)
+      setRecentOrders(ordersResponse.data)
+      setLastUpdate(new Date())
+    } catch (err: any) {
+      console.error('Load dashboard error:', err)
+      setError(err.message || 'Không thể tải dữ liệu dashboard')
+    } finally {
+      setLoading(false)
+      setRefreshing(false)
+    }
+  }
+
+  // Initial load
+  useEffect(() => {
     loadDashboard()
   }, [])
+
+  // Auto-refresh every 30 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      loadDashboard(true)
+    }, 30000) // 30 seconds
+
+    return () => clearInterval(interval)
+  }, [])
+
+  // Manual refresh handler
+  const handleRefresh = () => {
+    loadDashboard(true)
+  }
 
   // Format currency
   const formatCurrency = (amount: number) => {
@@ -67,6 +92,17 @@ export default function DashboardPage() {
   const getTotalItems = (items: { quantity: number }[]) => {
     return items.reduce((sum, item) => sum + item.quantity, 0)
   }
+
+  // Format last update time
+  const getLastUpdateText = () => {
+    const now = new Date()
+    const diff = Math.floor((now.getTime() - lastUpdate.getTime()) / 1000)
+    
+    if (diff < 60) return `${diff} giây trước`
+    if (diff < 3600) return `${Math.floor(diff / 60)} phút trước`
+    return lastUpdate.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
+  }
+
   return (
     <StaffLayout>
       <div className="flex flex-col h-full bg-gray-50">
@@ -74,9 +110,23 @@ export default function DashboardPage() {
 
         {/* Main Content */}
         <main className="flex-1 overflow-y-auto p-6">
-          <div className="mb-6">
-            <h1 className="text-2xl font-bold text-gray-900">Tổng Quan</h1>
-            <p className="text-sm text-gray-500 mt-1">Thống kê hoạt động hôm nay</p>
+          <div className="mb-6 flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">Tổng Quan</h1>
+              <p className="text-sm text-gray-500 mt-1">
+                Thống kê hoạt động hôm nay • Cập nhật {getLastUpdateText()}
+              </p>
+            </div>
+            <Button
+              onClick={handleRefresh}
+              disabled={refreshing}
+              variant="outline"
+              size="sm"
+              className="flex items-center gap-2"
+            >
+              <RefreshCw className={cn("h-4 w-4", refreshing && "animate-spin")} />
+              Làm mới
+            </Button>
           </div>
 
           {/* Loading State */}
