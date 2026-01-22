@@ -47,6 +47,16 @@ const corsOptions = {
       }
     }
 
+    // Allow all Vercel preview and production deployments
+    if (origin.endsWith('.vercel.app')) {
+      return callback(null, true);
+    }
+
+    // Allow custom domain and its www subdomain
+    if (origin === 'https://aneat.shop' || origin === 'https://www.aneat.shop') {
+      return callback(null, true);
+    }
+
     // In production, use CORS_ORIGIN or FRONTEND_URL env variable
     const corsOrigin = process.env.CORS_ORIGIN || process.env.FRONTEND_URL || 'http://localhost:3000';
     
