@@ -210,15 +210,15 @@ export function HeroSection() {
                 />
                 {/* Overlay with title and description if available */}
                 {(banner.title || banner.description) && (
-                  <div className="absolute inset-0 bg-gradient-to-r from-black/60 to-transparent flex items-center">
-                    <div className="container mx-auto px-8">
+                  <div className="absolute inset-0 flex items-end justify-start">
+                    <div className="p-8 md:p-12 lg:p-16 max-w-2xl">
                       {banner.title && (
-                        <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-4">
+                        <h2 className="text-2xl md:text-3xl lg:text-4xl font-extrabold text-white mb-2 md:mb-4 text-left drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)] [text-shadow:_2px_2px_4px_rgb(0_0_0_/_80%)]">
                           {banner.title}
                         </h2>
                       )}
                       {banner.description && (
-                        <p className="text-lg md:text-xl lg:text-2xl text-white/90 max-w-2xl">
+                        <p className="text-base md:text-lg lg:text-xl text-white font-semibold text-left drop-shadow-[0_2px_6px_rgba(0,0,0,0.7)] [text-shadow:_1px_1px_3px_rgb(0_0_0_/_70%)]">
                           {banner.description}
                         </p>
                       )}
