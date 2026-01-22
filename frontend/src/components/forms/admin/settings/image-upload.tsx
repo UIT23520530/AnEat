@@ -18,8 +18,8 @@ export function ImageUpload({ value, onChange, label = "Ảnh", required = false
     const [uploading, setUploading] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    // Compress image before upload
-    const compressImage = async (file: File): Promise<File> => {
+    // Compress image before upload with adaptive quality
+    const compressImage = async (file: File, targetSizeMB: number = 4): Promise<File> => {
         return new Promise((resolve, reject) => {
             const reader = new FileReader();
             reader.readAsDataURL(file);
@@ -31,8 +31,12 @@ export function ImageUpload({ value, onChange, label = "Ảnh", required = false
                     let width = img.width;
                     let height = img.height;
                     
-                    // Resize if too large (max 1920x1920)
-                    const maxDimension = 1920;
+                    // Adaptive resize based on file size
+                    let maxDimension = 1920;
+                    if (file.size > 10 * 1024 * 1024) {
+                        maxDimension = 1280; // Resize smaller for large files
+                    }
+                    
                     if (width > maxDimension || height > maxDimension) {
                         if (width > height) {
                             height = (height / width) * maxDimension;
@@ -49,22 +53,40 @@ export function ImageUpload({ value, onChange, label = "Ảnh", required = false
                     const ctx = canvas.getContext('2d');
                     ctx?.drawImage(img, 0, 0, width, height);
                     
-                    // Convert to blob with quality compression
-                    canvas.toBlob(
-                        (blob) => {
-                            if (blob) {
-                                const compressedFile = new File([blob], file.name, {
-                                    type: 'image/jpeg',
-                                    lastModified: Date.now(),
-                                });
-                                resolve(compressedFile);
-                            } else {
-                                reject(new Error('Canvas to Blob conversion failed'));
-                            }
-                        },
-                        'image/jpeg',
-                        0.8 // Quality 80%
-                    );
+                    // Try multiple quality levels to meet target size
+                    const tryCompress = (quality: number) => {
+                        canvas.toBlob(
+                            (blob) => {
+                                if (blob) {
+                                    const targetSize = targetSizeMB * 1024 * 1024;
+                                    
+                                    // If still too large and quality can be reduced, try lower quality
+                                    if (blob.size > targetSize && quality > 0.3) {
+                                        tryCompress(quality - 0.1);
+                                    } else {
+                                        const compressedFile = new File([blob], file.name.replace(/\.\w+$/, '.jpg'), {
+                                            type: 'image/jpeg',
+                                            lastModified: Date.now(),
+                                        });
+                                        console.log('[ImageUpload] Compression result:', {
+                                            original: file.size,
+                                            compressed: compressedFile.size,
+                                            quality,
+                                            reduction: `${((1 - compressedFile.size / file.size) * 100).toFixed(1)}%`
+                                        });
+                                        resolve(compressedFile);
+                                    }
+                                } else {
+                                    reject(new Error('Canvas to Blob conversion failed'));
+                                }
+                            },
+                            'image/jpeg',
+                            quality
+                        );
+                    };
+                    
+                    // Start with quality 0.75
+                    tryCompress(0.75);
                 };
                 img.onerror = reject;
             };
@@ -97,42 +119,64 @@ export function ImageUpload({ value, onChange, label = "Ảnh", required = false
         try {
             let fileToUpload = file;
             
-            // Compress image if it's not SVG and larger than 2MB
+            // Compress image if it's not SVG (always compress for deployment)
             if (file.type !== 'image/svg+xml' && !file.name.toLowerCase().endsWith('.svg')) {
-                if (file.size > 2 * 1024 * 1024) {
+                // Always compress to ensure it fits Vercel's 4.5MB limit
+                const shouldCompress = file.size > 500 * 1024; // Compress if > 500KB
+                
+                if (shouldCompress) {
                     toast({
                         title: "Đang nén ảnh...",
-                        description: "Ảnh của bạn đang được tối ưu hóa",
+                        description: "Ảnh của bạn đang được tối ưu hóa để tải lên",
                     });
                     
                     try {
-                        fileToUpload = await compressImage(file);
+                        // Target 4MB for safety (Vercel limit is 4.5MB)
+                        fileToUpload = await compressImage(file, 4);
                         console.log("[ImageUpload] Image compressed:", {
-                            originalSize: file.size,
-                            compressedSize: fileToUpload.size,
+                            originalSize: `${(file.size / 1024 / 1024).toFixed(2)}MB`,
+                            compressedSize: `${(fileToUpload.size / 1024 / 1024).toFixed(2)}MB`,
                             reduction: `${((1 - fileToUpload.size / file.size) * 100).toFixed(1)}%`,
                         });
+                        
+                        // Check if compression was successful enough
+                        if (fileToUpload.size > 4 * 1024 * 1024) {
+                            toast({
+                                title: "Lỗi",
+                                description: `Ảnh vẫn quá lớn sau khi nén (${(fileToUpload.size / 1024 / 1024).toFixed(1)}MB). Vui lòng chọn ảnh nhỏ hơn hoặc chất lượng thấp hơn.`,
+                                variant: "destructive",
+                            });
+                            setUploading(false);
+                            return;
+                        }
                     } catch (compressError) {
-                        console.error("[ImageUpload] Compression failed, using original:", compressError);
+                        console.error("[ImageUpload] Compression failed:", compressError);
+                        toast({
+                            title: "Lỗi",
+                            description: "Không thể nén ảnh. Vui lòng thử ảnh khác.",
+                            variant: "destructive",
+                        });
+                        setUploading(false);
+                        return;
                     }
                 }
                 
-                // Final size check (Cloudinary free tier limit: 10MB)
-                if (fileToUpload.size > 10 * 1024 * 1024) {
+                // Final size check (Vercel limit: 4.5MB, we use 4MB for safety)
+                if (fileToUpload.size > 4 * 1024 * 1024) {
                     toast({
                         title: "Lỗi",
-                        description: `Ảnh quá lớn (${(fileToUpload.size / 1024 / 1024).toFixed(1)}MB). Vui lòng chọn ảnh nhỏ hơn 10MB.`,
+                        description: `Ảnh quá lớn (${(fileToUpload.size / 1024 / 1024).toFixed(1)}MB). Vui lòng chọn ảnh nhỏ hơn 4MB.`,
                         variant: "destructive",
                     });
                     setUploading(false);
                     return;
                 }
             } else {
-                // SVG size limit
-                if (file.size > 5 * 1024 * 1024) {
+                // SVG size limit (Vercel limit)
+                if (file.size > 4 * 1024 * 1024) {
                     toast({
                         title: "Lỗi",
-                        description: `File SVG quá lớn. Vui lòng chọn file nhỏ hơn 5MB.`,
+                        description: `File SVG quá lớn (${(file.size / 1024 / 1024).toFixed(1)}MB). Vui lòng chọn file nhỏ hơn 4MB.`,
                         variant: "destructive",
                     });
                     setUploading(false);
